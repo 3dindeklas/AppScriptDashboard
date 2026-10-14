@@ -1,0 +1,149 @@
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt = n => n === null ? '—' : new Intl.NumberFormat('nl-NL', { maximumFractionDigits: 1 }).format(n);
+  const euro = n => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+  const monthLabel = m => m ? new Intl.DateTimeFormat('nl-NL', { month: 'short', year: '2-digit', timeZone: 'UTC' }).format(new Date(m + '-01T00:00:00Z')) : 'Geen datums';
+  const palette = ['#167c6a','#9693cf','#dca25e','#83a8ba','#b4c77b','#c77f90'];
+  const selects = ['source','region','provider','workshop','sector','statusGroup','type','school'];
+  let data = { records: [], sources: [] }, monthList = [], sequence = 0;
+  function options(id, entries) {
+    const el = $(id), first = el.options[0].textContent;
+    el.replaceChildren(new Option(first, ''));
+    entries.forEach(e => el.add(new Option(e.label ?? e, e.value ?? e)));
+  }
+  function dateControls() {
+    monthList = Analytics.months(data.records, $('dateField').value);
+    for (const id of ['monthFrom','monthTo']) { $(id).max = Math.max(0, monthList.length - 1); $(id).disabled = !monthList.length; }
+    $('monthFrom').value = 0; $('monthTo').value = Math.max(0, monthList.length - 1);
+    options('schoolYear', [...new Set(data.records.map(r => Analytics.schoolYear(r[$('dateField').value])))].sort().reverse());
+  }
+  function initialize() {
+    selects.forEach(key => options(key, key === 'source' ? data.sources.map(s => ({ value: s.id, label: s.label })) : [...new Set(data.records.map(r => r[key]))].sort((a,b) => a.localeCompare(b,'nl'))));
+    const max = Math.max(1, ...data.records.map(r => r.students ?? 0));
+    $('studentsMin').max = $('studentsMax').max = max;
+    $('studentsMin').value = 0; $('studentsMax').value = max;
+    $('includeUndated').checked = $('includeUnknownStudents').checked = true;
+    dateControls(); render(); renderSources();
+  }
+  function filters() {
+    const f = Object.fromEntries(selects.map(k => [k, $(k).value]));
+    Object.assign(f, { dateField: $('dateField').value, schoolYear: $('schoolYear').value,
+      from: monthList[+$('monthFrom').value], to: monthList[+$('monthTo').value],
+      minStudents: +$('studentsMin').value, maxStudents: +$('studentsMax').value,
+      includeUndated: $('includeUndated').checked, includeUnknownStudents: $('includeUnknownStudents').checked });
+    $('periodLabel').textContent = monthList.length ? monthLabel(f.from) + ' – ' + monthLabel(f.to) : 'Geen datums';
+    $('studentsLabel').textContent = f.minStudents + ' – ' + f.maxStudents;
+    $('monthFrom').setAttribute('aria-valuetext', monthLabel(f.from)); $('monthTo').setAttribute('aria-valuetext', monthLabel(f.to));
+    return f;
+  }
+  function bars(id, items, color = palette[0], limit = 8) {
+    if (!items.length) { $(id).innerHTML = '<p class="empty">Geen aanvragen in deze selectie.</p>'; return; }
+    let shown = items;
+    if (items.length > limit) shown = items.slice(0, limit).concat([{ label: 'Overige (' + (items.length - limit) + ')', value: items.slice(limit).reduce((n,r) => n + r.value,0) }]);
+    const max = Math.max(...shown.map(i => i.value), 1);
+    $(id).innerHTML = shown.map(i => '<div><div class="bar-label"><span>' + esc(i.label) + '</span><strong>' + fmt(i.value) + '</strong></div><div class="bar-track" aria-hidden="true"><div class="bar-fill" style="background:' + color + ';width:' + (100*i.value/max) + '%"></div></div></div>').join('');
+  }
+  function kpi(label, value, sub) { return '<article class="kpi"><p class="kpi-label">' + esc(label) + '</p><p class="kpi-value">' + esc(value) + '</p><p class="kpi-sub">' + esc(sub) + '</p></article>'; }
+  function render() {
+    const f = filters(), rows = Analytics.filter(data.records, f), s = Analytics.summary(rows);
+    $('filterCount').textContent = fmt(rows.length) + ' van ' + fmt(data.records.length) + ' geladen aanvragen in beeld';
+    $('overview').innerHTML = [kpi('Aanvragen',fmt(s.requests),'Binnen jouw selectie'),
+      kpi('Leerlingdeelnames',fmt(s.students), 'Gem. ' + fmt(s.avgStudents) + ' per aanvraag' + (s.unknownStudents ? ' · ' + s.unknownStudents + ' onbekend' : '')),
+      kpi('Scholen',fmt(s.schools),'Unieke naam + gemeente'),
+      kpi('Lesmomenten',fmt(s.sessions),s.unknownSessions ? s.unknownSessions + ' aantallen ontbreken' : 'Opgeteld uit de bron'),
+      kpi('Uitgevoerd',fmt(s.executed),s.requests ? fmt(s.executed / s.requests * 100) + '% van de aanvragen' : 'Geen aanvragen'),
+      kpi('Gem. per school',fmt(s.avgPerSchool),'Aanvragen per bekende school')].join('');
+    bars('regionChart',Analytics.group(rows,'region'));
+    bars('workshopChart',Analytics.group(rows,'workshop'),palette[1]);
+    bars('statusChart',Analytics.group(rows,'statusGroup'));
+    bars('providerChart',Analytics.group(rows,'provider'),palette[1]);
+    bars('poChart',Analytics.grades(rows,'PO'));
+    bars('voChart',Analytics.grades(rows,'VO'),palette[1]);
+    $('delay').textContent = s.delay === null ? 'Geen geldige datumparen beschikbaar.' : 'Gemiddeld ' + fmt(s.delay) + ' dagen tussen aanvraag en definitieve datum (' + s.delayCount + ' aanvragen). Dit is geen meettijd tot de planningsbevestiging.';
+    renderTrend(rows, f); renderDonut(rows);
+    $('comparisonBody').innerHTML = data.sources.filter(src => !f.source || src.id === f.source).map(src => {
+      const n = Analytics.summary(rows.filter(r => r.source === src.id));
+      return '<tr><td>' + esc(src.label) + (!src.ok ? ' · niet geladen' : '') + '</td>' +
+        ['requests','students','schools','sessions','executed'].map(k => '<td>' + (src.ok ? fmt(n[k]) : '—') + '</td>').join('') + '</tr>';
+    }).join('');
+    $('financeKpis').innerHTML = [['Te factureren',euro(s.revenue)],['Kosten aanbieder',euro(s.costs)],['Marge (complete regels)',euro(s.margin)],['Gewogen marge',s.marginPct === null ? '—' : fmt(s.marginPct) + '%']].map(([label,value]) => '<div><p class="kpi-label">' + label + '</p><p class="kpi-value">' + value + '</p></div>').join('');
+    $('financeNote').textContent = s.financeComplete + ' van ' + rows.length + ' aanvragen hebben zowel kosten als factuurbedrag. Marge = factuurbedrag − kosten, uitsluitend voor complete regels. Kosten en te factureren tellen alle bekende bedragen op. Bedragen worden niet nogmaals vermenigvuldigd met lesmomenten; btw-basis volgt de bron.';
+  }
+  function renderTrend(rows, f) {
+    const metric = $('metric').value, label = $('metric').selectedOptions[0].textContent;
+    $('trendTitle').textContent = label + ' per maand';
+    const unknown = rows.filter(r => !r[f.dateField]).length;
+    $('trendSubtitle').textContent = ($('dateField').selectedOptions[0].textContent) + (unknown ? ' · ' + unknown + ' aanvragen zonder datum buiten deze grafiek' : ' · beide stichtingen');
+    const sources = data.sources.filter(s => s.ok && (!f.source || s.id === f.source));
+    const color = id => palette[data.sources.findIndex(s => s.id === id) % palette.length];
+    $('sourceLegend').innerHTML = sources.map(s => '<span class="legend-item"><i class="dot" style="background:' + color(s.id) + '"></i>' + esc(s.label) + '</span>').join('');
+    const months = monthList.filter(m => m >= f.from && m <= f.to && (!f.schoolYear || Analytics.schoolYear(m + '-01') === f.schoolYear));
+    if (!months.length || !rows.some(r => r[f.dateField])) { $('trend').innerHTML = '<p class="empty">Geen gedateerde aanvragen in deze selectie.</p>'; return; }
+    const values = new Map(months.map(m => [m, new Map(sources.map(s => [s.id,0]))]));
+    rows.forEach(r => { const bucket = values.get((r[f.dateField] || '').slice(0,7)); if (bucket && bucket.has(r.source)) bucket.set(r.source, bucket.get(r.source) + (metric === 'requests' ? 1 : (r[metric] ?? 0))); });
+    const totals = months.map(m => [...values.get(m).values()].reduce((a,b) => a+b,0)), max = Math.max(...totals,1);
+    const columns = months.map((m,i) => '<div class="trend-column" role="img" aria-label="' + esc(monthLabel(m) + ': ' + sources.map(s => s.label + ' ' + fmt(values.get(m).get(s.id))).join(', ')) + '"><span class="trend-total">' + fmt(totals[i]) + '</span><div class="stack" style="height:' + 85*totals[i]/max + '%">' + sources.map(s => '<div class="stack-segment" title="' + esc(s.label + ': ' + fmt(values.get(m).get(s.id))) + '" style="background:' + color(s.id) + ';height:' + (totals[i] ? 100*values.get(m).get(s.id)/totals[i] : 0) + '%"></div>').join('') + '</div></div>').join('');
+    $('trend').innerHTML = '<div class="trend-scroll"><div style="min-width:' + Math.max(300,months.length*47) + 'px"><div class="trend-bars">' + columns + '</div><div class="trend-labels">' + months.map(m => '<span>' + monthLabel(m) + '</span>').join('') + '</div></div></div>';
+  }
+  function renderDonut(rows) {
+    if (!rows.length) { $('sectorChart').innerHTML = '<p class="empty">Geen aanvragen in deze selectie.</p>'; return; }
+    const items = Analytics.group(rows,'sector'); let start = 0;
+    const colors = { PO: palette[0], VO: palette[1], Onbekend: '#c6cebf' };
+    const stops = items.map(i => { const from = start; start += i.value/rows.length*100; return colors[i.label] + ' ' + from + '% ' + start + '%'; });
+    $('sectorChart').innerHTML = '<div class="donut" aria-hidden="true" style="background:conic-gradient(' + stops.join(',') + ')"><div class="donut-center">' + fmt(rows.length) + '<small>aanvragen</small></div></div><div class="donut-legend">' + items.map(i => '<div><span class="dot" style="background:' + colors[i.label] + '"></span> ' + esc(i.label) + '<strong>' + fmt(i.value/rows.length*100) + '%</strong><small> (' + fmt(i.value) + ')</small></div>').join('') + '</div>';
+  }
+  function renderSources() {
+    const labels = { missingIds:'zonder aanvraag-ID', missingStudents:'zonder geldig leerlingaantal', invalidDates:'met ontbrekende/ongeldige datum', missingFinance:'met onvolledige financiën', unknownGrades:'zonder herkenbaar leerjaar', missingSessions:'zonder geldig aantal lesmomenten' };
+    let warningCount = 0;
+    $('sourceStatus').innerHTML = data.sources.map(s => {
+      const warnings = Object.entries(s.warnings || {}).filter(([,v]) => v > 0);
+      warningCount += warnings.reduce((n,[,v]) => n+v,0);
+      return '<div><p><strong>' + esc(s.label) + '</strong> · ' + (s.ok ? fmt(s.count) + ' aanvragen geladen' : esc(s.message)) + '</p><small>' + warnings.map(([k,v]) => v + ' ' + esc(labels[k] || k)).join(' · ') + '</small></div>';
+    }).join('');
+    const errors = data.sources.filter(s => !s.ok).length;
+    $('qualityBadge').textContent = errors ? errors + ' bronfout(en)' : warningCount ? warningCount + ' aandachtspunten' : 'Geen aandachtspunten';
+  }
+  function load() {
+    const run = ++sequence;
+    $('refresh').disabled = true; $('overview').setAttribute('aria-busy','true');
+    $('notice').hidden = false; $('notice').className = 'notice'; $('notice').textContent = 'Gegevens worden opgehaald…';
+    const done = payload => {
+      if (run !== sequence) return;
+      data = payload; initialize();
+      $('refresh').disabled = false; $('overview').removeAttribute('aria-busy');
+      $('mode').textContent = data.demo ? 'DEMO · fictieve gegevens' : 'Live brongegevens';
+      $('updated').textContent = 'Opgehaald: ' + new Date(data.loadedAt).toLocaleString('nl-NL');
+      const errors = data.sources.filter(s => !s.ok).length;
+      $('notice').className = errors ? 'notice error' : 'notice';
+      $('notice').hidden = !data.demo && !errors;
+      $('notice').textContent = data.demo ? 'Je bekijkt fictieve voorbeeldgegevens. De stichtingen, scholen en cijfers zijn uitsluitend bedoeld om het dashboard te bekijken.' : errors === data.sources.length ? 'Geen bron kon worden geladen. De getoonde nullen zijn geen rapportagecijfers. Controleer Bronnen & datakwaliteit.' : errors + ' bron(nen) niet geladen: dit overzicht is onvolledig. Bekijk Bronnen & datakwaliteit.';
+    };
+    const fail = () => {
+      if (run !== sequence) return;
+      data = {records:[],sources:[]}; initialize();
+      $('refresh').disabled = false; $('overview').removeAttribute('aria-busy');
+      $('mode').textContent = 'Niet beschikbaar'; $('updated').textContent = 'Geen actuele gegevens';
+      $('notice').hidden = false; $('notice').className = 'notice error';
+      $('notice').textContent = 'Laden mislukt. Controleer je toegang en de dashboardconfiguratie, en probeer opnieuw. Er worden geen oude cijfers getoond.';
+    };
+    if (window.google?.script?.run) google.script.run.withSuccessHandler(done).withFailureHandler(fail).getDashboardData();
+    else if (window.__DEMO_PAYLOAD__?.demo === true) done(window.__DEMO_PAYLOAD__);
+    else fail();
+  }
+  $('filters').addEventListener('submit', e => e.preventDefault());
+  $('filters').addEventListener('input', e => {
+    if (e.target.id === 'dateField') dateControls();
+    for (const [min,max] of [['monthFrom','monthTo'],['studentsMin','studentsMax']]) {
+      if (+$(min).value > +$(max).value) $(e.target.id === min ? max : min).value = e.target.value;
+    }
+    render();
+  });
+  $('metric').addEventListener('change',render);
+  $('refresh').addEventListener('click',load);
+  $('reset').addEventListener('click',() => { $('filters').reset(); initialize(); });
+  load();
+})();
+</script>

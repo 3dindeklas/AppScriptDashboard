@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="nl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base target="_top">
+<title>Workshopkompas</title><?!= include_('Styles'); ?></head>
+<body>
+<a class="skip" href="#overview">Naar overzicht</a>
+<header class="masthead"><div class="brand"><span class="brand-mark" aria-hidden="true">w<span>↗</span></span><div>workshop<span class="brand-light">kompas</span><small>Samen zicht op leren door maken</small></div></div><div class="header-right"><span class="secure">● Besloten dashboard</span><button id="refresh" class="button light">↻ Vernieuwen</button></div></header>
+<main>
+<section class="intro"><div><p class="eyebrow">INZICHT & IMPACT</p><h1>Kleine workshops.<br><span>Groot bereik.</span></h1><p>Alle workshopaanvragen van beide stichtingen in één overzicht.</p></div><div class="intro-meta"><span class="pill" id="mode">Gegevens laden</span><p id="updated">Even geduld…</p></div></section>
+<div id="notice" class="notice" role="status" aria-live="polite">Het overzicht wordt geladen.</div>
+<details class="filters" open><summary><span>Verfijn je overzicht</span><span class="filter-hint">Stichting, periode en doelgroep</span></summary><form id="filters">
+<div class="filter-grid">
+<label>Stichting<select id="source"><option value="">Alle stichtingen</option></select></label>
+<label>Schooljaar<select id="schoolYear"><option value="">Alle schooljaren</option></select></label>
+<label>Gemeente / regio<select id="region"><option value="">Alle gemeenten</option></select></label>
+<label>Onderwijs<select id="sector"><option value="">PO & VO</option></select></label>
+<label>Aanbieder<select id="provider"><option value="">Alle aanbieders</option></select></label>
+<label>Workshop<select id="workshop"><option value="">Alle workshops</option></select></label>
+<label>Statusgroep<select id="statusGroup"><option value="">Alle statussen</option></select></label>
+<label>School<select id="school"><option value="">Alle scholen</option></select></label>
+<label>Type<select id="type"><option value="">Alle typen</option></select></label>
+<label>Datum gebruiken<select id="dateField"><option value="requested">Datum aanvraag</option><option value="scheduled">Definitieve datum</option></select></label>
+</div>
+<div class="range-grid"><fieldset><legend>Periode <output id="periodLabel"></output></legend><div class="sliders"><label>Van<input id="monthFrom" type="range" min="0" max="0" value="0"></label><label>Tot en met<input id="monthTo" type="range" min="0" max="0" value="0"></label></div><label class="check"><input type="checkbox" id="includeUndated" checked> Ook aanvragen zonder geldige datum</label></fieldset>
+<fieldset><legend>Leerlingen per aanvraag <output id="studentsLabel"></output></legend><div class="sliders"><label>Minimaal<input id="studentsMin" type="range" min="0" max="100" value="0"></label><label>Maximaal<input id="studentsMax" type="range" min="0" max="100" value="100"></label></div><label class="check"><input type="checkbox" id="includeUnknownStudents" checked> Ook aanvragen met onbekend aantal</label></fieldset></div>
+<div class="filter-bottom"><p id="filterCount" aria-live="polite"></p><button type="button" id="reset" class="text-button">Filters wissen ↺</button></div>
+</form></details>
+<section id="overview" aria-label="Kerncijfers" class="kpis"></section>
+<p class="metric-note">Leerlingdeelnames zijn opgetelde aantallen per aanvraag, geen unieke leerlingen. Eén aanvraag kan meerdere lesmomenten bevatten.</p>
+<div class="section-heading"><div><p class="eyebrow">DE ONTWIKKELING</p><h2>Bereik door de tijd</h2></div><label class="inline-label">Toon<select id="metric"><option value="requests">Aanvragen</option><option value="students">Leerlingdeelnames</option><option value="sessions">Lesmomenten</option></select></label></div>
+<section class="chart-grid"><article class="card wide"><div class="card-heading"><div><h3 id="trendTitle">Aanvragen per maand</h3><p id="trendSubtitle">Verdeling over beide stichtingen</p></div><div id="sourceLegend" class="legend"></div></div><div id="trend" class="trend"></div></article>
+<article class="card"><div class="card-heading"><div><h3>Onderwijs in beeld</h3><p>Verdeling van aanvragen</p></div></div><div id="sectorChart" class="donut-layout"></div></article></section>
+<section class="chart-grid three"><article class="card"><h3>Gemeenten & regio’s</h3><p class="sub">Waar komen de aanvragen vandaan?</p><div id="regionChart" class="bars"></div></article><article class="card"><h3>Populaire workshops</h3><p class="sub">Aantal aanvragen per workshop</p><div id="workshopChart" class="bars"></div></article><article class="card"><h3>Van aanvraag naar uitvoering</h3><p class="sub">Aanvragen per statusgroep</p><div id="statusChart" class="bars"></div><p class="footnote" id="delay"></p></article></section>
+<section class="chart-grid three"><article class="card"><h3>Onze aanbieders</h3><p class="sub">Aantal aanvragen per aanbieder</p><div id="providerChart" class="bars"></div></article><article class="card"><h3>Primair onderwijs</h3><p class="sub">Aanvragen per leerjaar</p><div id="poChart" class="bars"></div></article><article class="card"><h3>Voortgezet onderwijs</h3><p class="sub">Aanvragen per leerjaar</p><div id="voChart" class="bars"></div></article></section>
+<p class="metric-note">Bij combinatiegroepen wordt één aanvraag evenredig verdeeld over de genoemde leerjaren.</p>
+<section class="card comparison"><div class="card-heading"><div><p class="eyebrow">SAMEN & AFZONDERLIJK</p><h2>De stichtingen naast elkaar</h2></div></div><div class="table-scroll"><table><caption class="sr-only">Resultaten per stichting binnen de huidige filters</caption><thead><tr><th scope="col">Stichting</th><th scope="col">Aanvragen</th><th scope="col">Leerlingdeelnames</th><th scope="col">Scholen</th><th scope="col">Lesmomenten</th><th scope="col">Uitgevoerd</th></tr></thead><tbody id="comparisonBody"></tbody></table></div><p class="footnote">Een school kan bij beide stichtingen voorkomen. Het gezamenlijke aantal scholen telt dezelfde schoolnaam binnen dezelfde gemeente één keer.</p></section>
+<details class="card finances"><summary>Financieel overzicht <span>Bedragen binnen de selectie</span></summary><div id="financeKpis" class="finance-grid"></div><p class="footnote" id="financeNote"></p></details>
+<details class="card"><summary>Bronnen & datakwaliteit <span id="qualityBadge"></span></summary><div id="sourceStatus" class="source-status"></div><p class="footnote">Bij een bronfout worden alleen de beschikbare bronnen getoond. Er worden nooit automatisch democijfers toegevoegd.</p></details>
+<footer><span>Workshopkompas <strong> / </strong> Samen leren door maken</span><span>Geen contactgegevens of notities in dit overzicht</span></footer>
+</main>
+<?!= include_('Analytics'); ?>
+<?!= include_('Client'); ?>
+</body></html>
