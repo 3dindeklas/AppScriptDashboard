@@ -192,7 +192,8 @@
 
       recent.forEach(record => {
         const row = document.createElement('tr');
-        [formatDate(record.date), record.source, record.workshop, record.status, numberFormat.format(record.students || 0)]
+        [formatDate(record.date), record.source, record.workshop, record.status,
+          record.students === null ? '—' : numberFormat.format(record.students)]
           .forEach(value => {
             const cell = document.createElement('td');
             cell.textContent = value;

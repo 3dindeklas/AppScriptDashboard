@@ -2,6 +2,8 @@
 
 Deze branch bouwt het dashboard opnieuw op vanaf een kleine, controleerbare basis. De app start direct met fictieve demogegevens en kan daarna één of twee Google Sheets met dezelfde kolomstructuur uitlezen.
 
+De server normaliseert de volledige analysekolomstructuur inmiddels naar één intern recordmodel. Alleen de kleine, veilige browserprojectie van de minimale interface wordt nog doorgestuurd; uitgebreidere filters en cijfers volgen per roadmapstap.
+
 ## Wat versie 1 doet
 
 - standaard Apps Script `doGet()` met `createTemplateFromFile('Index').evaluate()`;

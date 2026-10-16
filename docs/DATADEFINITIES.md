@@ -1,34 +1,118 @@
-# Datadefinities van versie 1
+# Datadefinities
 
-De minimale versie verwerkt per rij alleen onderstaande analysevelden.
+Alle Google Sheets-rijen worden eerst server-side omgezet naar één intern workshoprecord. De volgorde van kolommen maakt niet uit: de koppeling gebeurt op de genormaliseerde koptekst. Lege kolomkoppen worden als spacer genegeerd; een dubbele niet-lege koptekst geeft een fout omdat dan niet betrouwbaar gekozen kan worden.
 
-| Dashboardveld | Sheetkolom | Gebruik |
+## Intern workshoprecord
+
+| Intern veld | Sheetkolom | Definitie |
 | --- | --- | --- |
-| `source` | ingestelde bronnaam | filter op stichting |
-| `date` | `Definitieve datum`, anders `Datum aanvraag` | sortering recente workshops |
-| `workshop` | `Workshopnaam` | workshopgrafiek en tabel |
-| `provider` | `Aanbieder` | voorbereid voor een latere filter |
-| `region` | `Gemeente / Regio` | voorbereid voor een latere filter |
-| `sector` | `PO / VO` | onderwijsfilter |
-| `status` | `Status` | statusfilter en grafiek |
-| `sessions` | `Lesmomenten` | totaal lesmomenten |
-| `students` | `Aantal leerlingen` | totaal leerlingdeelnames |
+| `source` | configuratie | naam van de stichting/bron |
+| `requestId` | `Aanvraag ID` | intern gebruikt voor datakwaliteitscontrole |
+| `requestedDate` | `Datum aanvraag` | geldige datum als `YYYY-MM-DD`, anders `null` |
+| `scheduledDate` | `Definitieve datum` | geldige datum als `YYYY-MM-DD`, anders `null` |
+| `schoolYear` | afgeleid | schooljaar van definitieve datum, anders aanvraagdatum |
+| `school` | `Schoolnaam` | intern voorbereid voor latere filtering |
+| `schoolKey` | afgeleid | genormaliseerde schoolnaam plus regio |
+| `region` | `Gemeente / Regio` | lege waarde wordt `Onbekend` |
+| `workshop` | `Workshopnaam` | lege waarde wordt `Onbekende workshop` |
+| `provider` | `Aanbieder` | lege waarde wordt `Onbekend` |
+| `sessions` | `Lesmomenten` | geheel getal vanaf nul, anders `null` |
+| `students` | `Aantal leerlingen` | geheel getal vanaf nul, anders `null` |
+| `gradeLabel` | `Groep / leerjaar` | oorspronkelijke opgeschoonde tekst |
+| `grades` | afgeleid | lijst met geldige PO- of VO-leerjaren |
+| `sector` | `PO / VO` | `PO`, `VO` of `Onbekend` |
+| `desiredPeriod` | `Gewenste periode` | opgeschoonde tekst |
+| `location` | `Locatie` | intern; nog niet naar de browser |
+| `type` | `Type` | lege waarde wordt `Onbekend` |
+| `points` | `Punten per workshop` | getal of `null` |
+| `providerWorkshopPrice` | `Prijs per workshop (aanbieder)` | bedrag of `null` |
+| `travelCosts` | `Reiskosten aanbieder` | bedrag of `null` |
+| `extraCosts` | `Extra kosten` | bedrag of `null` |
+| `providerTotalCosts` | `Totale kosten aanbieder` | bedrag of `null` |
+| `invoiceAmount` | `Te factureren i_lab` | bedrag of `null` |
+| `marginAmount` | `Marge (€)` | bedrag of `null` |
+| `marginPercent` | `Marge (%)` | percentagegetal of `null` |
+| `financialComplete` | afgeleid | waar als totale kosten en factuurbedrag aanwezig zijn |
+| `status` | `Status` | oorspronkelijke opgeschoonde status |
+| `statusGroup` | afgeleid | vaste groep voor latere rapportage |
+| `lastContactDate` | `Laatste contactdatum` | geldige datum of `null` |
+| `actionRequired` | `Actie nodig` | opgeschoonde tekst |
 
-`Leerlingdeelnames` is de som van `Aantal leerlingen` per workshoprij. Het is geen telling van unieke leerlingen.
+Contactpersoon, e-mailadres, telefoon, notities, debuggegevens en e-mail-/kalender-ID's worden niet in het interne analyserecord opgenomen.
 
-## Privacy
+## Browserprojectie in stap 1
 
-Deze velden worden bewust niet aan de browser gegeven:
+De interface wordt in deze stap nog niet uitgebreid. `getDashboardData()` geeft daarom alleen de bestaande veilige velden door:
 
-- aanvraag-ID;
-- schoolnaam;
-- contactpersoon;
-- e-mailadres;
-- telefoonnummer;
-- locatie;
-- notities;
-- e-mail- en kalender-ID's;
-- debuginformatie;
-- financiële velden.
+| Browserveld | Bron |
+| --- | --- |
+| `source` | `source` |
+| `date` | `scheduledDate`, anders `requestedDate` |
+| `workshop` | `workshop` |
+| `provider` | `provider` |
+| `region` | `region` |
+| `sector` | `sector` |
+| `status` | `status` |
+| `sessions` | `sessions` |
+| `students` | `students` |
 
-Financiële rapportage en schoolniveau kunnen later bewust worden toegevoegd, inclusief een nieuwe controle op toegangsrechten.
+Aanvraag-ID, school, locatie, leerjaren, statusgroep en financiële velden blijven server-side tot de bijbehorende roadmapstap én toegangscontrole zijn toegevoegd.
+
+## Getallen en bedragen
+
+- Werkelijke numerieke nul blijft `0`.
+- Leeg en ongeldig blijven `null`; ze worden niet stilzwijgend als nul geteld.
+- Nederlandse notatie wordt ondersteund, bijvoorbeeld `€ 1.234,50` → `1234.5`.
+- Een punt met drie cijfers erachter wordt als duizendtalseparator behandeld: `1.234` → `1234`.
+- Aantallen zijn uitsluitend gehele, niet-negatieve waarden.
+- Bij lesmomenten is ook een eenvoudige waarde zoals `2x` toegestaan.
+
+## Datums en schooljaren
+
+Ondersteunde datumwaarden:
+
+- Google Sheets `Date`-objecten;
+- `DD-MM-JJJJ` en `DD/MM/JJJJ`;
+- `JJJJ-MM-DD` en `JJJJ/MM/DD`;
+- Excel-serienummers, voorbereid voor de latere Microsoft-bron.
+
+Ongeldige kalenderdatums zoals `31-02-2026` worden `null`. Een schooljaar loopt van 1 augustus tot en met 31 juli. `2026-07-31` hoort bij `2025–2026`; `2026-08-01` bij `2026–2027`.
+
+## Statusgroepen
+
+| Statuswaarden | Groep |
+| --- | --- |
+| Nieuw, Contact, Contact gelegd, Optie, Open | `Open` |
+| Akkoord, Bevestiging, Ingepland | `Ingepland` |
+| Uitgevoerd | `Uitgevoerd` |
+| Geannuleerd, Afgezegd | `Geannuleerd` |
+| Volgend schooljaar | `Volgend schooljaar` |
+| overige waarden | `Overig` |
+
+## Groepen en leerjaren
+
+Voorbeelden die worden herkend:
+
+- `groep 3 t/m 5` → PO 3, 4 en 5;
+- `6/7/8` → PO 6, 7 en 8;
+- `leerjaar 1/2` → VO 1 en 2.
+
+PO accepteert groep 1 tot en met 8. VO accepteert leerjaar 1 tot en met 6. Als één getal buiten de sector valt, blijft de gehele leerjarenlijst leeg zodat geen gedeeltelijk onjuiste verdeling ontstaat.
+
+## Datakwaliteitssignalen
+
+De normalisatie telt per bron:
+
+- lege rijen;
+- ontbrekende aanvraag-ID's;
+- unieke aanvraag-ID's die dubbel voorkomen;
+- ongeldige aanvraagdatums;
+- ongeldige definitieve datums;
+- ongeldige leerlingaantallen;
+- onbekende onderwijssectoren.
+
+Deze signalen worden in stap 1 getest maar nog niet in de interface getoond. De zichtbare bronstatus volgt in roadmapstap 3.
+
+## Tellingen
+
+`Leerlingdeelnames` is de som van geldige waarden in `Aantal leerlingen` per workshoprij. Het is geen telling van unieke leerlingen. Ontbrekende leerlingaantallen blijven onbekend en worden niet als nul opgeslagen.

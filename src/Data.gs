@@ -1,4 +1,19 @@
-/** Velden die de browser mag ontvangen. Persoonsgegevens staan hier bewust niet tussen. */
+const STATUS_GROUPS_ = Object.freeze({
+  'nieuw': 'Open',
+  'contact': 'Open',
+  'contact gelegd': 'Open',
+  'optie': 'Open',
+  'open': 'Open',
+  'akkoord': 'Ingepland',
+  'bevestiging': 'Ingepland',
+  'ingepland': 'Ingepland',
+  'uitgevoerd': 'Uitgevoerd',
+  'geannuleerd': 'Geannuleerd',
+  'afgezegd': 'Geannuleerd',
+  'volgend schooljaar': 'Volgend schooljaar'
+});
+
+/** Leest alle geconfigureerde Google Sheets naar hetzelfde interne recordmodel. */
 function readConfiguredSheets_() {
   const sources = APP_CONFIG.sources.filter(function(source) {
     return source.spreadsheetId && source.sheetName;
@@ -8,8 +23,8 @@ function readConfiguredSheets_() {
     throw new Error('Geen Google Sheet geconfigureerd. Zet demoMode op true of vul een spreadsheetId in Config.gs in.');
   }
 
-  return sources.reduce(function(allRows, source) {
-    return allRows.concat(readGoogleSheet_(source));
+  return sources.reduce(function(allRecords, source) {
+    return allRecords.concat(readGoogleSheet_(source).records);
   }, []);
 }
 
@@ -25,7 +40,9 @@ function readGoogleSheet_(source) {
   const lastRow = sheet.getLastRow();
   const lastColumn = sheet.getLastColumn();
 
-  if (lastRow <= headerRow || lastColumn === 0) return [];
+  if (lastRow <= headerRow || lastColumn === 0) {
+    return { records: [], warnings: emptyWarnings_() };
+  }
 
   const values = sheet.getRange(
     headerRow,
@@ -34,57 +51,197 @@ function readGoogleSheet_(source) {
     lastColumn
   ).getValues();
 
-  return mapSheetRows_(values, source.name);
+  return normalizeSheet_(values, source.name);
 }
 
-function mapSheetRows_(values, sourceName) {
-  if (!values.length) return [];
+/**
+ * Zet een volledige sheetmatrix om naar interne workshoprecords.
+ * Kolomvolgorde is niet van belang; lege spacer-kolommen worden genegeerd.
+ */
+function normalizeSheet_(values, sourceName) {
+  if (!Array.isArray(values) || !values.length) {
+    return { records: [], warnings: emptyWarnings_() };
+  }
 
-  const header = values[0].map(headerKey_);
-  if (!header.includes('workshopnaam')) {
+  const header = headerMap_(values[0], sourceName);
+  const warnings = emptyWarnings_();
+  const seenRequestIds = new Set();
+  const duplicateRequestIds = new Set();
+  const records = [];
+
+  values.slice(1).forEach(function(row) {
+    if (isEmptyWorkshopRow_(row, header)) {
+      warnings.emptyRows += 1;
+      return;
+    }
+
+    const requestId = textValue_(cell_(row, header, 'aanvraag id'));
+    if (!requestId) {
+      warnings.missingRequestIds += 1;
+    } else if (seenRequestIds.has(requestId)) {
+      duplicateRequestIds.add(requestId);
+    } else {
+      seenRequestIds.add(requestId);
+    }
+
+    const requestedRaw = cell_(row, header, 'datum aanvraag');
+    const scheduledRaw = cell_(row, header, 'definitieve datum');
+    const requestedDate = dateValue_(requestedRaw);
+    const scheduledDate = dateValue_(scheduledRaw);
+    const students = countValue_(cell_(row, header, 'aantal leerlingen'));
+    const sector = sectorValue_(cell_(row, header, 'po / vo'));
+
+    if (hasValue_(requestedRaw) && !requestedDate) warnings.invalidRequestedDates += 1;
+    if (hasValue_(scheduledRaw) && !scheduledDate) warnings.invalidScheduledDates += 1;
+    if (hasValue_(cell_(row, header, 'aantal leerlingen')) && students === null) warnings.invalidStudentCounts += 1;
+    if (hasValue_(cell_(row, header, 'po / vo')) && sector === 'Onbekend') warnings.unknownSectors += 1;
+
+    records.push(normalizeRow_(row, header, sourceName, {
+      requestId: requestId,
+      requestedDate: requestedDate,
+      scheduledDate: scheduledDate,
+      students: students,
+      sector: sector
+    }));
+  });
+
+  warnings.duplicateRequestIds = duplicateRequestIds.size;
+  return { records: records, warnings: warnings };
+}
+
+function normalizeRow_(row, header, sourceName, parsed) {
+  const school = textValue_(cell_(row, header, 'schoolnaam'));
+  const region = textValue_(cell_(row, header, 'gemeente / regio'));
+  const gradeLabel = textValue_(cell_(row, header, 'groep / leerjaar'));
+  const status = textValue_(cell_(row, header, 'status')) || 'Onbekend';
+  const providerTotalCosts = numberValue_(cell_(row, header, 'totale kosten aanbieder'));
+  const invoiceAmount = numberValue_(cell_(row, header, 'te factureren i_lab'));
+  const primaryDate = parsed.scheduledDate || parsed.requestedDate;
+
+  return {
+    source: sourceName,
+    requestId: parsed.requestId,
+    requestedDate: parsed.requestedDate,
+    scheduledDate: parsed.scheduledDate,
+    schoolYear: schoolYear_(primaryDate),
+    school: school,
+    schoolKey: schoolKey_(school, region),
+    region: region || 'Onbekend',
+    workshop: textValue_(cell_(row, header, 'workshopnaam')) || 'Onbekende workshop',
+    provider: textValue_(cell_(row, header, 'aanbieder')) || 'Onbekend',
+    sessions: countValue_(cell_(row, header, 'lesmomenten')),
+    students: parsed.students,
+    gradeLabel: gradeLabel,
+    grades: gradeValues_(gradeLabel, parsed.sector),
+    sector: parsed.sector,
+    desiredPeriod: textValue_(cell_(row, header, 'gewenste periode')),
+    location: textValue_(cell_(row, header, 'locatie')),
+    type: textValue_(cell_(row, header, 'type')) || 'Onbekend',
+    points: numberValue_(cell_(row, header, 'punten per workshop')),
+    providerWorkshopPrice: numberValue_(cell_(row, header, 'prijs per workshop (aanbieder)')),
+    travelCosts: numberValue_(cell_(row, header, 'reiskosten aanbieder')),
+    extraCosts: numberValue_(cell_(row, header, 'extra kosten')),
+    providerTotalCosts: providerTotalCosts,
+    invoiceAmount: invoiceAmount,
+    marginAmount: numberValue_(cell_(row, header, 'marge (€)')),
+    marginPercent: numberValue_(cell_(row, header, 'marge (%)')),
+    financialComplete: providerTotalCosts !== null && invoiceAmount !== null,
+    status: status,
+    statusGroup: statusGroup_(status),
+    lastContactDate: dateValue_(cell_(row, header, 'laatste contactdatum')),
+    actionRequired: textValue_(cell_(row, header, 'actie nodig'))
+  };
+}
+
+/** Expliciete browserprojectie. Interne IDs, scholen, locaties en financiën blijven server-side. */
+function publicRecord_(record) {
+  return {
+    source: record.source,
+    date: record.scheduledDate || record.requestedDate || '',
+    workshop: record.workshop,
+    provider: record.provider,
+    region: record.region,
+    sector: record.sector,
+    status: record.status,
+    sessions: record.sessions,
+    students: record.students
+  };
+}
+
+function headerMap_(headerRow, sourceName) {
+  const map = {};
+
+  headerRow.forEach(function(value, index) {
+    const key = headerKey_(value);
+    if (!key) return;
+    if (Object.prototype.hasOwnProperty.call(map, key)) {
+      throw new Error('Dubbele kolomkop in ' + sourceName + ': ' + textValue_(value));
+    }
+    map[key] = index;
+  });
+
+  if (!Object.prototype.hasOwnProperty.call(map, 'workshopnaam')) {
     throw new Error('De kolom Workshopnaam ontbreekt in ' + sourceName + '.');
   }
-  return values.slice(1).map(function(row) {
-    const workshop = textValue_(cell_(row, header, 'workshopnaam'));
-    const status = textValue_(cell_(row, header, 'status'));
-    const requestedDate = dateValue_(cell_(row, header, 'datum aanvraag'));
-    const scheduledDate = dateValue_(cell_(row, header, 'definitieve datum'));
 
-    if (!workshop && !status && !requestedDate && !scheduledDate) return null;
-
-    return {
-      source: sourceName,
-      date: scheduledDate || requestedDate,
-      workshop: workshop || 'Onbekende workshop',
-      provider: textValue_(cell_(row, header, 'aanbieder')) || 'Onbekend',
-      region: textValue_(cell_(row, header, 'gemeente / regio')) || 'Onbekend',
-      sector: sectorValue_(cell_(row, header, 'po / vo')),
-      status: status || 'Onbekend',
-      sessions: numberValue_(cell_(row, header, 'lesmomenten')),
-      students: numberValue_(cell_(row, header, 'aantal leerlingen'))
-    };
-  }).filter(Boolean);
+  return map;
 }
 
 function headerKey_(value) {
-  return String(value == null ? '' : value).trim().toLowerCase().replace(/\s+/g, ' ');
+  return textValue_(value).toLowerCase();
 }
 
 function cell_(row, header, name) {
-  const index = header.indexOf(name);
-  return index === -1 ? '' : row[index];
+  return Object.prototype.hasOwnProperty.call(header, name) ? row[header[name]] : '';
+}
+
+function isEmptyWorkshopRow_(row, header) {
+  return ![
+    'aanvraag id', 'datum aanvraag', 'schoolnaam', 'workshopnaam',
+    'definitieve datum', 'status'
+  ].some(function(name) {
+    return hasValue_(cell_(row, header, name));
+  });
+}
+
+function hasValue_(value) {
+  return value !== null && value !== undefined && textValue_(value) !== '';
 }
 
 function textValue_(value) {
-  return String(value == null ? '' : value).trim().replace(/\s+/g, ' ');
+  return String(value == null ? '' : value).replace(/\u00a0/g, ' ').trim().replace(/\s+/g, ' ');
 }
 
+/** Parseert Nederlandse bedragen/getallen. Leeg of ongeldig blijft null, nooit stilzwijgend nul. */
 function numberValue_(value) {
-  if (typeof value === 'number' && isFinite(value)) return value;
-  const cleaned = textValue_(value).replace(/[^0-9,.-]/g, '');
-  const normalized = cleaned.includes(',') ? cleaned.replace(/\./g, '').replace(',', '.') : cleaned;
-  const number = Number(normalized);
-  return isFinite(number) ? number : 0;
+  if (typeof value === 'number') return isFinite(value) ? value : null;
+
+  let text = textValue_(value);
+  if (!text) return null;
+  text = text.replace(/[€%\s]/g, '');
+  if (!/^-?[0-9.,]+$/.test(text)) return null;
+
+  if (text.includes(',')) {
+    if (!/^-?\d{1,3}(?:\.\d{3})*(?:,\d+)?$/.test(text) && !/^-?\d+(?:,\d+)?$/.test(text)) return null;
+    text = text.replace(/\./g, '').replace(',', '.');
+  } else if (/^-?\d{1,3}(?:\.\d{3})+$/.test(text)) {
+    text = text.replace(/\./g, '');
+  } else if (!/^-?\d+(?:\.\d+)?$/.test(text)) {
+    return null;
+  }
+
+  const number = Number(text);
+  return isFinite(number) ? number : null;
+}
+
+function countValue_(value) {
+  if (typeof value === 'string') {
+    const match = textValue_(value).match(/^(\d+)\s*x?$/i);
+    if (!match) return null;
+    value = match[1];
+  }
+  const number = numberValue_(value);
+  return number !== null && number >= 0 && Number.isInteger(number) ? number : null;
 }
 
 function sectorValue_(value) {
@@ -92,42 +249,127 @@ function sectorValue_(value) {
   return sector === 'PO' || sector === 'VO' ? sector : 'Onbekend';
 }
 
+function statusGroup_(status) {
+  return STATUS_GROUPS_[keyValue_(status)] || 'Overig';
+}
+
+function schoolKey_(school, region) {
+  if (!school) return '';
+  return keyValue_(school) + '|' + keyValue_(region);
+}
+
+function keyValue_(value) {
+  return textValue_(value).toLowerCase();
+}
+
 function dateValue_(value) {
-  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    if (isNaN(value.getTime())) return null;
     return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+
+  if (typeof value === 'number' && isFinite(value) && value > 0) {
+    const excelDate = new Date(Date.UTC(1899, 11, 30) + Math.floor(value) * 86400000);
+    return isoDate_(excelDate.getUTCFullYear(), excelDate.getUTCMonth() + 1, excelDate.getUTCDate());
   }
 
   const text = textValue_(value);
   let match = text.match(/^(\d{4})[-\/]([01]?\d)[-\/]([0-3]?\d)$/);
-  if (match) return match[1] + '-' + padDate_(match[2]) + '-' + padDate_(match[3]);
+  if (match) return isoDate_(Number(match[1]), Number(match[2]), Number(match[3]));
 
   match = text.match(/^([0-3]?\d)[-\/]([01]?\d)[-\/](\d{4})$/);
-  if (match) return match[3] + '-' + padDate_(match[2]) + '-' + padDate_(match[1]);
+  if (match) return isoDate_(Number(match[3]), Number(match[2]), Number(match[1]));
 
-  return '';
+  return null;
+}
+
+function isoDate_(year, month, day) {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return year + '-' + padDate_(month) + '-' + padDate_(day);
 }
 
 function padDate_(value) {
   return String(value).padStart(2, '0');
 }
 
-/** Fictieve data waarmee de web-app direct na kopiëren werkt. */
-function demoRows_() {
+function schoolYear_(isoDate) {
+  if (!isoDate) return null;
+  const match = isoDate.match(/^(\d{4})-(\d{2})-\d{2}$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const start = month >= 8 ? year : year - 1;
+  return start + '–' + (start + 1);
+}
+
+function gradeValues_(value, sector) {
+  const maximum = sector === 'PO' ? 8 : sector === 'VO' ? 6 : 0;
+  if (!maximum) return [];
+
+  let text = keyValue_(value);
+  if (!text) return [];
+  text = text
+    .replace(/\b(groep|leerjaar|klas|jaar)\b/g, ' ')
+    .replace(/\btot en met\b|\bt\/m\b/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const values = new Set();
+  const range = text.match(/^(\d+)\s*-\s*(\d+)$/);
+  if (range) {
+    const start = Number(range[1]);
+    const end = Number(range[2]);
+    if (start < 1 || end > maximum || start > end) return [];
+    for (let grade = start; grade <= end; grade += 1) values.add(grade);
+    return Array.from(values);
+  }
+
+  if (!/^\d+(?:\s*[/,+&]\s*\d+)*$/.test(text)) return [];
+  const grades = text.match(/\d+/g).map(Number);
+  if (grades.some(function(grade) { return grade < 1 || grade > maximum; })) return [];
+  grades.forEach(function(grade) {
+    values.add(grade);
+  });
+  return Array.from(values).sort(function(a, b) { return a - b; });
+}
+
+function emptyWarnings_() {
+  return {
+    emptyRows: 0,
+    missingRequestIds: 0,
+    duplicateRequestIds: 0,
+    invalidRequestedDates: 0,
+    invalidScheduledDates: 0,
+    invalidStudentCounts: 0,
+    unknownSectors: 0
+  };
+}
+
+/** Fictieve interne records waarmee de web-app direct blijft werken. */
+function demoRecords_() {
   return [
-    ['Stichting A', '2026-09-03', '3D-sleutelhanger', '3Dindeklas', 'Vijfheerenlanden', 'PO', 'Uitgevoerd', 2, 24],
-    ['Stichting A', '2026-09-10', 'Paper Circuits', '3Dindeklas', 'Molenlanden', 'PO', 'Uitgevoerd', 1, 15],
-    ['Stichting A', '2026-09-18', 'Codeer een robot met kleuren', '3Dindeklas', 'Gorinchem', 'PO', 'Ingepland', 2, 28],
-    ['Stichting A', '2026-10-02', 'Micro:bit Magic', '3Dindeklas', 'Vijfheerenlanden', 'VO', 'Open', 4, 20],
-    ['Stichting A', '2026-10-12', 'Duurzaam huis met licht', 'MakerLab', 'Altena', 'PO', 'Ingepland', 2, 18],
-    ['Stichting B', '2026-09-05', 'Bouw een Spin Art-machine', '3Dindeklas', 'Sliedrecht', 'PO', 'Uitgevoerd', 3, 27],
-    ['Stichting B', '2026-09-16', 'Programmeer een alarm', '3Dindeklas', 'Molenlanden', 'PO', 'Uitgevoerd', 2, 22],
-    ['Stichting B', '2026-09-25', '3D-sleutelhanger', '3Dindeklas', 'Nieuwegein', 'PO', 'Ingepland', 2, 26],
-    ['Stichting B', '2026-10-06', 'Parachute-uitdaging', 'Techniekteam', 'IJsselstein', 'VO', 'Open', 2, 30],
-    ['Stichting B', '2026-10-15', 'Greenscreen stop-motion', '3Dindeklas', 'Gorinchem', 'PO', 'Ingepland', 2, 24]
+    ['demo-a-1', 'Stichting A', '2026-09-03', 'Voorbeeldschool De Horizon', '3D-sleutelhanger', '3Dindeklas', 'Vijfheerenlanden', 'PO', 'groep 7/8', 'Uitgevoerd', 2, 24],
+    ['demo-a-2', 'Stichting A', '2026-09-10', 'Voorbeeldschool Het Kompas', 'Paper Circuits', '3Dindeklas', 'Molenlanden', 'PO', 'groep 5/6', 'Uitgevoerd', 1, 15],
+    ['demo-a-3', 'Stichting A', '2026-09-18', 'Voorbeeldschool De Brug', 'Codeer een robot met kleuren', '3Dindeklas', 'Gorinchem', 'PO', 'groep 3/4', 'Bevestiging', 2, 28],
+    ['demo-a-4', 'Stichting A', '2026-10-02', 'Voorbeeldcollege Noord', 'Micro:bit Magic', '3Dindeklas', 'Vijfheerenlanden', 'VO', 'leerjaar 1', 'Open', 4, 20],
+    ['demo-a-5', 'Stichting A', '2026-10-12', 'Voorbeeldschool De Regenboog', 'Duurzaam huis met licht', 'MakerLab', 'Altena', 'PO', 'groep 6', 'Akkoord', 2, 18],
+    ['demo-b-1', 'Stichting B', '2026-09-05', 'Voorbeeldschool De Uitvinder', 'Bouw een Spin Art-machine', '3Dindeklas', 'Sliedrecht', 'PO', 'groep 5/6', 'Uitgevoerd', 3, 27],
+    ['demo-b-2', 'Stichting B', '2026-09-16', 'Voorbeeldschool De Pionier', 'Programmeer een alarm', '3Dindeklas', 'Molenlanden', 'PO', 'groep 7/8', 'Uitgevoerd', 2, 22],
+    ['demo-b-3', 'Stichting B', '2026-09-25', 'Voorbeeldschool De Ruimte', '3D-sleutelhanger', '3Dindeklas', 'Nieuwegein', 'PO', 'groep 6', 'Ingepland', 2, 26],
+    ['demo-b-4', 'Stichting B', '2026-10-06', 'Voorbeeldcollege Zuid', 'Parachute-uitdaging', 'Techniekteam', 'IJsselstein', 'VO', 'leerjaar 2', 'Optie', 2, 30],
+    ['demo-b-5', 'Stichting B', '2026-10-15', 'Voorbeeldschool Het Atelier', 'Greenscreen stop-motion', '3Dindeklas', 'Gorinchem', 'PO', 'groep 6/7', 'Bevestiging', 2, 24]
   ].map(function(row) {
     return {
-      source: row[0], date: row[1], workshop: row[2], provider: row[3],
-      region: row[4], sector: row[5], status: row[6], sessions: row[7], students: row[8]
+      requestId: row[0], source: row[1], requestedDate: row[2], scheduledDate: row[2],
+      schoolYear: schoolYear_(row[2]), school: row[3], schoolKey: schoolKey_(row[3], row[6]),
+      workshop: row[4], provider: row[5], region: row[6], sector: row[7],
+      gradeLabel: row[8], grades: gradeValues_(row[8], row[7]), status: row[9],
+      statusGroup: statusGroup_(row[9]), sessions: row[10], students: row[11],
+      desiredPeriod: '', location: '', type: 'Workshop', points: null,
+      providerWorkshopPrice: null, travelCosts: null, extraCosts: null,
+      providerTotalCosts: null, invoiceAmount: null, marginAmount: null,
+      marginPercent: null, financialComplete: false, lastContactDate: null, actionRequired: ''
     };
   });
 }
