@@ -20,6 +20,12 @@ for (const name of sourceFiles) {
 
 const manifest = JSON.parse(fs.readFileSync('src/appsscript.json', 'utf8'));
 if (manifest.runtimeVersion !== 'V8') throw new Error('Apps Script V8-runtime ontbreekt.');
+if (manifest.webapp?.executeAs !== 'USER_ACCESSING') {
+  throw new Error('De web-app moet uitvoeren als de gebruiker die de app opent.');
+}
+if (!manifest.oauthScopes?.includes('https://www.googleapis.com/auth/userinfo.email')) {
+  throw new Error('De userinfo.email-scope ontbreekt voor de accountcontrole.');
+}
 
 const index = fs.readFileSync('src/Index.html', 'utf8');
 for (const include of ["include('Styles')", "include('Client')"]) {
