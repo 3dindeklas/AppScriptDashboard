@@ -42,21 +42,29 @@ Contactpersoon, e-mailadres, telefoon, notities, debuggegevens en e-mail-/kalend
 
 ## Browserprojectie
 
-De interface wordt in deze stap nog niet uitgebreid. `getDashboardData()` geeft daarom alleen de bestaande veilige velden door:
+`getDashboardData()` geeft uitsluitend de centraal toegestane velden voor de huidige interface en stap-4-filters door:
 
 | Browserveld | Bron |
 | --- | --- |
 | `source` | `source` |
 | `date` | `scheduledDate`, anders `requestedDate` |
+| `schoolYear` | `schoolYear`, anders `Onbekend` |
+| `school` | `school`, anders `Onbekende school` |
 | `workshop` | `workshop` |
 | `provider` | `provider` |
 | `region` | `region` |
 | `sector` | `sector` |
 | `status` | `status` |
+| `statusGroup` | `statusGroup`, anders `Overig` |
+| `type` | `type`, anders `Onbekend` |
 | `sessions` | `sessions` |
 | `students` | `students` |
 
-Aanvraag-ID, school, locatie, leerjaren, statusgroep en financiële velden blijven server-side tot de bijbehorende roadmapstap én toegangscontrole zijn toegevoegd.
+Aanvraag-ID, schoolKey, locatie, leerjaren, contactgegevens en financiële velden blijven server-side. Schoolnaam is vanaf stap 4 zichtbaar voor toegestane accounts omdat deze nodig is voor het schoolfilter.
+
+## Dropdownfilters
+
+De negen filters vergelijken steeds de exacte genormaliseerde waarde. Alle actieve dropdowns worden met `EN` gecombineerd: een workshopregel moet dus aan iedere gekozen waarde voldoen. De opties worden opnieuw uit de geladen gegevens opgebouwd na verversen. Schooljaren staan aflopend; overige opties alfabetisch volgens Nederlandse sortering.
 
 ## Getallen en bedragen
 

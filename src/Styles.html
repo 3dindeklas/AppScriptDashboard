@@ -136,6 +136,10 @@
 
   @keyframes grow { from { transform: scaleX(0); } }
 
+  @media (max-width: 950px) {
+    .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
   @media (max-width: 700px) {
     .page { padding-top: 2rem; }
     .intro { align-items: start; }

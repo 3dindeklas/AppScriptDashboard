@@ -52,7 +52,7 @@ Je hoort nu zonder verdere instellingen te zien:
 
 - de badge `Demogegevens`;
 - 10 workshops verdeeld over Stichting A en Stichting B;
-- drie werkende dropdownfilters;
+- negen werkende dropdownfilters;
 - drie kerncijfers;
 - twee staafdiagrammen en een tabel.
 
@@ -101,6 +101,8 @@ De app leest vanaf de ingestelde kopregel. Minimaal bruikbaar zijn deze kolommen
 - `Datum aanvraag` of `Definitieve datum`
 
 Andere kolommen mogen gewoon aanwezig zijn. Persoonsgegevens worden niet naar de browser gestuurd.
+
+De dropdownfilters worden automatisch opgebouwd uit de geladen workshopregels. Je kunt stichting, schooljaar, gemeente/regio, PO/VO, aanbieder, workshop, statusgroep, school en type combineren. **Filters wissen** herstelt altijd het volledige overzicht.
 
 Onder **Bronnen & datakwaliteit** zie je per stichting of de bron geladen is, hoeveel workshopregels zijn ingelezen en welke vaste controles aandacht vragen. De standaardlimiet is 5.000 workshopregels per bron. Verhoog deze alleen bewust; de code hanteert altijd een harde bovengrens van 10.000 regels per bron.
 
