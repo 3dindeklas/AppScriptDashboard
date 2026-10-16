@@ -111,6 +111,37 @@ Bij intrekking van consent, verlopen credentials of gewijzigd tenantbeleid kan o
 
 Er is geen automatische verversing: de eerste opening en **Vernieuwen** halen opnieuw op. Filters rekenen vervolgens direct in het browsergeheugen. Vernieuwen stelt de selectiefilters opnieuw in. Bij verversfouten worden oude gegevens verwijderd; bij een bronfout staat nadrukkelijk dat de rapportage onvolledig is.
 
+## JSON-fout of onterechte melding “Geen toegang”
+
+De oude `doGet()` ving zowel toegangs- als HTML-opstartfouten op met dezelfde melding “Geen toegang”. De bijgewerkte versie maakt onderscheid tussen de accountcontrole, configuratie en het opbouwen van de pagina. Configuratie wordt na de toegangscontrole gecontroleerd, ook bij het opnieuw ophalen van data. Een ongeldige configuratie schakelt nooit stilzwijgend terug naar demo.
+
+`Expected property name or '}' in JSON ...` wijst op ongeldige JSON, vaak een veldnaam zonder dubbele aanhalingstekens, enkele/slimme aanhalingstekens of een comment. De positie alleen vertelt niet welk bestand of welke property de oorzaak is. In de oorspronkelijke code parseert `doGet()` zelf geen JSON; `DASHBOARD_SOURCES` wordt pas bij de data-RPC gelezen. Bij een fout tijdens opslaan of vóór het uitvoeren van functies moet je ook `appsscript.json` controleren. Een kapot manifest kan de runtime blokkeren voordat onze foutafhandeling draait.
+
+Controleer **Projectinstellingen → Script properties → DASHBOARD_SOURCES**:
+
+- Plak alleen een JSON-array zoals in [sources.example.json](sources.example.json), met de eigen broninstellingen ingevuld.
+- Gebruik `"id": "stichting-a"`, niet `id: 'stichting-a'`.
+- Gebruik geen `const CONFIG =`, `sources:`, Markdown-codehekken, comments of komma na het laatste veld.
+- `enabled` is een JSON-boolean: `true` of `false`, niet `"true"` of `"false"`.
+- Wil je alles in `Config.gs` beheren? **Verwijder** dan de property `DASHBOARD_SOURCES`; een aanwezige property overschrijft `CONFIG.sources`. Laat geen lege waarde of `[]` staan. Controleer eerst dat de bronnen in `Config.gs` correct zijn ingesteld.
+- `DEMO_MODE` is een losse tekstproperty met `true` of `false`, zonder extra aanhalingstekens. Dit is dus geen JSON-object.
+
+| Foutcode | Betekenis / oplossing |
+| --- | --- |
+| `ACCESS_DENIED` | Google-account ontbreekt of staat niet in de allowlist. |
+| `ACCESS_CHECK_FAILED` | De accountcontrole zelf faalde; controleer Google-autorisatie en uitvoeringsidentiteit. |
+| `CONFIG_SOURCES_JSON` | De waarde van `DASHBOARD_SOURCES` is geen geldige JSON. |
+| `CONFIG_SOURCES_SHAPE` | De bronnen moeten een niet-lege array zijn, geen los object, `null` of tekst. |
+| `CONFIG_SOURCES_ENTRY` | Controleer per bron de id, het label, dubbele id’s en het type van enabled. |
+| `CONFIG_SOURCES_DISABLED` | Zet minimaal één bron aan. |
+| `CONFIG_DEMO_MODE` | Corrigeer de losse DEMO_MODE-property. |
+| `CONFIG_READ_FAILED` | Instellingen konden niet worden gelezen; controleer de projectconfiguratie. |
+| `PAGE_RENDER_FAILED` | Toegang en configuratie zijn gecontroleerd, maar het HTML-template kon niet worden opgebouwd. Controleer de vier HTML-bestanden. |
+
+Het scherm en het uitvoeringslog tonen alleen vooraf vastgelegde diagnostiek/foutcodes. De inhoud van properties, brongegevens en originele providerfouten wordt niet getoond. De `appsscript.json` in de repository is geldig JSON; houd projectinstellingen in `Config.gs`/Script Properties en voeg geen JavaScript toe aan het manifest.
+
+Neem bij deze fix de bijgewerkte **Code.gs, Config.gs en Client.html** samen over. Behoud je eigen broninstellingen in Config.gs als je die daar beheert. Maak vervolgens een nieuwe versie van de bestaande web-app-implementatie; alleen code opslaan werkt de gepubliceerde `/exec`-versie niet bij.
+
 ## 6. Grenzen en foutmeldingen
 
 - Maximaal 15.000 rijen per bron en 30.000 totaal. Overschrijding is een fout, geen stille afkapping. Veel Excel-pagina’s kunnen binnen Apps Script tegen uitvoeringstijd/API-quota aanlopen; limieten zijn geen prestatiegarantie.
