@@ -21,7 +21,6 @@ function dashboardErrorInfo_(code) {
     UI_FILE_STYLES: ['Dashboardbestand ontbreekt', 'Styles.html kon niet worden gelezen. Maak in Apps Script een HTML-bestand met de naam Styles en kopieer de huidige inhoud uit src/Styles.html.'],
     UI_FILE_ANALYTICS: ['Dashboardbestand ontbreekt', 'Analytics.html kon niet worden gelezen. Maak in Apps Script een HTML-bestand met de naam Analytics en kopieer de huidige inhoud uit src/Analytics.html.'],
     UI_FILE_CLIENT: ['Dashboardbestand ontbreekt', 'Client.html kon niet worden gelezen. Maak in Apps Script een HTML-bestand met de naam Client en kopieer de huidige inhoud uit src/Client.html.'],
-    UI_INDEX_MARKERS: ['Dashboardbestanden horen niet bij elkaar', 'Index.html bevat niet alle verwachte invoegpunten. Neem Index.html, Styles.html, Analytics.html en Client.html uit dezelfde repositoryversie over.'],
     PAGE_RENDER_FAILED: ['Dashboard kon niet starten', 'De vier HTML-bestanden zijn gevonden, maar de pagina kon niet worden opgebouwd. Werk de Apps Script-implementatie bij naar de nieuwste repositoryversie.']
   };
   const safeCode = Object.prototype.hasOwnProperty.call(messages, code) ? code : 'PAGE_RENDER_FAILED';
@@ -65,35 +64,40 @@ function doGet() {
   try {
     return renderDashboard_();
   } catch (error) {
-    const code = error && typeof error.dashboardCode === 'string' && error.dashboardCode.startsWith('UI_')
-      ? error.dashboardCode : 'PAGE_RENDER_FAILED';
-    return startupErrorPage_(dashboardErrorInfo_(code));
+    return startupErrorPage_(pageRenderFailure_(error));
   }
 }
 
-function readUiFile_(name) {
-  if (!['Index', 'Styles', 'Analytics', 'Client'].includes(name)) throw dashboardError_('PAGE_RENDER_FAILED');
-  try {
-    return HtmlService.createHtmlOutputFromFile(name).getContent();
-  } catch (error) {
-    throw dashboardError_('UI_FILE_' + name.toUpperCase());
+/** Official Apps Script include pattern; only static UI partials are exposed. */
+function include(filename) {
+  if (!['Styles', 'Analytics', 'Client'].includes(filename)) {
+    throw dashboardError_('PAGE_RENDER_FAILED');
   }
+  try {
+    return HtmlService.createHtmlOutputFromFile(filename).getContent();
+  } catch (error) {
+    throw dashboardError_('UI_FILE_' + filename.toUpperCase());
+  }
+}
+
+function pageRenderFailure_(error) {
+  if (error && typeof error.dashboardCode === 'string' && error.dashboardCode.startsWith('UI_')) {
+    return dashboardErrorInfo_(error.dashboardCode);
+  }
+  // HtmlTemplate may wrap an include error. Read only our fixed code marker,
+  // never expose the complete template exception to the browser.
+  const match = String(error && error.message || error).match(/\[(UI_FILE_(?:INDEX|STYLES|ANALYTICS|CLIENT))\]/);
+  return dashboardErrorInfo_(match ? match[1] : 'PAGE_RENDER_FAILED');
 }
 
 function renderDashboard_() {
-  let html = readUiFile_('Index');
-  const parts = [
-    ['<!-- WORKSHOPKOMPAS_STYLES -->', 'Styles'],
-    ['<!-- WORKSHOPKOMPAS_ANALYTICS -->', 'Analytics'],
-    ['<!-- WORKSHOPKOMPAS_CLIENT -->', 'Client']
-  ];
-  parts.forEach(part => {
-    const marker = part[0];
-    if (html.indexOf(marker) === -1) throw dashboardError_('UI_INDEX_MARKERS');
-    html = html.replace(marker, readUiFile_(part[1]));
-  });
-  if (html.indexOf('WORKSHOPKOMPAS_') !== -1) throw dashboardError_('UI_INDEX_MARKERS');
-  return HtmlService.createHtmlOutput(html)
+  let template;
+  try {
+    template = HtmlService.createTemplateFromFile('Index');
+  } catch (error) {
+    throw dashboardError_('UI_FILE_INDEX');
+  }
+  return template.evaluate()
     .setTitle(CONFIG.title).addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
@@ -102,10 +106,10 @@ function diagnoseDashboard_() {
   requireAccess_();
   settings_();
   const bytes = {};
-  ['Index', 'Styles', 'Analytics', 'Client'].forEach(name => {
-    bytes[name] = readUiFile_(name).length;
+  ['Styles', 'Analytics', 'Client'].forEach(name => {
+    bytes[name] = include(name).length;
   });
-  renderDashboard_();
+  bytes.Index = renderDashboard_().getContent().length;
   console.log(JSON.stringify({ ok: true, files: bytes }));
   return { ok: true, files: bytes };
 }

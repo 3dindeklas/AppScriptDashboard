@@ -140,16 +140,15 @@ Controleer **Projectinstellingen → Script properties → DASHBOARD_SOURCES**:
 | `UI_FILE_STYLES` | Het HTML-bestand `Styles` ontbreekt of is niet leesbaar. |
 | `UI_FILE_ANALYTICS` | Het HTML-bestand `Analytics` ontbreekt of is niet leesbaar. |
 | `UI_FILE_CLIENT` | Het HTML-bestand `Client` ontbreekt of is niet leesbaar. |
-| `UI_INDEX_MARKERS` | De vier HTML-bestanden komen uit verschillende codeversies; neem ze samen over. |
 | `PAGE_RENDER_FAILED` | De bestanden zijn gevonden maar HtmlService kon het resultaat niet maken; werk de deployment bij. |
 
-De huidige versie gebruikt geen Apps Script-template-evaluatie meer. `Code.gs` leest de vier UI-bestanden rechtstreeks en voegt ze samen via vaste markeringen in `Index.html`. Dit voorkomt dat een fout in één include wordt verborgen als een algemene templatefout. Neem daarom bij deze wijziging minimaal **Code.gs én Index.html** samen over.
+De dashboardpagina gebruikt de standaard include-opzet uit de officiële Apps Script-documentatie. `doGet()` opent `Index` als template, `Index.html` bevat `<?!= include('Styles'); ?>`, `<?!= include('Analytics'); ?>` en `<?!= include('Client'); ?>`, en de publieke serverfunctie `include(filename)` leest uitsluitend deze drie vaste UI-bestanden. CSS en JavaScript blijven zo in overzichtelijke losse bestanden. De vorige functienaam `include_` is vervangen door de door Google gebruikte naam `include`.
 
-Je kunt in de Apps Script-editor handmatig `diagnoseDashboard_` uitvoeren. De functie controleert toegang, instellingen, de vier bestandsnamen en de samenvoeging. Bij succes staat in het uitvoeringslog alleen `ok: true` en de bestandsgroottes; er worden geen workshopgegevens gelezen of gelogd. Bij een fout toont Apps Script de specifieke foutcode.
+Je kunt in de Apps Script-editor handmatig `diagnoseDashboard_` uitvoeren. De functie controleert toegang, instellingen, de drie includes en de template-evaluatie. Bij succes staat in het uitvoeringslog alleen `ok: true` en de bestandsgroottes; er worden geen workshopgegevens gelezen of gelogd. Bij een fout toont Apps Script de specifieke foutcode.
 
 Het scherm en het uitvoeringslog tonen alleen vooraf vastgelegde diagnostiek/foutcodes. De inhoud van properties, brongegevens en originele providerfouten wordt niet getoond. De `appsscript.json` in de repository is geldig JSON; houd projectinstellingen in `Config.gs`/Script Properties en voeg geen JavaScript toe aan het manifest.
 
-Neem bij deze fix de bijgewerkte **Code.gs, Config.gs en Client.html** samen over. Behoud je eigen broninstellingen in Config.gs als je die daar beheert. Maak vervolgens een nieuwe versie van de bestaande web-app-implementatie; alleen code opslaan werkt de gepubliceerde `/exec`-versie niet bij.
+Neem bij deze fix de bijgewerkte **Code.gs en Index.html** samen over. Behoud je eigen broninstellingen in Config.gs als je die daar beheert. Maak vervolgens een nieuwe versie van de bestaande web-app-implementatie; alleen code opslaan werkt de gepubliceerde `/exec`-versie niet bij.
 
 ## 6. Grenzen en foutmeldingen
 
