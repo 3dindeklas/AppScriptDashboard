@@ -60,7 +60,10 @@ function readSource_(source) {
   const name = textValue_(source && source.name) || 'Naamloze bron';
 
   if (!source || !source.spreadsheetId || !source.sheetName) {
-    return sourceResult_(name, 'not-configured', [], emptyWarnings_(), 'Bron is nog niet geconfigureerd.');
+    return sourceResult_(
+      name, 'not-configured', [], emptyWarnings_(),
+      'Bron is nog niet geconfigureerd.', 'SOURCE_NOT_CONFIGURED', ''
+    );
   }
 
   try {
@@ -71,14 +74,22 @@ function readSource_(source) {
       warningCount ? 'warning' : 'ok',
       result.records,
       result.warnings,
-      result.records.length ? '' : 'Geen workshopregels gevonden.'
+      result.records.length ? '' : 'Geen workshopregels gevonden.',
+      '',
+      ''
     );
   } catch (error) {
-    return sourceResult_(name, 'error', [], emptyWarnings_(), 'Bron kon niet worden geladen.');
+    const reference = logServerError_('readSource: ' + name, error);
+    return sourceResult_(
+      name, 'error', [], emptyWarnings_(),
+      'Controleer de tabbladnaam en of dit account toegang heeft.',
+      'SOURCE_READ_FAILED',
+      reference
+    );
   }
 }
 
-function sourceResult_(name, status, records, warnings, message) {
+function sourceResult_(name, status, records, warnings, message, errorCode, errorReference) {
   return {
     name: name,
     status: status,
@@ -86,6 +97,8 @@ function sourceResult_(name, status, records, warnings, message) {
     warningCount: warningCount_(warnings),
     warnings: warnings,
     message: message,
+    errorCode: errorCode || '',
+    errorReference: errorReference || '',
     records: records
   };
 }
@@ -253,7 +266,9 @@ function publicSourceStatus_(source) {
     recordCount: source.recordCount,
     warningCount: source.warningCount,
     warnings: publicWarnings_(source.warnings),
-    message: source.message
+    message: source.message,
+    errorCode: source.errorCode,
+    errorReference: source.errorReference
   };
 }
 
@@ -462,7 +477,10 @@ function demoDashboardData_() {
     records: records,
     sources: names.map(function(name) {
       const sourceRecords = records.filter(function(record) { return record.source === name; });
-      return sourceResult_(name, 'demo', sourceRecords, emptyWarnings_(), 'Fictieve gegevens voor veilig testen.');
+      return sourceResult_(
+        name, 'demo', sourceRecords, emptyWarnings_(),
+        'Fictieve gegevens voor veilig testen.', '', ''
+      );
     })
   };
 }

@@ -133,6 +133,17 @@ Na latere codewijzigingen moet je de bestaande implementatie bewerken en een nie
 
 Deze meldingen tonen bewust geen account, providerfout of spreadsheet-ID.
 
+## Foutcodes en serverlogs
+
+Technische details worden niet in het dashboard getoond. Bij een onverwachte fout verschijnt wel een veilige foutcode en referentie. Open in Apps Script links **Uitvoeringen**, kies de uitvoering met hetzelfde tijdstip en zoek in de logs naar die referentie.
+
+- `DATA_FILES_OUT_OF_SYNC`: `Code.gs` en `Data.gs` komen niet uit dezelfde versie; werk beide bestanden tegelijk bij.
+- `DASHBOARD_DATA_FAILED`: onverwachte fout tijdens het opbouwen van het antwoord; gebruik de referentie om de serverlog te vinden.
+- `SOURCE_NOT_CONFIGURED`: voor deze bron ontbreekt een spreadsheet-ID of tabbladnaam.
+- `SOURCE_READ_FAILED`: controleer de tabbladnaam en of het actieve Google-account toegang tot de Sheet heeft.
+
+De server logt alleen wanneer iets mislukt. Providerdetails blijven in de afgeschermde Apps Script-uitvoeringslog en worden niet naar de browser gestuurd.
+
 ## Waarom Microsoft 365 nog ontbreekt
 
 Microsoft 365 vereist Microsoft Graph, OAuth-tokens, tokenvernieuwing en extra foutafhandeling. Dat maakt fouten in de basis moeilijker te herkennen. Zodra demo en Google Sheets stabiel draaien, voegen we Microsoft als afzonderlijke fase toe zonder de werkende basis om te bouwen.

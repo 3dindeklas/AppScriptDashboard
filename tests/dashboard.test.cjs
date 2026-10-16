@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const silentConsole = { log() {}, error() {} };
 
 function session(email = 'jouw-account@voorbeeld.nl') {
   return {
@@ -13,8 +14,11 @@ function session(email = 'jouw-account@voorbeeld.nl') {
 function context(extra = {}, configTransform = source => source) {
   const ctx = vm.createContext({
     Date,
-    console,
-    Utilities: { formatDate: date => date.toISOString().slice(0, 10) },
+    console: silentConsole,
+    Utilities: {
+      formatDate: date => date.toISOString().slice(0, 10),
+      getUuid: () => '12345678-abcd-4321-abcd-1234567890ab'
+    },
     Session: session(),
     ...extra
   });
@@ -371,7 +375,9 @@ test('een mislukte bron blokkeert beschikbare live gegevens niet', () => {
     ['ok', 1],
     ['error', 0]
   ]);
-  assert.equal(payload.sources[1].message, 'Bron kon niet worden geladen.');
+  assert.equal(payload.sources[1].message, 'Controleer de tabbladnaam en of dit account toegang heeft.');
+  assert.equal(payload.sources[1].errorCode, 'SOURCE_READ_FAILED');
+  assert.equal(payload.sources[1].errorReference, '12345678');
   assert.ok(!json.includes('source-a-id'));
   assert.ok(!json.includes('source-b-id'));
   assert.ok(!json.includes('geheim-123'));
@@ -414,6 +420,8 @@ test('bronprojectie laat technische velden en providerfouten nooit door', () => 
     warningCount: 0,
     warnings: { internGeheim: 99 },
     message: 'Bron kon niet worden geladen.',
+    errorCode: 'SOURCE_READ_FAILED',
+    errorReference: 'VEILIG123',
     spreadsheetId: 'geheim-sheet-id',
     providerError: 'Google provider detail'
   });
@@ -422,6 +430,24 @@ test('bronprojectie laat technische velden en providerfouten nooit door', () => 
   assert.ok(!json.includes('internGeheim'));
   assert.ok(!json.includes('geheim-sheet-id'));
   assert.ok(!json.includes('Google provider detail'));
+  assert.match(json, /SOURCE_READ_FAILED/);
+  assert.match(json, /VEILIG123/);
+});
+
+test('ongelijke serverbestandsversies geven een veilige diagnose en serverlog', () => {
+  const logs = [];
+  const ctx = liveContext({
+    console: { log() {}, error: message => logs.push(message) },
+    SpreadsheetApp: { openById: () => ({ getSheetByName: () => googleSheet([row()]) }) }
+  });
+  ctx.readConfiguredSheets_ = () => [];
+
+  assert.throws(
+    () => ctx.getDashboardData(),
+    /serverbestanden zijn niet van dezelfde versie.*DATA_FILES_OUT_OF_SYNC.*12345678/
+  );
+  assert.equal(logs.length, 1);
+  assert.match(logs[0], /\[12345678\] getDashboardData/);
 });
 
 test('doGet en include volgen rechtstreeks de HtmlService-methoden', () => {
@@ -503,6 +529,7 @@ test('bronstatus-interface staat in de HTML en gebruikt geen inline brondata', (
   assert.match(index, /BRONNEN &amp; DATAKWALITEIT/);
   assert.match(client, /renderSourceStatus/);
   assert.match(client, /textContent = source\.message/);
+  assert.match(client, /replace\(\/\^Error:/);
 });
 
 test('manifest draait als bezoeker en vraagt alleen de benodigde identiteitsscope', () => {

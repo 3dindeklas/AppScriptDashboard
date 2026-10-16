@@ -87,7 +87,8 @@
       elements.message.hidden = false;
       elements.message.classList.remove('warning');
       elements.message.classList.add('error');
-      elements.message.textContent = 'Dashboard kon niet laden. ' + (error && error.message ? error.message : 'Onbekende fout.');
+      const detail = error && error.message ? error.message.replace(/^Error:\s*/, '') : 'Onbekende fout.';
+      elements.message.textContent = 'Dashboard kon niet laden. ' + detail;
       elements.mode.textContent = 'Niet geladen';
     }
 
@@ -147,6 +148,14 @@
           message.className = 'source-message';
           message.textContent = source.message;
           card.appendChild(message);
+        }
+
+        if (source.errorCode) {
+          const errorMeta = document.createElement('p');
+          errorMeta.className = 'source-error-meta';
+          errorMeta.textContent = 'Foutcode: ' + source.errorCode +
+            (source.errorReference ? ' · Referentie: ' + source.errorReference : '');
+          card.appendChild(errorMeta);
         }
 
         const warnings = Object.entries(source.warnings || {}).filter(entry => Number(entry[1]) > 0);

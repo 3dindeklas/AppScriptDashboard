@@ -128,6 +128,8 @@ Iedere bron krijgt onafhankelijk één status:
 
 Het totale overzicht is compleet wanneer alle geconfigureerde live-bronnen `ok` of `warning` zijn. Een waarschuwing betekent dus dat de bron beschikbaar is, maar dat bepaalde rijen aandacht vragen. Bij `error` of `not-configured` wordt het overzicht als onvolledig gemarkeerd. Live-modus valt nooit terug op demogegevens.
 
+Een bronfout bevat in de browser alleen een vaste foutcode en een willekeurige referentie. De technische fout en stacktrace zijn uitsluitend terug te vinden in de afgeschermde Apps Script-uitvoeringslog met dezelfde referentie.
+
 ## Tellingen
 
 `Leerlingdeelnames` is de som van geldige waarden in `Aantal leerlingen` per workshoprij. Het is geen telling van unieke leerlingen. Ontbrekende leerlingaantallen blijven onbekend en worden niet als nul opgeslagen.
