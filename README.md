@@ -43,6 +43,10 @@ Open daarna `preview/index.html`. De preview bevat uitsluitend fictieve gegevens
 
 Volg [docs/INSTALLATIE.md](docs/INSTALLATIE.md). Begin altijd met `demoMode: true`; koppel pas daarna een Google Sheet.
 
+## Stapsgewijs uitbreiden
+
+De oorspronkelijke dashboardfuncties komen terug via afzonderlijke, opeenvolgende pull requests. Zie [docs/ROADMAP.md](docs/ROADMAP.md) voor de volgorde, acceptatiecriteria en vaste controle per stap.
+
 ## Officiële basis
 
 De structuur volgt deze Google-documentatie:
