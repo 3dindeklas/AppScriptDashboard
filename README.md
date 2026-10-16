@@ -2,7 +2,7 @@
 
 Deze branch bouwt het dashboard opnieuw op vanaf een kleine, controleerbare basis. Na het invullen van één toegestaan Google-account start de app met fictieve demogegevens en kan daarna één of twee Google Sheets met dezelfde kolomstructuur uitlezen.
 
-De server normaliseert de volledige analysekolomstructuur inmiddels naar één intern recordmodel. Alleen de kleine, veilige browserprojectie van de minimale interface wordt nog doorgestuurd; uitgebreidere filters en cijfers volgen per roadmapstap.
+De server normaliseert de volledige analysekolomstructuur naar één intern workshopmodel. Alleen de velden voor de huidige interface en filters worden via een vaste allowlist doorgestuurd; uitgebreidere cijfers volgen per roadmapstap.
 
 ## Wat versie 1 doet
 
@@ -14,9 +14,9 @@ De server normaliseert de volledige analysekolomstructuur inmiddels naar één i
 - beschikbare data blijft zichtbaar wanneer één bron uitvalt;
 - maximaal 5.000 regels per bron, configureerbaar tot een harde grens van 10.000;
 - gegevens asynchroon ophalen met `google.script.run`;
-- drie filters: stichting, status en PO/VO;
+- negen combineerbare filters: stichting, schooljaar, regio, PO/VO, aanbieder, workshop, statusgroep, school en type;
 - kerncijfers, twee eenvoudige staafgrafieken en een recente-workshoptabel;
-- uitsluitend centraal toegestane analysevelden naar de browser; geen namen, e-mailadressen, telefoonnummers, notities of technische ID's;
+- uitsluitend centraal toegestane analysevelden naar de browser; geen namen van contactpersonen, e-mailadressen, telefoonnummers, notities of technische ID's;
 - demomodus zonder databronnen, maar nooit zonder toegangscontrole.
 
 Microsoft 365, rollen, financiële rapportages, uitgebreide grafieken en range sliders zijn bewust nog niet opgenomen. Die voegen we pas toe nadat deze basis in Apps Script werkt.

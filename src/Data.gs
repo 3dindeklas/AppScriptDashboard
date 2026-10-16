@@ -17,11 +17,15 @@ const STATUS_GROUPS_ = Object.freeze({
 const PUBLIC_RECORD_FIELDS_ = Object.freeze([
   'source',
   'date',
+  'schoolYear',
+  'school',
   'workshop',
   'provider',
   'region',
   'sector',
   'status',
+  'statusGroup',
+  'type',
   'sessions',
   'students'
 ]);
@@ -243,11 +247,15 @@ function publicRecord_(record) {
   const prepared = {
     source: record.source,
     date: record.scheduledDate || record.requestedDate || '',
+    schoolYear: record.schoolYear || 'Onbekend',
+    school: record.school || 'Onbekende school',
     workshop: record.workshop,
     provider: record.provider,
     region: record.region,
     sector: record.sector,
     status: record.status,
+    statusGroup: record.statusGroup || 'Overig',
+    type: record.type || 'Onbekend',
     sessions: record.sessions,
     students: record.students
   };

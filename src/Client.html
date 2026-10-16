@@ -29,15 +29,23 @@
       updated: document.getElementById('updatedAt'),
       sourceSummary: document.getElementById('sourceSummary'),
       sourceCards: document.getElementById('sourceCards'),
-      source: document.getElementById('sourceFilter'),
-      status: document.getElementById('statusFilter'),
-      sector: document.getElementById('sectorFilter'),
       resultCount: document.getElementById('resultCount'),
       kpis: document.getElementById('kpis'),
       statusChart: document.getElementById('statusChart'),
       workshopChart: document.getElementById('workshopChart'),
       recentRows: document.getElementById('recentRows')
     };
+    const filters = [
+      ['source', document.getElementById('sourceFilter')],
+      ['schoolYear', document.getElementById('schoolYearFilter')],
+      ['region', document.getElementById('regionFilter')],
+      ['sector', document.getElementById('sectorFilter')],
+      ['provider', document.getElementById('providerFilter')],
+      ['workshop', document.getElementById('workshopFilter')],
+      ['statusGroup', document.getElementById('statusGroupFilter')],
+      ['school', document.getElementById('schoolFilter')],
+      ['type', document.getElementById('typeFilter')]
+    ].map(filter => ({ field: filter[0], element: filter[1] }));
 
     function loadDashboard() {
       setLoading(true);
@@ -70,9 +78,7 @@
       state.generatedAt = payload.generatedAt || new Date().toISOString();
       state.complete = payload.complete !== false;
 
-      fillFilter(elements.source, valuesOf('source'));
-      fillFilter(elements.status, valuesOf('status'));
-      fillFilter(elements.sector, valuesOf('sector'));
+      filters.forEach(filter => fillFilter(filter.element, valuesOf(filter.field)));
 
       elements.mode.textContent = state.mode === 'demo' ? 'Demogegevens' : 'Live gegevens';
       elements.updated.textContent = 'Bijgewerkt ' + formatDateTime(state.generatedAt);
@@ -184,8 +190,10 @@
     }
 
     function valuesOf(field) {
-      return [...new Set(state.records.map(record => record[field]).filter(Boolean))]
-        .sort((a, b) => String(a).localeCompare(String(b), 'nl'));
+      const values = [...new Set(state.records.map(record => record[field]).filter(Boolean))];
+      return values.sort((a, b) => field === 'schoolYear'
+        ? String(b).localeCompare(String(a), 'nl')
+        : String(a).localeCompare(String(b), 'nl'));
     }
 
     function fillFilter(select, values) {
@@ -203,11 +211,15 @@
     }
 
     function filteredRecords() {
-      return state.records.filter(record => {
-        return (!elements.source.value || record.source === elements.source.value) &&
-          (!elements.status.value || record.status === elements.status.value) &&
-          (!elements.sector.value || record.sector === elements.sector.value);
-      });
+      const selections = filters.reduce((active, filter) => {
+        if (filter.element.value) active[filter.field] = filter.element.value;
+        return active;
+      }, {});
+      return state.records.filter(record => recordMatchesFilters(record, selections));
+    }
+
+    function recordMatchesFilters(record, selections) {
+      return Object.keys(selections).every(field => record[field] === selections[field]);
     }
 
     function render() {
@@ -336,12 +348,10 @@
       return message;
     }
 
-    [elements.source, elements.status, elements.sector].forEach(select => select.addEventListener('change', render));
+    filters.forEach(filter => filter.element.addEventListener('change', render));
     elements.refresh.addEventListener('click', loadDashboard);
     elements.reset.addEventListener('click', () => {
-      elements.source.value = '';
-      elements.status.value = '';
-      elements.sector.value = '';
+      filters.forEach(filter => { filter.element.value = ''; });
       render();
     });
 

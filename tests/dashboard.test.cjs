@@ -51,6 +51,73 @@ function googleSheet(rows, overrides = {}) {
   };
 }
 
+function clientHarness(records) {
+  const ids = [
+    'refreshButton', 'resetButton', 'message', 'modeBadge', 'updatedAt',
+    'sourceSummary', 'sourceCards', 'sourceFilter', 'schoolYearFilter',
+    'regionFilter', 'sectorFilter', 'providerFilter', 'workshopFilter',
+    'statusGroupFilter', 'schoolFilter', 'typeFilter', 'resultCount',
+    'kpis', 'statusChart', 'workshopChart', 'recentRows'
+  ];
+  const selectIds = new Set(ids.filter(id => id.endsWith('Filter')));
+
+  function element(tagName = 'div', isSelect = false) {
+    const listeners = {};
+    const classNames = new Set();
+    return {
+      tagName: tagName.toUpperCase(),
+      value: '',
+      textContent: '',
+      className: '',
+      hidden: false,
+      disabled: false,
+      style: {},
+      children: [],
+      options: isSelect ? [{ value: '', textContent: '' }] : [],
+      classList: {
+        add: (...names) => names.forEach(name => classNames.add(name)),
+        remove: (...names) => names.forEach(name => classNames.delete(name))
+      },
+      addEventListener(type, handler) { listeners[type] = handler; },
+      trigger(type) { if (listeners[type]) listeners[type](); },
+      appendChild(child) {
+        this.children.push(child);
+        if (isSelect && child.tagName === 'OPTION') this.options.push(child);
+        return child;
+      },
+      append(...children) { children.forEach(child => this.appendChild(child)); },
+      replaceChildren(...children) { this.children = children; },
+      remove(index) { if (isSelect) this.options.splice(index, 1); }
+    };
+  }
+
+  const elements = Object.fromEntries(ids.map(id => [id, element('div', selectIds.has(id))]));
+  const document = {
+    getElementById: id => elements[id],
+    createElement: tagName => element(tagName, tagName === 'select')
+  };
+  const client = fs.readFileSync('src/Client.html', 'utf8')
+    .replace(/^<script>\s*|\s*<\/script>\s*$/g, '');
+  vm.runInNewContext(client, {
+    Date,
+    Intl,
+    Map,
+    Set,
+    console: silentConsole,
+    document,
+    window: {
+      __DEMO_PAYLOAD__: {
+        mode: 'demo',
+        generatedAt: '2026-10-17T00:00:00.000Z',
+        complete: true,
+        sources: [],
+        records
+      }
+    }
+  });
+  return elements;
+}
+
 const headers = [
   '#', 'Aanvraag ID', 'Datum aanvraag', 'Schoolnaam', 'Contactpersoon',
   'E-mailadres', 'Telefoon', 'Gemeente / Regio', '', 'Workshopnaam',
@@ -126,6 +193,21 @@ test('Index gebruikt uitsluitend de officiële include-opzet', () => {
   assert.doesNotMatch(index, /include_/);
 });
 
+test('alle stap-4-filters blijven gelabelde native selects voor toetsenbordbediening', () => {
+  const index = fs.readFileSync('src/Index.html', 'utf8');
+  const filterIds = [
+    'sourceFilter', 'schoolYearFilter', 'regionFilter', 'sectorFilter',
+    'providerFilter', 'workshopFilter', 'statusGroupFilter', 'schoolFilter',
+    'typeFilter'
+  ];
+
+  filterIds.forEach(id => {
+    assert.match(index, new RegExp('<label>[\\s\\S]*?<select id="' + id + '"[\\s\\S]*?</select>[\\s\\S]*?</label>'));
+  });
+  assert.equal((index.match(/<select id="[^"]+Filter"/g) || []).length, filterIds.length);
+  assert.doesNotMatch(index, /tabindex\s*=\s*["']-1["']/i);
+});
+
 test('demo blijft werken en de browser ontvangt alleen de bestaande veilige velden', () => {
   const payload = context().getDashboardData();
   assert.equal(payload.mode, 'demo');
@@ -137,7 +219,8 @@ test('demo blijft werken en de browser ontvangt alleen de bestaande veilige veld
   ]);
   assert.deepEqual([...new Set(payload.records.map(record => record.source))].sort(), ['Stichting A', 'Stichting B']);
   assert.deepEqual(Object.keys(payload.records[0]).sort(), [
-    'date', 'provider', 'region', 'sector', 'sessions', 'source', 'status', 'students', 'workshop'
+    'date', 'provider', 'region', 'school', 'schoolYear', 'sector', 'sessions',
+    'source', 'status', 'statusGroup', 'students', 'type', 'workshop'
   ]);
 });
 
@@ -293,22 +376,88 @@ test('ontbrekende IDs, dubbele IDs en ongeldige waarden worden geteld', () => {
   });
 });
 
-test('privacyvelden en intern voorbereide velden verlaten getDashboardData niet', () => {
+test('filtervelden verlaten gecontroleerd de server maar privacyvelden niet', () => {
   const internal = { ...normalize().records[0], laterToegevoegdGeheim: 'nieuw-geheim' };
   const publicRecord = context().publicRecord_(internal);
   const json = JSON.stringify(publicRecord);
 
   assert.deepEqual(Object.keys(publicRecord), [
-    'source', 'date', 'workshop', 'provider', 'region', 'sector', 'status', 'sessions', 'students'
+    'source', 'date', 'schoolYear', 'school', 'workshop', 'provider', 'region',
+    'sector', 'status', 'statusGroup', 'type', 'sessions', 'students'
   ]);
+  assert.equal(publicRecord.schoolYear, '2026–2027');
+  assert.equal(publicRecord.school, 'School A');
+  assert.equal(publicRecord.statusGroup, 'Ingepland');
+  assert.equal(publicRecord.type, 'Workshop');
 
   for (const privateValue of [
-    'REQ-001', 'School A', 'Privé Persoon', 'private@example.test', '0612345678',
+    'REQ-001', 'Privé Persoon', 'private@example.test', '0612345678',
     'Technieklokaal', 'secret-draft-id', 'secret-calendar-id', 'secret-source-id',
     'Niet naar de browser sturen', 'private-debug', '485.5', '650', '164.5', 'nieuw-geheim'
   ]) {
     assert.ok(!json.includes(privateValue), privateValue);
   }
+});
+
+test('alle negen dropdownfilters worden uit de records opgebouwd en gecombineerd', () => {
+  const records = [
+    {
+      source: 'Stichting A', schoolYear: '2026–2027', region: 'Ameide', sector: 'PO',
+      provider: 'Maker A', workshop: '3D ontwerpen', statusGroup: 'Ingepland',
+      school: 'School A', type: 'Workshop', status: 'Akkoord', date: '2026-10-10',
+      sessions: 2, students: 24
+    },
+    {
+      source: 'Stichting A', schoolYear: '2025–2026', region: 'Utrecht', sector: 'VO',
+      provider: 'Maker B', workshop: 'Robotica', statusGroup: 'Open',
+      school: 'School B', type: 'Training', status: 'Nieuw', date: '2026-05-10',
+      sessions: 1, students: 18
+    },
+    {
+      source: 'Stichting B', schoolYear: '2026–2027', region: 'Ameide', sector: 'PO',
+      provider: 'Maker A', workshop: '3D ontwerpen', statusGroup: 'Uitgevoerd',
+      school: 'School C', type: 'Workshop', status: 'Uitgevoerd', date: '2026-09-10',
+      sessions: 3, students: 30
+    }
+  ];
+  const elements = clientHarness(records);
+  const selections = {
+    sourceFilter: 'Stichting A',
+    schoolYearFilter: '2026–2027',
+    regionFilter: 'Ameide',
+    sectorFilter: 'PO',
+    providerFilter: 'Maker A',
+    workshopFilter: '3D ontwerpen',
+    statusGroupFilter: 'Ingepland',
+    schoolFilter: 'School A',
+    typeFilter: 'Workshop'
+  };
+
+  for (const [id, value] of Object.entries(selections)) {
+    assert.ok(elements[id].options.some(option => option.value === value), id + ': ' + value);
+    elements[id].value = value;
+  }
+  elements.typeFilter.trigger('change');
+  assert.equal(elements.resultCount.textContent, '1 van 3 workshops zichtbaar');
+
+  elements.typeFilter.value = 'Training';
+  elements.typeFilter.trigger('change');
+  assert.equal(elements.resultCount.textContent, '0 van 3 workshops zichtbaar');
+
+  elements.resetButton.trigger('click');
+  assert.equal(elements.resultCount.textContent, '3 van 3 workshops zichtbaar');
+  assert.ok(Object.keys(selections).every(id => elements[id].value === ''));
+});
+
+test('schooljaren staan met het nieuwste jaar bovenaan', () => {
+  const elements = clientHarness([
+    { schoolYear: '2025–2026' },
+    { schoolYear: '2027–2028' },
+    { schoolYear: '2026–2027' }
+  ]);
+  assert.deepEqual(elements.schoolYearFilter.options.slice(1).map(option => option.value), [
+    '2027–2028', '2026–2027', '2025–2026'
+  ]);
 });
 
 test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {
