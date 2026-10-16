@@ -3,12 +3,19 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
+function session(email = 'jouw-account@voorbeeld.nl') {
+  return {
+    getScriptTimeZone: () => 'Europe/Amsterdam',
+    getActiveUser: () => ({ getEmail: () => email })
+  };
+}
+
 function context(extra = {}) {
   const ctx = vm.createContext({
     Date,
     console,
     Utilities: { formatDate: date => date.toISOString().slice(0, 10) },
-    Session: { getScriptTimeZone: () => 'Europe/Amsterdam' },
+    Session: session(),
     ...extra
   });
 
@@ -101,6 +108,30 @@ test('demo blijft werken en de browser ontvangt alleen de bestaande veilige veld
   assert.deepEqual(Object.keys(payload.records[0]).sort(), [
     'date', 'provider', 'region', 'sector', 'sessions', 'source', 'status', 'students', 'workshop'
   ]);
+});
+
+test('toegang gebruikt een exacte genormaliseerde accountmatch', () => {
+  const allowed = context({ Session: session('  JOUW-ACCOUNT@VOORBEELD.NL ') });
+  assert.equal(allowed.requireAccess_(), 'jouw-account@voorbeeld.nl');
+
+  const similarDomain = context({ Session: session('ander@voorbeeld.nl') });
+  assert.throws(() => similarDomain.requireAccess_(), /Geen toegang/);
+});
+
+test('ontbrekende en niet-toegestane identiteiten ontvangen geen dashboarddata', () => {
+  for (const email of ['', 'niet-toegestaan@voorbeeld.nl']) {
+    const ctx = context({ Session: session(email) });
+    assert.throws(() => ctx.getDashboardData(), /Geen toegang/);
+  }
+});
+
+test('demomodus omzeilt de toegangscontrole niet', () => {
+  const config = fs.readFileSync('src/Config.gs', 'utf8');
+  assert.match(config, /demoMode:\s*true/);
+  assert.throws(
+    () => context({ Session: session('niet-toegestaan@voorbeeld.nl') }).getDashboardData(),
+    /Geen toegang/
+  );
 });
 
 test('volledige kolomstructuur wordt naar één intern record genormaliseerd', () => {
@@ -231,14 +262,18 @@ test('ontbrekende IDs, dubbele IDs en ongeldige waarden worden geteld', () => {
 });
 
 test('privacyvelden en intern voorbereide velden verlaten getDashboardData niet', () => {
-  const internal = normalize().records[0];
+  const internal = { ...normalize().records[0], laterToegevoegdGeheim: 'nieuw-geheim' };
   const publicRecord = context().publicRecord_(internal);
   const json = JSON.stringify(publicRecord);
+
+  assert.deepEqual(Object.keys(publicRecord), [
+    'source', 'date', 'workshop', 'provider', 'region', 'sector', 'status', 'sessions', 'students'
+  ]);
 
   for (const privateValue of [
     'REQ-001', 'School A', 'Privé Persoon', 'private@example.test', '0612345678',
     'Technieklokaal', 'secret-draft-id', 'secret-calendar-id', 'secret-source-id',
-    'Niet naar de browser sturen', 'private-debug', '485.5', '650', '164.5'
+    'Niet naar de browser sturen', 'private-debug', '485.5', '650', '164.5', 'nieuw-geheim'
   ]) {
     assert.ok(!json.includes(privateValue), privateValue);
   }
@@ -275,10 +310,88 @@ test('doGet en include volgen rechtstreeks de HtmlService-methoden', () => {
     },
     createHtmlOutputFromFile(name) {
       return { getContent: () => '<' + name + '>' };
+    },
+    createHtmlOutput(content) {
+      return { content, setTitle() { return this; } };
     }
   };
   const ctx = context({ HtmlService: htmlService });
   assert.equal(ctx.doGet().title, 'Workshopkompas');
   assert.equal(ctx.doGet().viewport, 'viewport:width=device-width, initial-scale=1');
   assert.equal(ctx.include('Styles'), '<Styles>');
+  assert.throws(() => ctx.include('Onbekend'), /Bestand niet beschikbaar/);
+});
+
+test('doGet toont een vaste veilige pagina aan geweigerde accounts', () => {
+  let templateCalls = 0;
+  const htmlService = {
+    createTemplateFromFile() {
+      templateCalls += 1;
+      throw new Error('mag niet worden aangeroepen');
+    },
+    createHtmlOutput(content) {
+      return {
+        content,
+        title: '',
+        setTitle(value) { this.title = value; return this; }
+      };
+    }
+  };
+  const ctx = context({
+    Session: session('niet-toegestaan@voorbeeld.nl'),
+    HtmlService: htmlService
+  });
+  const output = ctx.doGet();
+
+  assert.equal(templateCalls, 0);
+  assert.equal(output.title, 'Geen toegang');
+  assert.match(output.content, /Config\.gs/);
+  assert.doesNotMatch(output.content, /niet-toegestaan@voorbeeld\.nl/);
+});
+
+test('doGet toont geen technische details wanneer de template faalt', () => {
+  const htmlService = {
+    createTemplateFromFile() {
+      throw new Error('Index.html regel 99 bevat geheim-123');
+    },
+    createHtmlOutput(content) {
+      return {
+        content,
+        title: '',
+        setTitle(value) { this.title = value; return this; }
+      };
+    }
+  };
+  const output = context({ HtmlService: htmlService }).doGet();
+
+  assert.equal(output.title, 'Dashboard tijdelijk niet beschikbaar');
+  assert.doesNotMatch(output.content, /regel 99|geheim-123/);
+});
+
+test('serverfouten worden zonder bron- of providerdetails aan de browser gemeld', () => {
+  const configSource = fs.readFileSync('src/Config.gs', 'utf8').replace('demoMode: true', 'demoMode: false');
+  const ctx = vm.createContext({
+    Date,
+    console,
+    Utilities: { formatDate: date => date.toISOString().slice(0, 10) },
+    Session: session(),
+    SpreadsheetApp: {
+      openById: () => { throw new Error('providerfout met spreadsheet-id geheim-123'); }
+    }
+  });
+  for (const file of ['Config.gs', 'Data.gs', 'Code.gs']) {
+    const source = file === 'Config.gs' ? configSource : fs.readFileSync('src/' + file, 'utf8');
+    vm.runInContext(source, ctx);
+  }
+
+  assert.throws(
+    () => ctx.getDashboardData(),
+    error => error.message === 'Dashboardgegevens konden niet worden geladen.'
+  );
+});
+
+test('manifest draait als bezoeker en vraagt alleen de benodigde identiteitsscope', () => {
+  const manifest = JSON.parse(fs.readFileSync('src/appsscript.json', 'utf8'));
+  assert.equal(manifest.webapp.executeAs, 'USER_ACCESSING');
+  assert.ok(manifest.oauthScopes.includes('https://www.googleapis.com/auth/userinfo.email'));
 });

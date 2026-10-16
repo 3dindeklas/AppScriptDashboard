@@ -24,7 +24,21 @@ Controleer de bestandstypen goed:
 - `Index`, `Styles` en `Client` krijgen de extensie `.html`;
 - `document` en `window` mogen nergens in een `.gs`-bestand staan.
 
-## Stap 2 · Test eerst de demomodus
+## Stap 2 · Sta je Google-account toe
+
+Vervang in `Config.gs` het voorbeeldadres door het Google-account waarmee je de web-app opent:
+
+```javascript
+allowedEmails: [
+  'jouw.naam@organisatie.nl'
+],
+```
+
+Gebruik voor ieder extra account een nieuwe regel. De controle negeert hoofdletters en spaties, maar accepteert alleen volledige e-mailadressen; een domeinnaam alleen is niet voldoende. Laat je de lijst leeg of kan Google geen account vaststellen, dan wordt toegang geweigerd.
+
+Zet geen wachtwoorden, tokens, spreadsheet-ID's of andere geheimen in deze lijst.
+
+## Stap 3 · Test eerst de demomodus
 
 Laat in `Config.gs` dit staan:
 
@@ -44,7 +58,7 @@ Je hoort nu zonder verdere instellingen te zien:
 
 Werkt dit niet, koppel dan nog geen echte data. Controleer eerst of alle zes bestanden het juiste type en exact dezelfde naam hebben.
 
-## Stap 3 · Koppel één Google Sheet
+## Stap 4 · Koppel één Google Sheet
 
 Vul eerst alleen Stichting A in:
 
@@ -52,6 +66,9 @@ Vul eerst alleen Stichting A in:
 const APP_CONFIG = Object.freeze({
   title: 'Workshopkompas',
   demoMode: false,
+  allowedEmails: [
+    'jouw.naam@organisatie.nl'
+  ],
   sources: [
     {
       name: 'Stichting A',
@@ -84,11 +101,11 @@ De app leest vanaf de ingestelde kopregel. Minimaal bruikbaar zijn deze kolommen
 
 Andere kolommen mogen gewoon aanwezig zijn. Persoonsgegevens worden niet naar de browser gestuurd.
 
-## Stap 4 · Koppel de tweede Google Sheet
+## Stap 5 · Koppel de tweede Google Sheet
 
 Vul pas wanneer Stichting A werkt ook het `spreadsheetId` van Stichting B in. Beide sheets gebruiken dezelfde kopteksten en dezelfde kopregelinstelling.
 
-## Stap 5 · Publiceer een versie
+## Stap 6 · Publiceer een versie
 
 Wanneer de `/dev`-test werkt:
 
@@ -99,7 +116,17 @@ Wanneer de `/dev`-test werkt:
 5. deel de gebruikte Google Sheets met diezelfde gebruikers;
 6. open de nieuwe `/exec`-URL.
 
+De manifestinstelling blijft `executeAs: USER_ACCESSING`. Daardoor geeft iedere gebruiker zelf toestemming en leest de app Google Sheets met de rechten van die gebruiker. De allowlist in `Config.gs` blijft daarnaast verplicht, ook wanneer `demoMode: true` staat.
+
 Na latere codewijzigingen moet je de bestaande implementatie bewerken en een nieuwe versie selecteren. Alleen opslaan vernieuwt de gepubliceerde `/exec`-versie niet.
+
+## Verwachte toegangsmeldingen
+
+- **Geen toegang**: het actieve Google-account staat niet exact in `allowedEmails`, of Google heeft geen identiteit doorgegeven.
+- **Dashboard tijdelijk niet beschikbaar**: de pagina kon niet uit de opgeslagen HTML-bestanden worden opgebouwd.
+- **Dashboardgegevens konden niet worden geladen**: de pagina werkt, maar de databron kon niet veilig worden gelezen.
+
+Deze meldingen tonen bewust geen account, providerfout of spreadsheet-ID.
 
 ## Waarom Microsoft 365 nog ontbreekt
 

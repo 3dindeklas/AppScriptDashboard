@@ -13,6 +13,19 @@ const STATUS_GROUPS_ = Object.freeze({
   'volgend schooljaar': 'Volgend schooljaar'
 });
 
+/** Enige centrale allowlist van recordvelden die de browser mag ontvangen. */
+const PUBLIC_RECORD_FIELDS_ = Object.freeze([
+  'source',
+  'date',
+  'workshop',
+  'provider',
+  'region',
+  'sector',
+  'status',
+  'sessions',
+  'students'
+]);
+
 /** Leest alle geconfigureerde Google Sheets naar hetzelfde interne recordmodel. */
 function readConfiguredSheets_() {
   const sources = APP_CONFIG.sources.filter(function(source) {
@@ -155,7 +168,7 @@ function normalizeRow_(row, header, sourceName, parsed) {
 
 /** Expliciete browserprojectie. Interne IDs, scholen, locaties en financiën blijven server-side. */
 function publicRecord_(record) {
-  return {
+  const prepared = {
     source: record.source,
     date: record.scheduledDate || record.requestedDate || '',
     workshop: record.workshop,
@@ -166,6 +179,11 @@ function publicRecord_(record) {
     sessions: record.sessions,
     students: record.students
   };
+
+  return PUBLIC_RECORD_FIELDS_.reduce(function(publicRecord, field) {
+    publicRecord[field] = prepared[field];
+    return publicRecord;
+  }, {});
 }
 
 function headerMap_(headerRow, sourceName) {
