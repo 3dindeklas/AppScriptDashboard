@@ -10,6 +10,9 @@ De server normaliseert de volledige analysekolomstructuur inmiddels naar één i
 - standaard publieke `include(filename)` voor `Styles.html` en `Client.html`;
 - één expliciete account-allowlist in `Config.gs`;
 - toegangscontrole bij de pagina, HTML-includes en iedere data-aanvraag;
+- onafhankelijke laadstatus en datakwaliteit per Google-bron;
+- beschikbare data blijft zichtbaar wanneer één bron uitvalt;
+- maximaal 5.000 regels per bron, configureerbaar tot een harde grens van 10.000;
 - gegevens asynchroon ophalen met `google.script.run`;
 - drie filters: stichting, status en PO/VO;
 - kerncijfers, twee eenvoudige staafgrafieken en een recente-workshoptabel;

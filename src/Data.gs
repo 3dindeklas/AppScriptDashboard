@@ -26,19 +26,81 @@ const PUBLIC_RECORD_FIELDS_ = Object.freeze([
   'students'
 ]);
 
-/** Leest alle geconfigureerde Google Sheets naar hetzelfde interne recordmodel. */
-function readConfiguredSheets_() {
-  const sources = APP_CONFIG.sources.filter(function(source) {
-    return source.spreadsheetId && source.sheetName;
-  });
+/** Vaste datakwaliteitssignalen die als aantallen naar de browser mogen. */
+const PUBLIC_WARNING_FIELDS_ = Object.freeze([
+  'rowsTruncated',
+  'emptyRows',
+  'missingRequestIds',
+  'duplicateRequestIds',
+  'invalidRequestedDates',
+  'invalidScheduledDates',
+  'invalidStudentCounts',
+  'unknownSectors'
+]);
 
-  if (!sources.length) {
-    throw new Error('Geen Google Sheet geconfigureerd. Zet demoMode op true of vul een spreadsheetId in Config.gs in.');
+/** Leest iedere Google-bron onafhankelijk en combineert wat wel beschikbaar is. */
+function readConfiguredSheets_() {
+  const sourceResults = (APP_CONFIG.sources || []).map(function(source) {
+    return readSource_(source);
+  });
+  const records = sourceResults.reduce(function(allRecords, result) {
+    return allRecords.concat(result.records);
+  }, []);
+
+  return {
+    records: records,
+    sources: sourceResults,
+    complete: sourceResults.length > 0 && sourceResults.every(function(result) {
+      return result.status === 'ok' || result.status === 'warning';
+    })
+  };
+}
+
+function readSource_(source) {
+  const name = textValue_(source && source.name) || 'Naamloze bron';
+
+  if (!source || !source.spreadsheetId || !source.sheetName) {
+    return sourceResult_(
+      name, 'not-configured', [], emptyWarnings_(),
+      'Bron is nog niet geconfigureerd.', 'SOURCE_NOT_CONFIGURED', ''
+    );
   }
 
-  return sources.reduce(function(allRecords, source) {
-    return allRecords.concat(readGoogleSheet_(source).records);
-  }, []);
+  try {
+    const result = readGoogleSheet_(source);
+    const warningCount = warningCount_(result.warnings);
+    return sourceResult_(
+      name,
+      warningCount ? 'warning' : 'ok',
+      result.records,
+      result.warnings,
+      result.records.length ? '' : 'Geen workshopregels gevonden.',
+      '',
+      ''
+    );
+  } catch (error) {
+    const reference = logServerError_('readSource: ' + name, error);
+    return sourceResult_(
+      name, 'error', [], emptyWarnings_(),
+      'Controleer de tabbladnaam en of dit account toegang heeft.',
+      'SOURCE_READ_FAILED',
+      reference
+    );
+  }
+}
+
+function sourceResult_(name, status, records, warnings, message, errorCode, errorReference) {
+  return {
+    name: name,
+    status: status,
+    recordCount: records.length,
+    warningCount: warningCount_(warnings),
+    warnings: warnings,
+    message: message,
+    errorCode: errorCode || '',
+    errorReference: errorReference || '',
+    records: records
+  };
 }
 
 function readGoogleSheet_(source) {
@@ -57,14 +119,24 @@ function readGoogleSheet_(source) {
     return { records: [], warnings: emptyWarnings_() };
   }
 
+  const availableRows = lastRow - headerRow;
+  const rowsToRead = Math.min(availableRows, sourceRowLimit_());
   const values = sheet.getRange(
     headerRow,
     1,
-    lastRow - headerRow + 1,
+    rowsToRead + 1,
     lastColumn
   ).getValues();
 
-  return normalizeSheet_(values, source.name);
+  const result = normalizeSheet_(values, source.name);
+  result.warnings.rowsTruncated = availableRows - rowsToRead;
+  return result;
+}
+
+function sourceRowLimit_() {
+  const configured = Math.floor(Number(APP_CONFIG.maxRowsPerSource));
+  if (!isFinite(configured) || configured < 1) return 5000;
+  return Math.min(configured, 10000);
 }
 
 /**
@@ -184,6 +256,33 @@ function publicRecord_(record) {
     publicRecord[field] = prepared[field];
     return publicRecord;
   }, {});
+}
+
+/** Expliciete projectie van bronstatus; technische fouten en IDs ontbreken altijd. */
+function publicSourceStatus_(source) {
+  return {
+    name: source.name,
+    status: source.status,
+    recordCount: source.recordCount,
+    warningCount: source.warningCount,
+    warnings: publicWarnings_(source.warnings),
+    message: source.message,
+    errorCode: source.errorCode,
+    errorReference: source.errorReference
+  };
+}
+
+function publicWarnings_(warnings) {
+  return PUBLIC_WARNING_FIELDS_.reduce(function(publicWarnings, field) {
+    publicWarnings[field] = Number(warnings && warnings[field]) || 0;
+    return publicWarnings;
+  }, {});
+}
+
+function warningCount_(warnings) {
+  return PUBLIC_WARNING_FIELDS_.reduce(function(total, field) {
+    return total + (Number(warnings && warnings[field]) || 0);
+  }, 0);
 }
 
 function headerMap_(headerRow, sourceName) {
@@ -354,6 +453,7 @@ function gradeValues_(value, sector) {
 
 function emptyWarnings_() {
   return {
+    rowsTruncated: 0,
     emptyRows: 0,
     missingRequestIds: 0,
     duplicateRequestIds: 0,
@@ -361,6 +461,27 @@ function emptyWarnings_() {
     invalidScheduledDates: 0,
     invalidStudentCounts: 0,
     unknownSectors: 0
+  };
+}
+
+/** Bronoverzicht voor de lokale en gepubliceerde demomodus. */
+function demoDashboardData_() {
+  const records = demoRecords_();
+  const names = records.reduce(function(sourceNames, record) {
+    if (sourceNames.indexOf(record.source) === -1) sourceNames.push(record.source);
+    return sourceNames;
+  }, []);
+
+  return {
+    complete: true,
+    records: records,
+    sources: names.map(function(name) {
+      const sourceRecords = records.filter(function(record) { return record.source === name; });
+      return sourceResult_(
+        name, 'demo', sourceRecords, emptyWarnings_(),
+        'Fictieve gegevens voor veilig testen.', '', ''
+      );
+    })
   };
 }
 

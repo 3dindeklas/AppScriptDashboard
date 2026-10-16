@@ -6,10 +6,12 @@
  * De spreadsheet moet toegankelijk zijn voor de gebruiker die de web-app opent.
  * Vervang het voorbeeldadres in allowedEmails door ieder Google-account dat
  * het dashboard mag openen. Een lege lijst geeft niemand toegang.
+ * maxRowsPerSource begrenst de hoeveelheid data per bron; maximaal 10000.
  */
 const APP_CONFIG = Object.freeze({
   title: 'Workshopkompas',
   demoMode: true,
+  maxRowsPerSource: 5000,
   allowedEmails: [
     'jouw-account@voorbeeld.nl'
   ],

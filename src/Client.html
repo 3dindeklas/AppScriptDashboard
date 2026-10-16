@@ -2,14 +2,33 @@
   (() => {
     'use strict';
 
-    const state = { records: [], mode: 'demo', generatedAt: '' };
+    const state = { records: [], sources: [], mode: 'demo', generatedAt: '', complete: true };
     const numberFormat = new Intl.NumberFormat('nl-NL');
+    const sourceStatusLabels = {
+      demo: 'Demo',
+      ok: 'Geladen',
+      warning: 'Aandachtspunt',
+      error: 'Niet geladen',
+      'not-configured': 'Niet ingesteld'
+    };
+    const warningLabels = {
+      rowsTruncated: 'Rijen boven de ingestelde limiet',
+      emptyRows: 'Lege rijen',
+      missingRequestIds: 'Ontbrekende aanvraag-ID’s',
+      duplicateRequestIds: 'Dubbele aanvraag-ID’s',
+      invalidRequestedDates: 'Ongeldige aanvraagdatums',
+      invalidScheduledDates: 'Ongeldige definitieve datums',
+      invalidStudentCounts: 'Ongeldige leerlingaantallen',
+      unknownSectors: 'Onbekende onderwijssectoren'
+    };
     const elements = {
       refresh: document.getElementById('refreshButton'),
       reset: document.getElementById('resetButton'),
       message: document.getElementById('message'),
       mode: document.getElementById('modeBadge'),
       updated: document.getElementById('updatedAt'),
+      sourceSummary: document.getElementById('sourceSummary'),
+      sourceCards: document.getElementById('sourceCards'),
       source: document.getElementById('sourceFilter'),
       status: document.getElementById('statusFilter'),
       sector: document.getElementById('sectorFilter'),
@@ -46,8 +65,10 @@
       }
 
       state.records = payload.records;
+      state.sources = Array.isArray(payload.sources) ? payload.sources : [];
       state.mode = payload.mode || 'live';
       state.generatedAt = payload.generatedAt || new Date().toISOString();
+      state.complete = payload.complete !== false;
 
       fillFilter(elements.source, valuesOf('source'));
       fillFilter(elements.status, valuesOf('status'));
@@ -55,8 +76,8 @@
 
       elements.mode.textContent = state.mode === 'demo' ? 'Demogegevens' : 'Live gegevens';
       elements.updated.textContent = 'Bijgewerkt ' + formatDateTime(state.generatedAt);
-      elements.message.hidden = true;
-      elements.message.classList.remove('error');
+      renderSourceStatus();
+      renderLoadMessage();
       setLoading(false);
       render();
     }
@@ -64,9 +85,97 @@
     function handleError(error) {
       setLoading(false);
       elements.message.hidden = false;
+      elements.message.classList.remove('warning');
       elements.message.classList.add('error');
-      elements.message.textContent = 'Dashboard kon niet laden. ' + (error && error.message ? error.message : 'Onbekende fout.');
+      const detail = error && error.message ? error.message.replace(/^Error:\s*/, '') : 'Onbekende fout.';
+      elements.message.textContent = 'Dashboard kon niet laden. ' + detail;
       elements.mode.textContent = 'Niet geladen';
+    }
+
+    function renderLoadMessage() {
+      const hasWarnings = state.sources.some(source => source.warningCount > 0);
+      elements.message.classList.remove('error', 'warning');
+
+      if (!state.complete) {
+        elements.message.hidden = false;
+        elements.message.classList.add('warning');
+        elements.message.textContent = state.records.length
+          ? 'Het overzicht is onvolledig. De beschikbare bronnen worden wel getoond.'
+          : 'Er zijn geen live gegevens geladen. Controleer de bronstatus hieronder.';
+        return;
+      }
+
+      if (hasWarnings) {
+        elements.message.hidden = false;
+        elements.message.classList.add('warning');
+        elements.message.textContent = 'De gegevens zijn geladen met datakwaliteitswaarschuwingen.';
+        return;
+      }
+
+      elements.message.hidden = true;
+    }
+
+    function renderSourceStatus() {
+      elements.sourceCards.replaceChildren();
+      const loaded = state.sources.filter(source => ['demo', 'ok', 'warning'].includes(source.status)).length;
+      elements.sourceSummary.textContent = loaded + ' van ' + state.sources.length + ' bronnen beschikbaar';
+
+      if (!state.sources.length) {
+        elements.sourceCards.appendChild(emptyMessage('Er zijn geen bronnen ingesteld.'));
+        return;
+      }
+
+      state.sources.forEach(source => {
+        const card = document.createElement('article');
+        card.className = 'source-card source-' + safeStatus(source.status);
+
+        const heading = document.createElement('div');
+        heading.className = 'source-card-heading';
+        const name = document.createElement('h3');
+        name.textContent = source.name || 'Naamloze bron';
+        const badge = document.createElement('span');
+        badge.className = 'source-badge';
+        badge.textContent = sourceStatusLabels[source.status] || 'Onbekend';
+        heading.append(name, badge);
+
+        const count = document.createElement('p');
+        count.className = 'source-count';
+        count.textContent = numberFormat.format(Number(source.recordCount) || 0) + ' workshopregels';
+        card.append(heading, count);
+
+        if (source.message) {
+          const message = document.createElement('p');
+          message.className = 'source-message';
+          message.textContent = source.message;
+          card.appendChild(message);
+        }
+
+        if (source.errorCode) {
+          const errorMeta = document.createElement('p');
+          errorMeta.className = 'source-error-meta';
+          errorMeta.textContent = 'Foutcode: ' + source.errorCode +
+            (source.errorReference ? ' · Referentie: ' + source.errorReference : '');
+          card.appendChild(errorMeta);
+        }
+
+        const warnings = Object.entries(source.warnings || {}).filter(entry => Number(entry[1]) > 0);
+        if (warnings.length) {
+          const list = document.createElement('ul');
+          list.className = 'source-warnings';
+          warnings.forEach(entry => {
+            const item = document.createElement('li');
+            item.textContent = (warningLabels[entry[0]] || 'Controlepunt') + ': ' + numberFormat.format(entry[1]);
+            list.appendChild(item);
+          });
+          card.appendChild(list);
+        }
+
+        elements.sourceCards.appendChild(card);
+      });
+    }
+
+    function safeStatus(status) {
+      return ['demo', 'ok', 'warning', 'error', 'not-configured'].includes(status) ? status : 'error';
     }
 
     function setLoading(loading) {

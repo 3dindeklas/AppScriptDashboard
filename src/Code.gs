@@ -51,15 +51,59 @@ function getDashboardData() {
   requireAccess_();
 
   try {
-    const internalRecords = APP_CONFIG.demoMode ? demoRecords_() : readConfiguredSheets_();
+    const result = APP_CONFIG.demoMode ? demoDashboardData_() : readConfiguredSheets_();
+    assertDashboardResult_(result);
 
     return {
       mode: APP_CONFIG.demoMode ? 'demo' : 'live',
       generatedAt: new Date().toISOString(),
-      records: internalRecords.map(publicRecord_)
+      complete: result.complete,
+      records: result.records.map(publicRecord_),
+      sources: result.sources.map(publicSourceStatus_)
     };
   } catch (error) {
-    throw new Error('Dashboardgegevens konden niet worden geladen.');
+    const reference = logServerError_('getDashboardData', error);
+    const code = error && error.publicCode ? error.publicCode : 'DASHBOARD_DATA_FAILED';
+    const message = error && error.publicMessage
+      ? error.publicMessage
+      : 'Dashboardgegevens konden niet worden geladen.';
+    throw new Error(message + ' Foutcode: ' + code + '. Referentie: ' + reference + '.');
+  }
+}
+
+function assertDashboardResult_(result) {
+  if (!result || !Array.isArray(result.records) || !Array.isArray(result.sources)) {
+    throw publicDashboardError_(
+      'DATA_FILES_OUT_OF_SYNC',
+      'De serverbestanden zijn niet van dezelfde versie. Werk Code.gs en Data.gs samen bij.'
+    );
+  }
+}
+
+function publicDashboardError_(code, message) {
+  const error = new Error(message);
+  error.publicCode = code;
+  error.publicMessage = message;
+  return error;
+}
+
+/** Logt technische details uitsluitend in Apps Script en geeft een veilige referentie terug. */
+function logServerError_(area, error) {
+  const reference = errorReference_();
+  try {
+    const detail = error && (error.stack || error.message) ? (error.stack || error.message) : String(error);
+    console.error('[' + reference + '] ' + area + ': ' + detail);
+  } catch (loggingError) {
+    // Logging mag de oorspronkelijke foutafhandeling nooit blokkeren.
+  }
+  return reference;
+}
+
+function errorReference_() {
+  try {
+    return Utilities.getUuid().slice(0, 8).toUpperCase();
+  } catch (error) {
+    return String(new Date().getTime()).slice(-8);
   }
 }
 

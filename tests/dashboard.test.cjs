@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const silentConsole = { log() {}, error() {} };
 
 function session(email = 'jouw-account@voorbeeld.nl') {
   return {
@@ -10,19 +11,44 @@ function session(email = 'jouw-account@voorbeeld.nl') {
   };
 }
 
-function context(extra = {}) {
+function context(extra = {}, configTransform = source => source) {
   const ctx = vm.createContext({
     Date,
-    console,
-    Utilities: { formatDate: date => date.toISOString().slice(0, 10) },
+    console: silentConsole,
+    Utilities: {
+      formatDate: date => date.toISOString().slice(0, 10),
+      getUuid: () => '12345678-abcd-4321-abcd-1234567890ab'
+    },
     Session: session(),
     ...extra
   });
 
   for (const file of ['Config.gs', 'Data.gs', 'Code.gs']) {
-    vm.runInContext(fs.readFileSync('src/' + file, 'utf8'), ctx);
+    const source = fs.readFileSync('src/' + file, 'utf8');
+    vm.runInContext(file === 'Config.gs' ? configTransform(source) : source, ctx);
   }
   return ctx;
+}
+
+function liveContext(extra = {}, options = {}) {
+  const ids = options.ids || ['source-a-id', 'source-b-id'];
+  const maxRows = options.maxRows || 5000;
+  return context(extra, source => {
+    let sourceIndex = 0;
+    return source
+      .replace('demoMode: true', 'demoMode: false')
+      .replace('maxRowsPerSource: 5000', 'maxRowsPerSource: ' + maxRows)
+      .replace(/spreadsheetId: ''/g, () => "spreadsheetId: '" + (ids[sourceIndex++] || '') + "'");
+  });
+}
+
+function googleSheet(rows, overrides = {}) {
+  return {
+    getLastRow: () => 8 + rows.length,
+    getLastColumn: () => headers.length,
+    getRange: () => ({ getValues: () => [headers, ...rows] }),
+    ...overrides
+  };
 }
 
 const headers = [
@@ -103,7 +129,12 @@ test('Index gebruikt uitsluitend de officiële include-opzet', () => {
 test('demo blijft werken en de browser ontvangt alleen de bestaande veilige velden', () => {
   const payload = context().getDashboardData();
   assert.equal(payload.mode, 'demo');
+  assert.equal(payload.complete, true);
   assert.equal(payload.records.length, 10);
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.sources.map(source => [source.name, source.status, source.recordCount]))), [
+    ['Stichting A', 'demo', 5],
+    ['Stichting B', 'demo', 5]
+  ]);
   assert.deepEqual([...new Set(payload.records.map(record => record.source))].sort(), ['Stichting A', 'Stichting B']);
   assert.deepEqual(Object.keys(payload.records[0]).sort(), [
     'date', 'provider', 'region', 'sector', 'sessions', 'source', 'status', 'students', 'workshop'
@@ -251,6 +282,7 @@ test('ontbrekende IDs, dubbele IDs en ongeldige waarden worden geteld', () => {
 
   assert.equal(result.records.length, 3);
   assert.deepEqual(JSON.parse(JSON.stringify(result.warnings)), {
+    rowsTruncated: 0,
     emptyRows: 1,
     missingRequestIds: 1,
     duplicateRequestIds: 1,
@@ -294,6 +326,128 @@ test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {
   assert.deepEqual(requestedRange, [8, 1, 3, headers.length]);
   assert.equal(result.records.length, 2);
   assert.equal(result.warnings.duplicateRequestIds, 0);
+});
+
+test('Google Sheet respecteert de rijlimiet en meldt overgeslagen rijen', () => {
+  let requestedRange;
+  const sheet = googleSheet([row(), row(), row()], {
+    getRange: (...args) => {
+      requestedRange = args;
+      return { getValues: () => [headers, row()] };
+    }
+  });
+  const ctx = liveContext({
+    SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) }
+  }, { maxRows: 1 });
+  const result = ctx.readGoogleSheet_({
+    name: 'Stichting A', spreadsheetId: 'source-a-id', sheetName: 'Workshops', headerRow: 8
+  });
+
+  assert.deepEqual(requestedRange, [8, 1, 2, headers.length]);
+  assert.equal(result.records.length, 1);
+  assert.equal(result.warnings.rowsTruncated, 2);
+});
+
+test('rijlimiet heeft een veilige standaard en harde bovengrens', () => {
+  assert.equal(liveContext({}, { maxRows: 25000 }).sourceRowLimit_(), 10000);
+  const invalidLimit = context({}, source => source.replace('maxRowsPerSource: 5000', "maxRowsPerSource: 'ongeldig'"));
+  assert.equal(invalidLimit.sourceRowLimit_(), 5000);
+});
+
+test('een mislukte bron blokkeert beschikbare live gegevens niet', () => {
+  const sheet = googleSheet([row({ 'Workshopnaam': 'Echte workshop A' })]);
+  const ctx = liveContext({
+    SpreadsheetApp: {
+      openById: id => {
+        if (id === 'source-a-id') return { getSheetByName: () => sheet };
+        throw new Error('providerfout met spreadsheet-id source-b-id en geheim-123');
+      }
+    }
+  });
+  const payload = ctx.getDashboardData();
+  const json = JSON.stringify(payload);
+
+  assert.equal(payload.mode, 'live');
+  assert.equal(payload.complete, false);
+  assert.equal(payload.records.length, 1);
+  assert.equal(payload.records[0].workshop, 'Echte workshop A');
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.sources.map(source => [source.status, source.recordCount]))), [
+    ['ok', 1],
+    ['error', 0]
+  ]);
+  assert.equal(payload.sources[1].message, 'Controleer de tabbladnaam en of dit account toegang heeft.');
+  assert.equal(payload.sources[1].errorCode, 'SOURCE_READ_FAILED');
+  assert.equal(payload.sources[1].errorReference, '12345678');
+  assert.ok(!json.includes('source-a-id'));
+  assert.ok(!json.includes('source-b-id'));
+  assert.ok(!json.includes('geheim-123'));
+  assert.ok(!json.includes('Voorbeeldschool'));
+});
+
+test('live-modus met ontbrekende configuratie valt niet terug op demo', () => {
+  const payload = context({}, source => source.replace('demoMode: true', 'demoMode: false')).getDashboardData();
+
+  assert.equal(payload.mode, 'live');
+  assert.equal(payload.complete, false);
+  assert.equal(payload.records.length, 0);
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.sources.map(source => source.status))), ['not-configured', 'not-configured']);
+});
+
+test('datakwaliteitswaarschuwingen worden per bron als veilige aantallen gepubliceerd', () => {
+  const sheet = googleSheet([row({
+    'Aanvraag ID': '',
+    'Datum aanvraag': '31-02-2026',
+    'Aantal leerlingen': 'veel'
+  })]);
+  const payload = liveContext({
+    SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) }
+  }).getDashboardData();
+  const source = payload.sources[0];
+
+  assert.equal(source.status, 'warning');
+  assert.equal(source.recordCount, 1);
+  assert.equal(source.warnings.missingRequestIds, 1);
+  assert.equal(source.warnings.invalidRequestedDates, 1);
+  assert.equal(source.warnings.invalidStudentCounts, 1);
+  assert.equal(source.warningCount, 3);
+});
+
+test('bronprojectie laat technische velden en providerfouten nooit door', () => {
+  const source = context().publicSourceStatus_({
+    name: 'Stichting A',
+    status: 'error',
+    recordCount: 0,
+    warningCount: 0,
+    warnings: { internGeheim: 99 },
+    message: 'Bron kon niet worden geladen.',
+    errorCode: 'SOURCE_READ_FAILED',
+    errorReference: 'VEILIG123',
+    spreadsheetId: 'geheim-sheet-id',
+    providerError: 'Google provider detail'
+  });
+  const json = JSON.stringify(source);
+
+  assert.ok(!json.includes('internGeheim'));
+  assert.ok(!json.includes('geheim-sheet-id'));
+  assert.ok(!json.includes('Google provider detail'));
+  assert.match(json, /SOURCE_READ_FAILED/);
+  assert.match(json, /VEILIG123/);
+});
+
+test('ongelijke serverbestandsversies geven een veilige diagnose en serverlog', () => {
+  const logs = [];
+  const ctx = liveContext({
+    console: { log() {}, error: message => logs.push(message) },
+    SpreadsheetApp: { openById: () => ({ getSheetByName: () => googleSheet([row()]) }) }
+  });
+  ctx.readConfiguredSheets_ = () => [];
+
+  assert.throws(
+    () => ctx.getDashboardData(),
+    /serverbestanden zijn niet van dezelfde versie.*DATA_FILES_OUT_OF_SYNC.*12345678/
+  );
+  assert.equal(logs.length, 1);
+  assert.match(logs[0], /\[12345678\] getDashboardData/);
 });
 
 test('doGet en include volgen rechtstreeks de HtmlService-methoden', () => {
@@ -368,26 +522,14 @@ test('doGet toont geen technische details wanneer de template faalt', () => {
   assert.doesNotMatch(output.content, /regel 99|geheim-123/);
 });
 
-test('serverfouten worden zonder bron- of providerdetails aan de browser gemeld', () => {
-  const configSource = fs.readFileSync('src/Config.gs', 'utf8').replace('demoMode: true', 'demoMode: false');
-  const ctx = vm.createContext({
-    Date,
-    console,
-    Utilities: { formatDate: date => date.toISOString().slice(0, 10) },
-    Session: session(),
-    SpreadsheetApp: {
-      openById: () => { throw new Error('providerfout met spreadsheet-id geheim-123'); }
-    }
-  });
-  for (const file of ['Config.gs', 'Data.gs', 'Code.gs']) {
-    const source = file === 'Config.gs' ? configSource : fs.readFileSync('src/' + file, 'utf8');
-    vm.runInContext(source, ctx);
-  }
-
-  assert.throws(
-    () => ctx.getDashboardData(),
-    error => error.message === 'Dashboardgegevens konden niet worden geladen.'
-  );
+test('bronstatus-interface staat in de HTML en gebruikt geen inline brondata', () => {
+  const index = fs.readFileSync('src/Index.html', 'utf8');
+  const client = fs.readFileSync('src/Client.html', 'utf8');
+  assert.match(index, /id="sourceCards"/);
+  assert.match(index, /BRONNEN &amp; DATAKWALITEIT/);
+  assert.match(client, /renderSourceStatus/);
+  assert.match(client, /textContent = source\.message/);
+  assert.match(client, /replace\(\/\^Error:/);
 });
 
 test('manifest draait als bezoeker en vraagt alleen de benodigde identiteitsscope', () => {

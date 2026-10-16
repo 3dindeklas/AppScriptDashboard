@@ -40,7 +40,7 @@ Alle Google Sheets-rijen worden eerst server-side omgezet naar één intern work
 
 Contactpersoon, e-mailadres, telefoon, notities, debuggegevens en e-mail-/kalender-ID's worden niet in het interne analyserecord opgenomen.
 
-## Browserprojectie in stap 1
+## Browserprojectie
 
 De interface wordt in deze stap nog niet uitgebreid. `getDashboardData()` geeft daarom alleen de bestaande veilige velden door:
 
@@ -103,6 +103,7 @@ PO accepteert groep 1 tot en met 8. VO accepteert leerjaar 1 tot en met 6. Als �
 
 De normalisatie telt per bron:
 
+- rijen die boven `maxRowsPerSource` vallen en niet zijn ingelezen;
 - lege rijen;
 - ontbrekende aanvraag-ID's;
 - unieke aanvraag-ID's die dubbel voorkomen;
@@ -111,7 +112,23 @@ De normalisatie telt per bron:
 - ongeldige leerlingaantallen;
 - onbekende onderwijssectoren.
 
-Deze signalen worden in stap 1 getest maar nog niet in de interface getoond. De zichtbare bronstatus volgt in roadmapstap 3.
+Deze signalen worden als aantallen getoond onder **Bronnen & datakwaliteit**. De browser ontvangt uitsluitend deze vaste tellers, nooit spreadsheet-ID's of technische Google-fouten.
+
+## Bronstatus en volledigheid
+
+Iedere bron krijgt onafhankelijk één status:
+
+| Status | Betekenis |
+| --- | --- |
+| `demo` | fictieve gegevens voor veilig testen |
+| `ok` | bron volledig gelezen zonder datakwaliteitssignalen |
+| `warning` | bron gelezen, met één of meer getelde signalen |
+| `error` | bron kon niet worden gelezen; andere bronnen blijven beschikbaar |
+| `not-configured` | spreadsheet-ID of tabbladnaam ontbreekt |
+
+Het totale overzicht is compleet wanneer alle geconfigureerde live-bronnen `ok` of `warning` zijn. Een waarschuwing betekent dus dat de bron beschikbaar is, maar dat bepaalde rijen aandacht vragen. Bij `error` of `not-configured` wordt het overzicht als onvolledig gemarkeerd. Live-modus valt nooit terug op demogegevens.
+
+Een bronfout bevat in de browser alleen een vaste foutcode en een willekeurige referentie. De technische fout en stacktrace zijn uitsluitend terug te vinden in de afgeschermde Apps Script-uitvoeringslog met dezelfde referentie.
 
 ## Tellingen
 

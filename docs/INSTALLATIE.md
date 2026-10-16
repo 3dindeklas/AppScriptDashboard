@@ -66,6 +66,7 @@ Vul eerst alleen Stichting A in:
 const APP_CONFIG = Object.freeze({
   title: 'Workshopkompas',
   demoMode: false,
+  maxRowsPerSource: 5000,
   allowedEmails: [
     'jouw.naam@organisatie.nl'
   ],
@@ -101,9 +102,13 @@ De app leest vanaf de ingestelde kopregel. Minimaal bruikbaar zijn deze kolommen
 
 Andere kolommen mogen gewoon aanwezig zijn. Persoonsgegevens worden niet naar de browser gestuurd.
 
+Onder **Bronnen & datakwaliteit** zie je per stichting of de bron geladen is, hoeveel workshopregels zijn ingelezen en welke vaste controles aandacht vragen. De standaardlimiet is 5.000 workshopregels per bron. Verhoog deze alleen bewust; de code hanteert altijd een harde bovengrens van 10.000 regels per bron.
+
 ## Stap 5 · Koppel de tweede Google Sheet
 
 Vul pas wanneer Stichting A werkt ook het `spreadsheetId` van Stichting B in. Beide sheets gebruiken dezelfde kopteksten en dezelfde kopregelinstelling.
+
+Als één bron niet bereikbaar is, blijven de gegevens van de andere bron zichtbaar. Het dashboard meldt dan dat het overzicht onvolledig is. Er wordt in live-modus nooit automatisch teruggevallen op demogegevens.
 
 ## Stap 6 · Publiceer een versie
 
@@ -127,6 +132,17 @@ Na latere codewijzigingen moet je de bestaande implementatie bewerken en een nie
 - **Dashboardgegevens konden niet worden geladen**: de pagina werkt, maar de databron kon niet veilig worden gelezen.
 
 Deze meldingen tonen bewust geen account, providerfout of spreadsheet-ID.
+
+## Foutcodes en serverlogs
+
+Technische details worden niet in het dashboard getoond. Bij een onverwachte fout verschijnt wel een veilige foutcode en referentie. Open in Apps Script links **Uitvoeringen**, kies de uitvoering met hetzelfde tijdstip en zoek in de logs naar die referentie.
+
+- `DATA_FILES_OUT_OF_SYNC`: `Code.gs` en `Data.gs` komen niet uit dezelfde versie; werk beide bestanden tegelijk bij.
+- `DASHBOARD_DATA_FAILED`: onverwachte fout tijdens het opbouwen van het antwoord; gebruik de referentie om de serverlog te vinden.
+- `SOURCE_NOT_CONFIGURED`: voor deze bron ontbreekt een spreadsheet-ID of tabbladnaam.
+- `SOURCE_READ_FAILED`: controleer de tabbladnaam en of het actieve Google-account toegang tot de Sheet heeft.
+
+De server logt alleen wanneer iets mislukt. Providerdetails blijven in de afgeschermde Apps Script-uitvoeringslog en worden niet naar de browser gestuurd.
 
 ## Waarom Microsoft 365 nog ontbreekt
 
