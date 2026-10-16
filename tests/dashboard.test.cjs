@@ -132,7 +132,7 @@ test('Google adapter respects configured header row and refuses silent truncatio
 });
 test('only doGet and guarded getDashboardData are exposed Apps Script RPCs',()=> {
   const names=fs.readdirSync('src').filter(f=>f.endsWith('.gs')).flatMap(f=>[...fs.readFileSync('src/'+f,'utf8').matchAll(/^function (\w+)\(/gm)].map(m=>m[1])).filter(n=>!n.endsWith('_'));
-  assert.deepEqual(names.sort(),['doGet','getDashboardData']);
+  assert.deepEqual(names.sort(),['doGet','getDashboardData','include']);
 });
 test('demo contains both sources, fictional schools, and no hidden personal fields',()=> {
   const p=context().demoPayload_();assert.equal(p.demo,true);assert.equal(p.sources.length,2);assert.equal(p.records.length,163);
@@ -171,40 +171,67 @@ test('deleted sources property uses Config.gs; valid JSON still loads live; demo
     assert.equal(authContext('a@test.nl',{...props,DEMO_MODE:value}).getDashboardData().error.code,'CONFIG_DEMO_MODE');
   }
 });
-function htmlMock(evaluate) {
-  return {createHtmlOutput:html=>({html,setTitle(){return this;},addMetaTag(){return this;}}),
-    createTemplateFromFile:()=>({evaluate})};
+function htmlMock(overrides={}) {
+  const files={
+    Index:"<html><?!= include('Styles'); ?><?!= include('Analytics'); ?><?!= include('Client'); ?></html>",
+    Styles:'<style>body{color:green}</style>', Analytics:'<script>const a=1;</script>', Client:'<script>const b=2;</script>',
+    ...overrides
+  };
+  let reads=0, includeFn;
+  const output=html=>({html,getContent(){return html;},setTitle(){return this;},addMetaTag(){return this;}});
+  return {get reads(){return reads;},setInclude(fn){includeFn=fn;},createHtmlOutput:output,
+    createHtmlOutputFromFile:name=>{reads++;if(files[name] instanceof Error)throw files[name];return {getContent:()=>files[name]};},
+    createTemplateFromFile:name=>{reads++;if(files[name] instanceof Error)throw files[name];return {evaluate:()=>{
+      try { return output(files[name].replace(/<\?!= include\('([^']+)'\); \?>/g,(_,partial)=>includeFn(partial))); }
+      catch(error) { throw Error('Template evaluation failed: '+error.message); }
+    }};}};
 }
-test('doGet denies unauthorized users before parsing config or evaluating templates',()=> {
-  let evaluated=false;
+function attachInclude(context,service){service.setInclude(context.include);return context;}
+test('doGet denies unauthorized users before parsing config or reading UI files',()=> {
+  const service=htmlMock();
   const c=authContext('outsider@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl',DASHBOARD_SOURCES:'bad json'},
-    {console:{error:()=>{}},HtmlService:htmlMock(()=>{evaluated=true;})});
+    {console:{error:()=>{}},HtmlService:service});
   const html=c.doGet().html;
-  assert.match(html,/<h1>Geen toegang<\/h1>/);assert.ok(!html.includes('CONFIG_'));assert.equal(evaluated,false);
+  assert.match(html,/<h1>Geen toegang<\/h1>/);assert.ok(!html.includes('CONFIG_'));assert.equal(service.reads,0);
   assert.throws(()=>c.getDashboardData(),/Geen toegang/);
 });
 test('doGet separates authorized configuration failures from access denials',()=> {
-  let evaluated=false,logs=[];
+  const service=htmlMock(),logs=[];
   const c=authContext('a@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl',DASHBOARD_SOURCES:'[{ secret: "private-sheet" }]'},
-    {console:{error:m=>logs.push(m)},HtmlService:htmlMock(()=>{evaluated=true;})});
+    {console:{error:m=>logs.push(m)},HtmlService:service});
   const html=c.doGet().html;
   assert.match(html,/<h1>Configuratiefout<\/h1>/);assert.match(html,/CONFIG_SOURCES_JSON/);
-  assert.ok(!html.includes('private-sheet'));assert.ok(!logs.join('').includes('private-sheet'));assert.equal(evaluated,false);
+  assert.ok(!html.includes('private-sheet'));assert.ok(!logs.join('').includes('private-sheet'));assert.equal(service.reads,0);
 });
-test('doGet labels template failure separately and never renders or logs raw exceptions',()=> {
-  const logs=[];
-  const c=authContext('a@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl'},
-    {console:{error:m=>logs.push(m)},HtmlService:htmlMock(()=>{throw Error('<script>privateToken()</script>');})});
-  const html=c.doGet().html;assert.match(html,/PAGE_RENDER_FAILED/);assert.ok(!html.includes('Geen toegang'));
-  assert.ok(!html.includes('privateToken'));assert.deepEqual(logs,['Workshopkompas: PAGE_RENDER_FAILED']);
+test('official include reads only allowlisted static partials',()=> {
+  const service=htmlMock();
+  const c=attachInclude(context({HtmlService:service}),service);
+  assert.match(c.include('Styles'),/color:green/);
+  assert.throws(()=>c.include('Secrets'),/PAGE_RENDER_FAILED/);
 });
+test('doGet reports the exact missing UI file without rendering or logging raw exceptions',()=> {
+  for(const name of ['Index','Styles','Analytics','Client']) {
+    const logs=[],service=htmlMock({[name]:Error('<script>privateToken()</script>')});
+    const c=attachInclude(authContext('a@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl'},
+      {console:{error:m=>logs.push(m)},HtmlService:service}),service);
+    const html=c.doGet().html;assert.match(html,new RegExp('UI_FILE_'+name.toUpperCase()));assert.ok(!html.includes('Geen toegang'));
+    assert.ok(!html.includes('privateToken'));assert.deepEqual(logs,['Workshopkompas: UI_FILE_'+name.toUpperCase()]);
+  }
+});
+
 test('unexpected identity-service error is not falsely reported as access denied',()=> {
-  const c=context({Session:{getActiveUser:()=>{throw Error('provider private details');}},console:{error:()=>{}},HtmlService:htmlMock(()=>{})});
+  const c=context({Session:{getActiveUser:()=>{throw Error('provider private details');}},console:{error:()=>{}},HtmlService:htmlMock()});
   const html=c.doGet().html;assert.match(html,/ACCESS_CHECK_FAILED/);assert.ok(!html.includes('provider private details'));
 });
-test('authorized doGet still serves the template and escapes diagnostic text',()=> {
-  const c=authContext('a@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl'},
-    {console:{error:()=>{}},HtmlService:htmlMock(()=>({html:'dashboard',setTitle(){return this;},addMetaTag(){return this;}}))});
-  assert.equal(c.doGet().html,'dashboard');
+test('authorized doGet evaluates the official include pattern and diagnostics pass',()=> {
+  const service=htmlMock();
+  const c=attachInclude(authContext('a@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl'},
+    {console:{log:()=>{},error:()=>{}},HtmlService:service}),service);
+  const html=c.doGet().html;
+  assert.match(html,/body\{color:green\}/);assert.match(html,/const a=1/);assert.match(html,/const b=2/);
+  assert.ok(!html.includes('<?!='));
+  const result=JSON.parse(JSON.stringify(c.diagnoseDashboard_()));
+  assert.equal(result.ok,true);assert.ok(result.files.Index>90);
+  assert.deepEqual(result.files,{Styles:32,Analytics:27,Client:27,Index:99});
   assert.match(c.startupErrorPage_(c.dashboardErrorInfo_('CONFIG_SOURCES_SHAPE')).html,/&quot;id&quot;/);
 });

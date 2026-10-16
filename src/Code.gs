@@ -17,7 +17,11 @@ function dashboardErrorInfo_(code) {
     CONFIG_SOURCES_DISABLED: ['Configuratiefout', 'Alle bronnen zijn uitgeschakeld. Zet bij ten minste één bron enabled op true.'],
     CONFIG_DEMO_MODE: ['Configuratiefout', 'De Script property DEMO_MODE moet exact true of false bevatten, zonder aanhalingstekens. Verwijder de property als je CONFIG.demoMode wilt gebruiken.'],
     CONFIG_READ_FAILED: ['Configuratie niet beschikbaar', 'De dashboardinstellingen konden niet worden gelezen. Laat de beheerder Script properties en Config.gs controleren.'],
-    PAGE_RENDER_FAILED: ['Dashboard kon niet starten', 'Je account is toegestaan, maar het opbouwen van de pagina is mislukt. Controleer Index.html, Styles.html, Analytics.html en Client.html en werk de implementatie bij naar de juiste versie.']
+    UI_FILE_INDEX: ['Dashboardbestand ontbreekt', 'Index.html kon niet worden gelezen. Maak in Apps Script een HTML-bestand met de naam Index en kopieer de huidige inhoud uit src/Index.html.'],
+    UI_FILE_STYLES: ['Dashboardbestand ontbreekt', 'Styles.html kon niet worden gelezen. Maak in Apps Script een HTML-bestand met de naam Styles en kopieer de huidige inhoud uit src/Styles.html.'],
+    UI_FILE_ANALYTICS: ['Dashboardbestand ontbreekt', 'Analytics.html kon niet worden gelezen. Maak in Apps Script een HTML-bestand met de naam Analytics en kopieer de huidige inhoud uit src/Analytics.html.'],
+    UI_FILE_CLIENT: ['Dashboardbestand ontbreekt', 'Client.html kon niet worden gelezen. Maak in Apps Script een HTML-bestand met de naam Client en kopieer de huidige inhoud uit src/Client.html.'],
+    PAGE_RENDER_FAILED: ['Dashboard kon niet starten', 'De vier HTML-bestanden zijn gevonden, maar de pagina kon niet worden opgebouwd. Werk de Apps Script-implementatie bij naar de nieuwste repositoryversie.']
   };
   const safeCode = Object.prototype.hasOwnProperty.call(messages, code) ? code : 'PAGE_RENDER_FAILED';
   return { code: safeCode, title: messages[safeCode][0], message: messages[safeCode][1] };
@@ -58,16 +62,56 @@ function doGet() {
     return startupErrorPage_(configurationFailure_(error));
   }
   try {
-    return HtmlService.createTemplateFromFile('Index').evaluate()
-      .setTitle(CONFIG.title).addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    return renderDashboard_();
   } catch (error) {
-    return startupErrorPage_(dashboardErrorInfo_('PAGE_RENDER_FAILED'));
+    return startupErrorPage_(pageRenderFailure_(error));
   }
 }
 
-function include_(name) {
-  if (!['Styles', 'Analytics', 'Client'].includes(name)) throw new Error('Onbekend bestand.');
-  return HtmlService.createHtmlOutputFromFile(name).getContent();
+/** Official Apps Script include pattern; only static UI partials are exposed. */
+function include(filename) {
+  if (!['Styles', 'Analytics', 'Client'].includes(filename)) {
+    throw dashboardError_('PAGE_RENDER_FAILED');
+  }
+  try {
+    return HtmlService.createHtmlOutputFromFile(filename).getContent();
+  } catch (error) {
+    throw dashboardError_('UI_FILE_' + filename.toUpperCase());
+  }
+}
+
+function pageRenderFailure_(error) {
+  if (error && typeof error.dashboardCode === 'string' && error.dashboardCode.startsWith('UI_')) {
+    return dashboardErrorInfo_(error.dashboardCode);
+  }
+  // HtmlTemplate may wrap an include error. Read only our fixed code marker,
+  // never expose the complete template exception to the browser.
+  const match = String(error && error.message || error).match(/\[(UI_FILE_(?:INDEX|STYLES|ANALYTICS|CLIENT))\]/);
+  return dashboardErrorInfo_(match ? match[1] : 'PAGE_RENDER_FAILED');
+}
+
+function renderDashboard_() {
+  let template;
+  try {
+    template = HtmlService.createTemplateFromFile('Index');
+  } catch (error) {
+    throw dashboardError_('UI_FILE_INDEX');
+  }
+  return template.evaluate()
+    .setTitle(CONFIG.title).addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/** Run this manually in the Apps Script editor. It never reads workshop data. */
+function diagnoseDashboard_() {
+  requireAccess_();
+  settings_();
+  const bytes = {};
+  ['Styles', 'Analytics', 'Client'].forEach(name => {
+    bytes[name] = include(name).length;
+  });
+  bytes.Index = renderDashboard_().getContent().length;
+  console.log(JSON.stringify({ ok: true, files: bytes }));
+  return { ok: true, files: bytes };
 }
 
 /** The only data RPC. No original rows, contacts, notes, credentials or IDs leave the server. */
