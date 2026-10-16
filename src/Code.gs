@@ -17,7 +17,12 @@ function dashboardErrorInfo_(code) {
     CONFIG_SOURCES_DISABLED: ['Configuratiefout', 'Alle bronnen zijn uitgeschakeld. Zet bij ten minste één bron enabled op true.'],
     CONFIG_DEMO_MODE: ['Configuratiefout', 'De Script property DEMO_MODE moet exact true of false bevatten, zonder aanhalingstekens. Verwijder de property als je CONFIG.demoMode wilt gebruiken.'],
     CONFIG_READ_FAILED: ['Configuratie niet beschikbaar', 'De dashboardinstellingen konden niet worden gelezen. Laat de beheerder Script properties en Config.gs controleren.'],
-    PAGE_RENDER_FAILED: ['Dashboard kon niet starten', 'Je account is toegestaan, maar het opbouwen van de pagina is mislukt. Controleer Index.html, Styles.html, Analytics.html en Client.html en werk de implementatie bij naar de juiste versie.']
+    UI_FILE_INDEX: ['Dashboardbestand ontbreekt', 'Index.html kon niet worden gelezen. Maak in Apps Script een HTML-bestand met de naam Index en kopieer de huidige inhoud uit src/Index.html.'],
+    UI_FILE_STYLES: ['Dashboardbestand ontbreekt', 'Styles.html kon niet worden gelezen. Maak in Apps Script een HTML-bestand met de naam Styles en kopieer de huidige inhoud uit src/Styles.html.'],
+    UI_FILE_ANALYTICS: ['Dashboardbestand ontbreekt', 'Analytics.html kon niet worden gelezen. Maak in Apps Script een HTML-bestand met de naam Analytics en kopieer de huidige inhoud uit src/Analytics.html.'],
+    UI_FILE_CLIENT: ['Dashboardbestand ontbreekt', 'Client.html kon niet worden gelezen. Maak in Apps Script een HTML-bestand met de naam Client en kopieer de huidige inhoud uit src/Client.html.'],
+    UI_INDEX_MARKERS: ['Dashboardbestanden horen niet bij elkaar', 'Index.html bevat niet alle verwachte invoegpunten. Neem Index.html, Styles.html, Analytics.html en Client.html uit dezelfde repositoryversie over.'],
+    PAGE_RENDER_FAILED: ['Dashboard kon niet starten', 'De vier HTML-bestanden zijn gevonden, maar de pagina kon niet worden opgebouwd. Werk de Apps Script-implementatie bij naar de nieuwste repositoryversie.']
   };
   const safeCode = Object.prototype.hasOwnProperty.call(messages, code) ? code : 'PAGE_RENDER_FAILED';
   return { code: safeCode, title: messages[safeCode][0], message: messages[safeCode][1] };
@@ -58,16 +63,51 @@ function doGet() {
     return startupErrorPage_(configurationFailure_(error));
   }
   try {
-    return HtmlService.createTemplateFromFile('Index').evaluate()
-      .setTitle(CONFIG.title).addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    return renderDashboard_();
   } catch (error) {
-    return startupErrorPage_(dashboardErrorInfo_('PAGE_RENDER_FAILED'));
+    const code = error && typeof error.dashboardCode === 'string' && error.dashboardCode.startsWith('UI_')
+      ? error.dashboardCode : 'PAGE_RENDER_FAILED';
+    return startupErrorPage_(dashboardErrorInfo_(code));
   }
 }
 
-function include_(name) {
-  if (!['Styles', 'Analytics', 'Client'].includes(name)) throw new Error('Onbekend bestand.');
-  return HtmlService.createHtmlOutputFromFile(name).getContent();
+function readUiFile_(name) {
+  if (!['Index', 'Styles', 'Analytics', 'Client'].includes(name)) throw dashboardError_('PAGE_RENDER_FAILED');
+  try {
+    return HtmlService.createHtmlOutputFromFile(name).getContent();
+  } catch (error) {
+    throw dashboardError_('UI_FILE_' + name.toUpperCase());
+  }
+}
+
+function renderDashboard_() {
+  let html = readUiFile_('Index');
+  const parts = [
+    ['<!-- WORKSHOPKOMPAS_STYLES -->', 'Styles'],
+    ['<!-- WORKSHOPKOMPAS_ANALYTICS -->', 'Analytics'],
+    ['<!-- WORKSHOPKOMPAS_CLIENT -->', 'Client']
+  ];
+  parts.forEach(part => {
+    const marker = part[0];
+    if (html.indexOf(marker) === -1) throw dashboardError_('UI_INDEX_MARKERS');
+    html = html.replace(marker, readUiFile_(part[1]));
+  });
+  if (html.indexOf('WORKSHOPKOMPAS_') !== -1) throw dashboardError_('UI_INDEX_MARKERS');
+  return HtmlService.createHtmlOutput(html)
+    .setTitle(CONFIG.title).addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/** Run this manually in the Apps Script editor. It never reads workshop data. */
+function diagnoseDashboard_() {
+  requireAccess_();
+  settings_();
+  const bytes = {};
+  ['Index', 'Styles', 'Analytics', 'Client'].forEach(name => {
+    bytes[name] = readUiFile_(name).length;
+  });
+  renderDashboard_();
+  console.log(JSON.stringify({ ok: true, files: bytes }));
+  return { ok: true, files: bytes };
 }
 
 /** The only data RPC. No original rows, contacts, notes, credentials or IDs leave the server. */

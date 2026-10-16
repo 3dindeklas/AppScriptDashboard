@@ -171,40 +171,59 @@ test('deleted sources property uses Config.gs; valid JSON still loads live; demo
     assert.equal(authContext('a@test.nl',{...props,DEMO_MODE:value}).getDashboardData().error.code,'CONFIG_DEMO_MODE');
   }
 });
-function htmlMock(evaluate) {
-  return {createHtmlOutput:html=>({html,setTitle(){return this;},addMetaTag(){return this;}}),
-    createTemplateFromFile:()=>({evaluate})};
+function htmlMock(overrides={}) {
+  const files={
+    Index:'<html><!-- WORKSHOPKOMPAS_STYLES --><!-- WORKSHOPKOMPAS_ANALYTICS --><!-- WORKSHOPKOMPAS_CLIENT --></html>',
+    Styles:'<style>body{color:green}</style>', Analytics:'<script>const a=1;</script>', Client:'<script>const b=2;</script>',
+    ...overrides
+  };
+  let reads=0;
+  return {get reads(){return reads;},createHtmlOutput:html=>({html,setTitle(){return this;},addMetaTag(){return this;}}),
+    createHtmlOutputFromFile:name=>{reads++;if(files[name] instanceof Error)throw files[name];return {getContent:()=>files[name]};}};
 }
-test('doGet denies unauthorized users before parsing config or evaluating templates',()=> {
-  let evaluated=false;
+test('doGet denies unauthorized users before parsing config or reading UI files',()=> {
+  const service=htmlMock();
   const c=authContext('outsider@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl',DASHBOARD_SOURCES:'bad json'},
-    {console:{error:()=>{}},HtmlService:htmlMock(()=>{evaluated=true;})});
+    {console:{error:()=>{}},HtmlService:service});
   const html=c.doGet().html;
-  assert.match(html,/<h1>Geen toegang<\/h1>/);assert.ok(!html.includes('CONFIG_'));assert.equal(evaluated,false);
+  assert.match(html,/<h1>Geen toegang<\/h1>/);assert.ok(!html.includes('CONFIG_'));assert.equal(service.reads,0);
   assert.throws(()=>c.getDashboardData(),/Geen toegang/);
 });
 test('doGet separates authorized configuration failures from access denials',()=> {
-  let evaluated=false,logs=[];
+  const service=htmlMock(),logs=[];
   const c=authContext('a@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl',DASHBOARD_SOURCES:'[{ secret: "private-sheet" }]'},
-    {console:{error:m=>logs.push(m)},HtmlService:htmlMock(()=>{evaluated=true;})});
+    {console:{error:m=>logs.push(m)},HtmlService:service});
   const html=c.doGet().html;
   assert.match(html,/<h1>Configuratiefout<\/h1>/);assert.match(html,/CONFIG_SOURCES_JSON/);
-  assert.ok(!html.includes('private-sheet'));assert.ok(!logs.join('').includes('private-sheet'));assert.equal(evaluated,false);
+  assert.ok(!html.includes('private-sheet'));assert.ok(!logs.join('').includes('private-sheet'));assert.equal(service.reads,0);
 });
-test('doGet labels template failure separately and never renders or logs raw exceptions',()=> {
-  const logs=[];
+test('doGet reports the exact missing UI file without rendering or logging raw exceptions',()=> {
+  for(const name of ['Index','Styles','Analytics','Client']) {
+    const logs=[],service=htmlMock({[name]:Error('<script>privateToken()</script>')});
+    const c=authContext('a@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl'},
+      {console:{error:m=>logs.push(m)},HtmlService:service});
+    const html=c.doGet().html;assert.match(html,new RegExp('UI_FILE_'+name.toUpperCase()));assert.ok(!html.includes('Geen toegang'));
+    assert.ok(!html.includes('privateToken'));assert.deepEqual(logs,['Workshopkompas: UI_FILE_'+name.toUpperCase()]);
+  }
+});
+test('mixed Index versions produce a specific marker error',()=> {
+  const service=htmlMock({Index:'<html>old template</html>'});
   const c=authContext('a@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl'},
-    {console:{error:m=>logs.push(m)},HtmlService:htmlMock(()=>{throw Error('<script>privateToken()</script>');})});
-  const html=c.doGet().html;assert.match(html,/PAGE_RENDER_FAILED/);assert.ok(!html.includes('Geen toegang'));
-  assert.ok(!html.includes('privateToken'));assert.deepEqual(logs,['Workshopkompas: PAGE_RENDER_FAILED']);
+    {console:{error:()=>{}},HtmlService:service});
+  assert.match(c.doGet().html,/UI_INDEX_MARKERS/);
 });
+
 test('unexpected identity-service error is not falsely reported as access denied',()=> {
-  const c=context({Session:{getActiveUser:()=>{throw Error('provider private details');}},console:{error:()=>{}},HtmlService:htmlMock(()=>{})});
+  const c=context({Session:{getActiveUser:()=>{throw Error('provider private details');}},console:{error:()=>{}},HtmlService:htmlMock()});
   const html=c.doGet().html;assert.match(html,/ACCESS_CHECK_FAILED/);assert.ok(!html.includes('provider private details'));
 });
-test('authorized doGet still serves the template and escapes diagnostic text',()=> {
+test('authorized doGet assembles all UI files, diagnostics pass, and fixed text is escaped',()=> {
+  const service=htmlMock();
   const c=authContext('a@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl'},
-    {console:{error:()=>{}},HtmlService:htmlMock(()=>({html:'dashboard',setTitle(){return this;},addMetaTag(){return this;}}))});
-  assert.equal(c.doGet().html,'dashboard');
+    {console:{log:()=>{},error:()=>{}},HtmlService:service});
+  const html=c.doGet().html;
+  assert.match(html,/body\{color:green\}/);assert.match(html,/const a=1/);assert.match(html,/const b=2/);
+  assert.ok(!html.includes('WORKSHOPKOMPAS_'));
+  assert.deepEqual(JSON.parse(JSON.stringify(c.diagnoseDashboard_())),{ok:true,files:{Index:106,Styles:32,Analytics:27,Client:27}});
   assert.match(c.startupErrorPage_(c.dashboardErrorInfo_('CONFIG_SOURCES_SHAPE')).html,/&quot;id&quot;/);
 });

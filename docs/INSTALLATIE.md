@@ -136,7 +136,16 @@ Controleer **Projectinstellingen → Script properties → DASHBOARD_SOURCES**:
 | `CONFIG_SOURCES_DISABLED` | Zet minimaal één bron aan. |
 | `CONFIG_DEMO_MODE` | Corrigeer de losse DEMO_MODE-property. |
 | `CONFIG_READ_FAILED` | Instellingen konden niet worden gelezen; controleer de projectconfiguratie. |
-| `PAGE_RENDER_FAILED` | Toegang en configuratie zijn gecontroleerd, maar het HTML-template kon niet worden opgebouwd. Controleer de vier HTML-bestanden. |
+| `UI_FILE_INDEX` | Het HTML-bestand `Index` ontbreekt of is niet leesbaar. |
+| `UI_FILE_STYLES` | Het HTML-bestand `Styles` ontbreekt of is niet leesbaar. |
+| `UI_FILE_ANALYTICS` | Het HTML-bestand `Analytics` ontbreekt of is niet leesbaar. |
+| `UI_FILE_CLIENT` | Het HTML-bestand `Client` ontbreekt of is niet leesbaar. |
+| `UI_INDEX_MARKERS` | De vier HTML-bestanden komen uit verschillende codeversies; neem ze samen over. |
+| `PAGE_RENDER_FAILED` | De bestanden zijn gevonden maar HtmlService kon het resultaat niet maken; werk de deployment bij. |
+
+De huidige versie gebruikt geen Apps Script-template-evaluatie meer. `Code.gs` leest de vier UI-bestanden rechtstreeks en voegt ze samen via vaste markeringen in `Index.html`. Dit voorkomt dat een fout in één include wordt verborgen als een algemene templatefout. Neem daarom bij deze wijziging minimaal **Code.gs én Index.html** samen over.
+
+Je kunt in de Apps Script-editor handmatig `diagnoseDashboard_` uitvoeren. De functie controleert toegang, instellingen, de vier bestandsnamen en de samenvoeging. Bij succes staat in het uitvoeringslog alleen `ok: true` en de bestandsgroottes; er worden geen workshopgegevens gelezen of gelogd. Bij een fout toont Apps Script de specifieke foutcode.
 
 Het scherm en het uitvoeringslog tonen alleen vooraf vastgelegde diagnostiek/foutcodes. De inhoud van properties, brongegevens en originele providerfouten wordt niet getoond. De `appsscript.json` in de repository is geldig JSON; houd projectinstellingen in `Config.gs`/Script Properties en voeg geen JavaScript toe aan het manifest.
 
