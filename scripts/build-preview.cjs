@@ -10,7 +10,7 @@ for (const file of ['Config.gs', 'Data.gs']) {
 const payload = {
   mode: 'demo',
   generatedAt: new Date().toISOString(),
-  records: vm.runInContext('demoRows_()', context)
+  records: vm.runInContext('demoRecords_().map(publicRecord_)', context)
 };
 
 let html = fs.readFileSync('src/Index.html', 'utf8').replace(

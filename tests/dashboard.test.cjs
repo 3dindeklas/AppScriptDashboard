@@ -19,16 +19,65 @@ function context(extra = {}) {
 }
 
 const headers = [
-  'Aanvraag ID', 'Datum aanvraag', 'Schoolnaam', 'Contactpersoon', 'E-mailadres',
-  'Gemeente / Regio', 'Workshopnaam', 'Aanbieder', 'Lesmomenten',
-  'Aantal leerlingen', 'PO / VO', 'Definitieve datum', 'Status', 'Notities'
+  '#', 'Aanvraag ID', 'Datum aanvraag', 'Schoolnaam', 'Contactpersoon',
+  'E-mailadres', 'Telefoon', 'Gemeente / Regio', '', 'Workshopnaam',
+  'Aanbieder', 'Lesmomenten', 'Aantal leerlingen', 'Groep / leerjaar',
+  'PO / VO', 'Gewenste periode', 'Definitieve datum', 'Locatie', 'Type', '',
+  'Punten per workshop', '', 'Prijs per workshop (aanbieder)',
+  'Reiskosten aanbieder', 'Extra kosten', 'Totale kosten aanbieder', '',
+  'Te factureren i_lab', 'Marge (€)', 'Marge (%)', '', 'Status',
+  'Laatste contactdatum', 'Actie nodig', 'Email Concept type',
+  'Email aangemaakt op', 'Email Concept ID', 'Calendar Event IDs',
+  'Email Source ID', 'Notities', 'Debug info'
 ];
 
-const row = [
-  'secret-id', '14-10-2026', 'School A', 'Privé Persoon', 'private@example.test',
-  'Ameide', '3D-sleutelhanger', '3Dindeklas', '2x', '24', 'po',
-  '20-11-2026', 'Ingepland', 'Niet naar de browser sturen'
-];
+const rowValues = {
+  '#': 1,
+  'Aanvraag ID': 'REQ-001',
+  'Datum aanvraag': '14-10-2026',
+  'Schoolnaam': 'School A',
+  'Contactpersoon': 'Privé Persoon',
+  'E-mailadres': 'private@example.test',
+  'Telefoon': '0612345678',
+  'Gemeente / Regio': 'Ameide',
+  'Workshopnaam': '3D-sleutelhanger',
+  'Aanbieder': '3Dindeklas',
+  'Lesmomenten': '2x',
+  'Aantal leerlingen': '24',
+  'Groep / leerjaar': 'groep 6/7/8',
+  'PO / VO': 'po',
+  'Gewenste periode': 'Najaar 2026',
+  'Definitieve datum': '20-11-2026',
+  'Locatie': 'Technieklokaal',
+  'Type': 'Workshop',
+  'Punten per workshop': '350',
+  'Prijs per workshop (aanbieder)': '€ 450,00',
+  'Reiskosten aanbieder': '25,50',
+  'Extra kosten': '10',
+  'Totale kosten aanbieder': '€ 485,50',
+  'Te factureren i_lab': '650,00',
+  'Marge (€)': '164,50',
+  'Marge (%)': '25,31%',
+  'Status': 'Akkoord',
+  'Laatste contactdatum': '01-11-2026',
+  'Actie nodig': 'Nee',
+  'Email Concept type': 'bevestiging',
+  'Email aangemaakt op': '02-11-2026',
+  'Email Concept ID': 'secret-draft-id',
+  'Calendar Event IDs': 'secret-calendar-id',
+  'Email Source ID': 'secret-source-id',
+  'Notities': 'Niet naar de browser sturen',
+  'Debug info': 'private-debug'
+};
+
+function row(overrides = {}) {
+  const values = { ...rowValues, ...overrides };
+  return headers.map(header => header ? (values[header] ?? '') : '');
+}
+
+function normalize(matrix = [headers, row()]) {
+  return context().normalizeSheet_(matrix, 'Stichting A');
+}
 
 test('serverbestanden bevatten geen browser-API\'s', () => {
   for (const file of fs.readdirSync('src').filter(name => name.endsWith('.gs'))) {
@@ -44,59 +93,155 @@ test('Index gebruikt uitsluitend de officiële include-opzet', () => {
   assert.doesNotMatch(index, /include_/);
 });
 
-test('demo werkt zonder configuratie en bevat beide stichtingen', () => {
+test('demo blijft werken en de browser ontvangt alleen de bestaande veilige velden', () => {
   const payload = context().getDashboardData();
   assert.equal(payload.mode, 'demo');
   assert.equal(payload.records.length, 10);
   assert.deepEqual([...new Set(payload.records.map(record => record.source))].sort(), ['Stichting A', 'Stichting B']);
+  assert.deepEqual(Object.keys(payload.records[0]).sort(), [
+    'date', 'provider', 'region', 'sector', 'sessions', 'source', 'status', 'students', 'workshop'
+  ]);
 });
 
-test('kolommen worden op naam gekoppeld en privacyvelden verlaten de server niet', () => {
-  const result = context().mapSheetRows_([headers, row], 'Stichting A');
-  assert.equal(result.length, 1);
-  assert.deepEqual(JSON.parse(JSON.stringify(result[0])), {
-    source: 'Stichting A',
-    date: '2026-11-20',
-    workshop: '3D-sleutelhanger',
-    provider: '3Dindeklas',
-    region: 'Ameide',
-    sector: 'PO',
-    status: 'Ingepland',
-    sessions: 2,
-    students: 24
-  });
+test('volledige kolomstructuur wordt naar één intern record genormaliseerd', () => {
+  const result = normalize();
+  assert.equal(result.records.length, 1);
+  const record = result.records[0];
 
-  const json = JSON.stringify(result);
-  for (const privateValue of ['secret-id', 'Privé Persoon', 'private@example.test', 'Niet naar de browser sturen', 'School A']) {
-    assert.ok(!json.includes(privateValue));
+  assert.equal(record.requestId, 'REQ-001');
+  assert.equal(record.requestedDate, '2026-10-14');
+  assert.equal(record.scheduledDate, '2026-11-20');
+  assert.equal(record.schoolYear, '2026–2027');
+  assert.equal(record.school, 'School A');
+  assert.equal(record.schoolKey, 'school a|ameide');
+  assert.equal(record.workshop, '3D-sleutelhanger');
+  assert.equal(record.sessions, 2);
+  assert.equal(record.students, 24);
+  assert.deepEqual(Array.from(record.grades), [6, 7, 8]);
+  assert.equal(record.statusGroup, 'Ingepland');
+  assert.equal(record.providerWorkshopPrice, 450);
+  assert.equal(record.providerTotalCosts, 485.5);
+  assert.equal(record.invoiceAmount, 650);
+  assert.equal(record.marginAmount, 164.5);
+  assert.equal(record.marginPercent, 25.31);
+  assert.equal(record.financialComplete, true);
+  assert.equal(record.lastContactDate, '2026-11-01');
+});
+
+test('kolomvolgorde en lege spacer-kolommen veranderen het resultaat niet', () => {
+  const original = normalize();
+  const reversed = normalize([headers.slice().reverse(), row().slice().reverse()]);
+  assert.deepEqual(JSON.parse(JSON.stringify(reversed)), JSON.parse(JSON.stringify(original)));
+});
+
+test('dubbele niet-lege kolomkoppen worden geweigerd maar lege spacers niet', () => {
+  assert.equal(normalize().records.length, 1);
+  assert.throws(
+    () => normalize([headers.concat(' Schoolnaam '), row().concat('Tweede school')]),
+    /Dubbele kolomkop.*Schoolnaam/
+  );
+  assert.throws(
+    () => context().normalizeSheet_([['Status'], ['Open']], 'Stichting A'),
+    /kolom Workshopnaam ontbreekt in Stichting A/
+  );
+});
+
+test('Nederlandse getallen blijven onderscheid maken tussen nul, leeg en ongeldig', () => {
+  const ctx = context();
+  for (const [value, expected] of [
+    ['€ 1.234,50', 1234.5], ['1.234', 1234], ['25,5', 25.5],
+    ['25.5', 25.5], [0, 0], ['0', 0], ['', null], ['n.v.t.', null],
+    ['12 leerlingen', null], [Infinity, null]
+  ]) {
+    assert.equal(ctx.numberValue_(value), expected);
   }
 });
 
-test('Nederlandse getallen en datums worden eenvoudig verwerkt', () => {
+test('aantallen accepteren alleen gehele niet-negatieve waarden', () => {
   const ctx = context();
-  assert.equal(ctx.numberValue_('€ 1.234,50'), 1234.5);
-  assert.equal(ctx.numberValue_('2x'), 2);
-  assert.equal(ctx.numberValue_(''), 0);
+  assert.equal(ctx.countValue_('2x'), 2);
+  assert.equal(ctx.countValue_(0), 0);
+  assert.equal(ctx.countValue_('24'), 24);
+  assert.equal(ctx.countValue_(2.5), null);
+  assert.equal(ctx.countValue_(-1), null);
+  assert.equal(ctx.countValue_('12 leerlingen'), null);
+  assert.equal(ctx.countValue_(''), null);
+});
+
+test('datums ondersteunen Google Date, Nederlands, ISO en Excel-serienummers', () => {
+  const ctx = context();
+  assert.equal(ctx.dateValue_(new Date('2026-10-14T12:00:00Z')), '2026-10-14');
   assert.equal(ctx.dateValue_('14/10/2026'), '2026-10-14');
   assert.equal(ctx.dateValue_('2026-10-14'), '2026-10-14');
-  assert.equal(ctx.dateValue_('morgen'), '');
+  assert.equal(ctx.dateValue_(45000), '2023-03-15');
+  for (const value of ['31-02-2026', '2026-13-01', 'morgen', '', null]) {
+    assert.equal(ctx.dateValue_(value), null);
+  }
 });
 
-test('lege rijen worden genegeerd en ontbrekende waarden krijgen een veilig label', () => {
+test('statuswaarden worden in vaste groepen geplaatst', () => {
+  const ctx = context();
+  for (const [status, group] of [
+    ['Nieuw', 'Open'], ['Contact gelegd', 'Open'], ['Optie', 'Open'],
+    ['Akkoord', 'Ingepland'], ['Bevestiging', 'Ingepland'],
+    ['Uitgevoerd', 'Uitgevoerd'], ['Afgezegd', 'Geannuleerd'],
+    ['Volgend schooljaar', 'Volgend schooljaar'], ['Anders', 'Overig']
+  ]) {
+    assert.equal(ctx.statusGroup_(status), group);
+  }
+});
+
+test('schooljaar wisselt op 1 augustus', () => {
+  const ctx = context();
+  assert.equal(ctx.schoolYear_('2026-07-31'), '2025–2026');
+  assert.equal(ctx.schoolYear_('2026-08-01'), '2026–2027');
+  assert.equal(ctx.schoolYear_(null), null);
+});
+
+test('combinatiegroepen en leerjaren worden sectorgebonden verwerkt', () => {
+  const ctx = context();
+  assert.deepEqual(Array.from(ctx.gradeValues_('groep 3 t/m 5', 'PO')), [3, 4, 5]);
+  assert.deepEqual(Array.from(ctx.gradeValues_('6/7/8', 'PO')), [6, 7, 8]);
+  assert.deepEqual(Array.from(ctx.gradeValues_('leerjaar 1/2', 'VO')), [1, 2]);
+  assert.deepEqual(Array.from(ctx.gradeValues_('6/7', 'VO')), []);
+  assert.deepEqual(Array.from(ctx.gradeValues_('brugklas', 'VO')), []);
+  assert.deepEqual(Array.from(ctx.gradeValues_('5-3', 'PO')), []);
+});
+
+test('ontbrekende IDs, dubbele IDs en ongeldige waarden worden geteld', () => {
   const empty = Array(headers.length).fill('');
-  const partial = Array(headers.length).fill('');
-  partial[headers.indexOf('Workshopnaam')] = 'Paper Circuits';
-  const result = context().mapSheetRows_([headers, empty, partial], 'Stichting B');
-  assert.equal(result.length, 1);
-  assert.equal(result[0].status, 'Onbekend');
-  assert.equal(result[0].sector, 'Onbekend');
+  const result = normalize([
+    headers,
+    row(),
+    row({ 'Schoolnaam': 'School B' }),
+    row({ 'Aanvraag ID': '', 'Datum aanvraag': '31-02-2026', 'Definitieve datum': 'morgen', 'Aantal leerlingen': 'veel', 'PO / VO': 'MBO' }),
+    empty
+  ]);
+
+  assert.equal(result.records.length, 3);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.warnings)), {
+    emptyRows: 1,
+    missingRequestIds: 1,
+    duplicateRequestIds: 1,
+    invalidRequestedDates: 1,
+    invalidScheduledDates: 1,
+    invalidStudentCounts: 1,
+    unknownSectors: 1
+  });
 });
 
-test('een ontbrekende kolom Workshopnaam geeft een leesbare fout', () => {
-  assert.throws(
-    () => context().mapSheetRows_([['Status'], ['Open']], 'Stichting A'),
-    /kolom Workshopnaam ontbreekt in Stichting A/
-  );
+test('privacyvelden en intern voorbereide velden verlaten getDashboardData niet', () => {
+  const internal = normalize().records[0];
+  const publicRecord = context().publicRecord_(internal);
+  const json = JSON.stringify(publicRecord);
+
+  for (const privateValue of [
+    'REQ-001', 'School A', 'Privé Persoon', 'private@example.test', '0612345678',
+    'Technieklokaal', 'secret-draft-id', 'secret-calendar-id', 'secret-source-id',
+    'Niet naar de browser sturen', 'private-debug', '485.5', '650', '164.5'
+  ]) {
+    assert.ok(!json.includes(privateValue), privateValue);
+  }
 });
 
 test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {
@@ -106,13 +251,14 @@ test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {
     getLastColumn: () => headers.length,
     getRange: (...args) => {
       requestedRange = args;
-      return { getValues: () => [headers, row, row] };
+      return { getValues: () => [headers, row(), row({ 'Aanvraag ID': 'REQ-002' })] };
     }
   };
   const ctx = context({ SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) } });
   const result = ctx.readGoogleSheet_({ name: 'Stichting A', spreadsheetId: 'test', sheetName: 'Workshops', headerRow: 8 });
   assert.deepEqual(requestedRange, [8, 1, 3, headers.length]);
-  assert.equal(result.length, 2);
+  assert.equal(result.records.length, 2);
+  assert.equal(result.warnings.duplicateRequestIds, 0);
 });
 
 test('doGet en include volgen rechtstreeks de HtmlService-methoden', () => {

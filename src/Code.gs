@@ -24,11 +24,11 @@ function include(filename) {
  * Contactgegevens, notities en technische ID's worden niet teruggestuurd.
  */
 function getDashboardData() {
-  const records = APP_CONFIG.demoMode ? demoRows_() : readConfiguredSheets_();
+  const internalRecords = APP_CONFIG.demoMode ? demoRecords_() : readConfiguredSheets_();
 
   return {
     mode: APP_CONFIG.demoMode ? 'demo' : 'live',
     generatedAt: new Date().toISOString(),
-    records: records
+    records: internalRecords.map(publicRecord_)
   };
 }
