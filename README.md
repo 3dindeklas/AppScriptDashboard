@@ -15,11 +15,13 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - maximaal 5.000 regels per bron, configureerbaar tot een harde grens van 10.000;
 - gegevens asynchroon ophalen met `google.script.run`;
 - negen combineerbare filters: stichting, schooljaar, regio, PO/VO, aanbieder, workshop, statusgroep, school en type;
+- inclusief maandbereik op aanvraagdatum of definitieve datum en een bereik voor leerlingaantallen;
+- expliciete keuzes om regels zonder datum of leerlingaantal wel of niet mee te nemen;
 - kerncijfers, twee eenvoudige staafgrafieken en een recente-workshoptabel;
 - uitsluitend centraal toegestane analysevelden naar de browser; geen namen van contactpersonen, e-mailadressen, telefoonnummers, notities of technische ID's;
 - demomodus zonder databronnen, maar nooit zonder toegangscontrole.
 
-Microsoft 365, rollen, financiële rapportages, uitgebreide grafieken en range sliders zijn bewust nog niet opgenomen. Die voegen we pas toe nadat deze basis in Apps Script werkt.
+Microsoft 365, rollen, financiële rapportages en uitgebreide grafieken zijn bewust nog niet opgenomen. Die voegen we pas in de bijbehorende roadmapstap toe.
 
 ## Bestanden
 

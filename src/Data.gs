@@ -16,7 +16,8 @@ const STATUS_GROUPS_ = Object.freeze({
 /** Enige centrale allowlist van recordvelden die de browser mag ontvangen. */
 const PUBLIC_RECORD_FIELDS_ = Object.freeze([
   'source',
-  'date',
+  'requestedDate',
+  'scheduledDate',
   'schoolYear',
   'school',
   'workshop',
@@ -242,11 +243,12 @@ function normalizeRow_(row, header, sourceName, parsed) {
   };
 }
 
-/** Expliciete browserprojectie. Interne IDs, scholen, locaties en financiën blijven server-side. */
+/** Expliciete browserprojectie. Interne IDs, contactdata, locaties en financiën blijven server-side. */
 function publicRecord_(record) {
   const prepared = {
     source: record.source,
-    date: record.scheduledDate || record.requestedDate || '',
+    requestedDate: record.requestedDate || '',
+    scheduledDate: record.scheduledDate || '',
     schoolYear: record.schoolYear || 'Onbekend',
     school: record.school || 'Onbekende school',
     workshop: record.workshop,
@@ -507,12 +509,14 @@ function demoRecords_() {
     ['demo-b-4', 'Stichting B', '2026-10-06', 'Voorbeeldcollege Zuid', 'Parachute-uitdaging', 'Techniekteam', 'IJsselstein', 'VO', 'leerjaar 2', 'Optie', 2, 30],
     ['demo-b-5', 'Stichting B', '2026-10-15', 'Voorbeeldschool Het Atelier', 'Greenscreen stop-motion', '3Dindeklas', 'Gorinchem', 'PO', 'groep 6/7', 'Bevestiging', 2, 24]
   ].map(function(row) {
+    const scheduledDate = row[0] === 'demo-a-4' ? null : row[2];
+    const students = row[0] === 'demo-b-4' ? null : row[11];
     return {
-      requestId: row[0], source: row[1], requestedDate: row[2], scheduledDate: row[2],
+      requestId: row[0], source: row[1], requestedDate: row[2], scheduledDate: scheduledDate,
       schoolYear: schoolYear_(row[2]), school: row[3], schoolKey: schoolKey_(row[3], row[6]),
       workshop: row[4], provider: row[5], region: row[6], sector: row[7],
       gradeLabel: row[8], grades: gradeValues_(row[8], row[7]), status: row[9],
-      statusGroup: statusGroup_(row[9]), sessions: row[10], students: row[11],
+      statusGroup: statusGroup_(row[9]), sessions: row[10], students: students,
       desiredPeriod: '', location: '', type: 'Workshop', points: null,
       providerWorkshopPrice: null, travelCosts: null, extraCosts: null,
       providerTotalCosts: null, invoiceAmount: null, marginAmount: null,

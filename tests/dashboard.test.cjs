@@ -56,17 +56,29 @@ function clientHarness(records) {
     'refreshButton', 'resetButton', 'message', 'modeBadge', 'updatedAt',
     'sourceSummary', 'sourceCards', 'sourceFilter', 'schoolYearFilter',
     'regionFilter', 'sectorFilter', 'providerFilter', 'workshopFilter',
-    'statusGroupFilter', 'schoolFilter', 'typeFilter', 'resultCount',
-    'kpis', 'statusChart', 'workshopChart', 'recentRows'
+    'statusGroupFilter', 'schoolFilter', 'typeFilter', 'dateBasis',
+    'dateFromRange', 'dateToRange', 'dateFromValue', 'dateToValue',
+    'includeUnknownDate', 'studentsFromRange', 'studentsToRange',
+    'studentsFromValue', 'studentsToValue', 'includeUnknownStudents',
+    'resultCount', 'kpis', 'statusChart', 'workshopChart', 'recentRows',
+    'recentDateHeading'
   ];
-  const selectIds = new Set(ids.filter(id => id.endsWith('Filter')));
+  const selectIds = new Set([
+    'sourceFilter', 'schoolYearFilter', 'regionFilter', 'sectorFilter',
+    'providerFilter', 'workshopFilter', 'statusGroupFilter', 'schoolFilter',
+    'typeFilter', 'dateBasis'
+  ]);
 
   function element(tagName = 'div', isSelect = false) {
     const listeners = {};
     const classNames = new Set();
+    const attributes = {};
     return {
       tagName: tagName.toUpperCase(),
       value: '',
+      checked: false,
+      min: '',
+      max: '',
       textContent: '',
       className: '',
       hidden: false,
@@ -78,6 +90,8 @@ function clientHarness(records) {
         add: (...names) => names.forEach(name => classNames.add(name)),
         remove: (...names) => names.forEach(name => classNames.delete(name))
       },
+      setAttribute(name, value) { attributes[name] = String(value); },
+      getAttribute(name) { return attributes[name]; },
       addEventListener(type, handler) { listeners[type] = handler; },
       trigger(type) { if (listeners[type]) listeners[type](); },
       appendChild(child) {
@@ -92,6 +106,9 @@ function clientHarness(records) {
   }
 
   const elements = Object.fromEntries(ids.map(id => [id, element('div', selectIds.has(id))]));
+  elements.dateBasis.value = 'scheduledDate';
+  elements.includeUnknownDate.checked = true;
+  elements.includeUnknownStudents.checked = true;
   const document = {
     getElementById: id => elements[id],
     createElement: tagName => element(tagName, tagName === 'select')
@@ -208,6 +225,20 @@ test('alle stap-4-filters blijven gelabelde native selects voor toetsenbordbedie
   assert.doesNotMatch(index, /tabindex\s*=\s*["']-1["']/i);
 });
 
+test('bereikfilters gebruiken gelabelde native invoervelden en leesbare outputs', () => {
+  const index = fs.readFileSync('src/Index.html', 'utf8');
+  for (const id of ['dateFromRange', 'dateToRange', 'studentsFromRange', 'studentsToRange']) {
+    assert.match(index, new RegExp('<label for="' + id + '">[\\s\\S]*?</label>[\\s\\S]*?<input id="' + id + '" type="range"'));
+    assert.match(index, new RegExp('<output id="[^"]+"[^>]+for="' + id + '"'));
+  }
+  for (const id of ['includeUnknownDate', 'includeUnknownStudents']) {
+    assert.match(index, new RegExp('<label class="check-label">[\\s\\S]*?<input id="' + id + '" type="checkbox" checked>[\\s\\S]*?</label>'));
+  }
+  assert.match(index, /<fieldset class="range-card">/);
+  assert.match(index, /<legend>Periode<\/legend>/);
+  assert.match(index, /<legend>Aantal leerlingen<\/legend>/);
+});
+
 test('demo blijft werken en de browser ontvangt alleen de bestaande veilige velden', () => {
   const payload = context().getDashboardData();
   assert.equal(payload.mode, 'demo');
@@ -218,9 +249,12 @@ test('demo blijft werken en de browser ontvangt alleen de bestaande veilige veld
     ['Stichting B', 'demo', 5]
   ]);
   assert.deepEqual([...new Set(payload.records.map(record => record.source))].sort(), ['Stichting A', 'Stichting B']);
+  assert.equal(payload.records.filter(record => !record.scheduledDate).length, 1);
+  assert.equal(payload.records.filter(record => record.students === null).length, 1);
   assert.deepEqual(Object.keys(payload.records[0]).sort(), [
-    'date', 'provider', 'region', 'school', 'schoolYear', 'sector', 'sessions',
-    'source', 'status', 'statusGroup', 'students', 'type', 'workshop'
+    'provider', 'region', 'requestedDate', 'scheduledDate', 'school', 'schoolYear',
+    'sector', 'sessions', 'source', 'status', 'statusGroup', 'students', 'type',
+    'workshop'
   ]);
 });
 
@@ -382,9 +416,12 @@ test('filtervelden verlaten gecontroleerd de server maar privacyvelden niet', ()
   const json = JSON.stringify(publicRecord);
 
   assert.deepEqual(Object.keys(publicRecord), [
-    'source', 'date', 'schoolYear', 'school', 'workshop', 'provider', 'region',
-    'sector', 'status', 'statusGroup', 'type', 'sessions', 'students'
+    'source', 'requestedDate', 'scheduledDate', 'schoolYear', 'school',
+    'workshop', 'provider', 'region', 'sector', 'status', 'statusGroup', 'type',
+    'sessions', 'students'
   ]);
+  assert.equal(publicRecord.requestedDate, '2026-10-14');
+  assert.equal(publicRecord.scheduledDate, '2026-11-20');
   assert.equal(publicRecord.schoolYear, '2026–2027');
   assert.equal(publicRecord.school, 'School A');
   assert.equal(publicRecord.statusGroup, 'Ingepland');
@@ -458,6 +495,82 @@ test('schooljaren staan met het nieuwste jaar bovenaan', () => {
   assert.deepEqual(elements.schoolYearFilter.options.slice(1).map(option => option.value), [
     '2027–2028', '2026–2027', '2025–2026'
   ]);
+});
+
+test('maand- en leerlingbereik filteren inclusief en reageren direct', () => {
+  const records = [
+    { requestedDate: '2026-01-15', scheduledDate: '2026-03-01', students: 10, workshop: 'A' },
+    { requestedDate: '2026-02-01', scheduledDate: '2026-04-30', students: 20, workshop: 'B' },
+    { requestedDate: '2026-03-31', scheduledDate: '2026-05-01', students: 30, workshop: 'C' },
+    { requestedDate: '', scheduledDate: '', students: null, workshop: 'Onbekend' }
+  ];
+  const elements = clientHarness(records);
+
+  assert.equal(elements.resultCount.textContent, '4 van 4 workshops zichtbaar');
+  assert.equal(elements.dateFromValue.textContent, 'maart 2026');
+  assert.equal(elements.dateToValue.textContent, 'mei 2026');
+  assert.equal(elements.dateFromRange.getAttribute('aria-valuetext'), 'maart 2026');
+  assert.equal(elements.studentsToRange.getAttribute('aria-valuetext'), '30 leerlingen');
+
+  elements.dateFromRange.value = 1;
+  elements.dateFromRange.trigger('input');
+  elements.dateToRange.value = 1;
+  elements.dateToRange.trigger('input');
+  elements.includeUnknownDate.checked = false;
+  elements.includeUnknownDate.trigger('change');
+  assert.equal(elements.resultCount.textContent, '1 van 4 workshops zichtbaar');
+
+  elements.studentsFromRange.value = 20;
+  elements.studentsFromRange.trigger('input');
+  elements.studentsToRange.value = 20;
+  elements.studentsToRange.trigger('input');
+  assert.equal(elements.resultCount.textContent, '1 van 4 workshops zichtbaar');
+});
+
+test('datumsoort, onbekende waarden en Filters wissen blijven voorspelbaar', () => {
+  const records = [
+    { requestedDate: '2026-01-15', scheduledDate: '2026-03-01', students: 10, workshop: 'A' },
+    { requestedDate: '2026-02-01', scheduledDate: '2026-04-30', students: 20, workshop: 'B' },
+    { requestedDate: '2026-03-31', scheduledDate: '2026-05-01', students: 30, workshop: 'C' },
+    { requestedDate: '', scheduledDate: '', students: null, workshop: 'Onbekend' }
+  ];
+  const elements = clientHarness(records);
+
+  elements.includeUnknownDate.checked = false;
+  elements.includeUnknownDate.trigger('change');
+  assert.equal(elements.resultCount.textContent, '3 van 4 workshops zichtbaar');
+  elements.includeUnknownDate.checked = true;
+  elements.includeUnknownDate.trigger('change');
+  elements.includeUnknownStudents.checked = false;
+  elements.includeUnknownStudents.trigger('change');
+  assert.equal(elements.resultCount.textContent, '3 van 4 workshops zichtbaar');
+
+  elements.dateBasis.value = 'requestedDate';
+  elements.dateBasis.trigger('change');
+  assert.equal(elements.recentDateHeading.textContent, 'Datum aanvraag');
+  assert.equal(elements.dateFromValue.textContent, 'januari 2026');
+  assert.equal(elements.dateToValue.textContent, 'maart 2026');
+
+  elements.dateToRange.value = 0;
+  elements.dateToRange.trigger('input');
+  elements.dateFromRange.value = 2;
+  elements.dateFromRange.trigger('input');
+  assert.equal(Number(elements.dateToRange.value), 2);
+  elements.dateToRange.value = 0;
+  elements.dateToRange.trigger('input');
+  assert.equal(Number(elements.dateFromRange.value), 0);
+
+  elements.studentsToRange.value = 10;
+  elements.studentsToRange.trigger('input');
+  elements.studentsFromRange.value = 30;
+  elements.studentsFromRange.trigger('input');
+  assert.equal(Number(elements.studentsToRange.value), 30);
+
+  elements.resetButton.trigger('click');
+  assert.equal(elements.dateBasis.value, 'scheduledDate');
+  assert.equal(elements.includeUnknownDate.checked, true);
+  assert.equal(elements.includeUnknownStudents.checked, true);
+  assert.equal(elements.resultCount.textContent, '4 van 4 workshops zichtbaar');
 });
 
 test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {

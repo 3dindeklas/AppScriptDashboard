@@ -42,12 +42,13 @@ Contactpersoon, e-mailadres, telefoon, notities, debuggegevens en e-mail-/kalend
 
 ## Browserprojectie
 
-`getDashboardData()` geeft uitsluitend de centraal toegestane velden voor de huidige interface en stap-4-filters door:
+`getDashboardData()` geeft uitsluitend de centraal toegestane velden voor de huidige interface en filters door:
 
 | Browserveld | Bron |
 | --- | --- |
 | `source` | `source` |
-| `date` | `scheduledDate`, anders `requestedDate` |
+| `requestedDate` | `requestedDate`, anders lege tekst |
+| `scheduledDate` | `scheduledDate`, anders lege tekst |
 | `schoolYear` | `schoolYear`, anders `Onbekend` |
 | `school` | `school`, anders `Onbekende school` |
 | `workshop` | `workshop` |
@@ -65,6 +66,14 @@ Aanvraag-ID, schoolKey, locatie, leerjaren, contactgegevens en financiële velde
 ## Dropdownfilters
 
 De negen filters vergelijken steeds de exacte genormaliseerde waarde. Alle actieve dropdowns worden met `EN` gecombineerd: een workshopregel moet dus aan iedere gekozen waarde voldoen. De opties worden opnieuw uit de geladen gegevens opgebouwd na verversen. Schooljaren staan aflopend; overige opties alfabetisch volgens Nederlandse sortering.
+
+## Datum- en bereikfilters
+
+De gebruiker kiest of het maandbereik op `requestedDate` of `scheduledDate` werkt. De eerste dag tot en met de laatste dag van de gekozen eindmaand telt mee; een workshop op 30 april valt dus binnen een bereik dat eindigt in april. De sliderwaarden worden opgebouwd vanaf de vroegste tot en met de laatste geldige maand in de geladen data.
+
+Het leerlingbereik gebruikt uitsluitend gehele, niet-negatieve aantallen. De minimum- en maximumslider starten op de laagste en hoogste bekende waarde. Onder- en bovengrens kunnen elkaar niet passeren.
+
+Een lege of ongeldige datum en een leeg of ongeldig leerlingaantal blijven onbekend. Zulke regels worden alleen meegenomen wanneer de bijbehorende keuze **zonder datum meenemen** of **zonder leerlingaantal meenemen** aanstaat. Beide keuzes staan standaard aan, zodat het eerste overzicht en **Filters wissen** alle workshopregels tonen.
 
 ## Getallen en bedragen
 
