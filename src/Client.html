@@ -112,6 +112,7 @@
     $('notice').hidden = false; $('notice').className = 'notice'; $('notice').textContent = 'Gegevens worden opgehaald…';
     const done = payload => {
       if (run !== sequence) return;
+      if (payload && payload.error) { fail(payload.error, true); return; }
       data = payload; initialize();
       $('refresh').disabled = false; $('overview').removeAttribute('aria-busy');
       $('mode').textContent = data.demo ? 'DEMO · fictieve gegevens' : 'Live brongegevens';
@@ -121,13 +122,20 @@
       $('notice').hidden = !data.demo && !errors;
       $('notice').textContent = data.demo ? 'Je bekijkt fictieve voorbeeldgegevens. De stichtingen, scholen en cijfers zijn uitsluitend bedoeld om het dashboard te bekijken.' : errors === data.sources.length ? 'Geen bron kon worden geladen. De getoonde nullen zijn geen rapportagecijfers. Controleer Bronnen & datakwaliteit.' : errors + ' bron(nen) niet geladen: dit overzicht is onvolledig. Bekijk Bronnen & datakwaliteit.';
     };
-    const fail = () => {
+    const fail = (error, configuration = false) => {
       if (run !== sequence) return;
       data = {records:[],sources:[]}; initialize();
       $('refresh').disabled = false; $('overview').removeAttribute('aria-busy');
       $('mode').textContent = 'Niet beschikbaar'; $('updated').textContent = 'Geen actuele gegevens';
       $('notice').hidden = false; $('notice').className = 'notice error';
-      $('notice').textContent = 'Laden mislukt. Controleer je toegang en de dashboardconfiguratie, en probeer opnieuw. Er worden geen oude cijfers getoond.';
+      // Only the explicit server envelope carries safe configuration diagnostics.
+      // Raw exceptions from withFailureHandler remain hidden.
+      if (configuration && error && typeof error.code === 'string' && error.code.startsWith('CONFIG_') && typeof error.message === 'string') {
+        $('mode').textContent = 'Configuratiefout';
+        $('notice').textContent = error.message + ' (Foutcode: ' + error.code + ')';
+      } else {
+        $('notice').textContent = 'Laden mislukt. Controleer je toegang en de dashboardconfiguratie, en probeer opnieuw. Er worden geen oude cijfers getoond.';
+      }
     };
     if (window.google?.script?.run) google.script.run.withSuccessHandler(done).withFailureHandler(fail).getDashboardData();
     else if (window.__DEMO_PAYLOAD__?.demo === true) done(window.__DEMO_PAYLOAD__);

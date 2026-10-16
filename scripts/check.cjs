@@ -7,4 +7,5 @@ for (const name of fs.readdirSync('src')) {
 }
 const manifest = JSON.parse(fs.readFileSync('src/appsscript.json','utf8'));
 if (manifest.webapp.executeAs !== 'USER_ACCESSING' || manifest.webapp.access !== 'ANYONE') throw Error('Unexpected deployment identity');
-console.log('Apps Script, browser JavaScript and manifest syntax OK.');
+JSON.parse(fs.readFileSync('docs/sources.example.json', 'utf8'));
+console.log('Apps Script, browser JavaScript, manifest and source-example syntax OK.');

@@ -139,3 +139,72 @@ test('demo contains both sources, fictional schools, and no hidden personal fiel
   assert.ok(p.records.every(r=>r.school.startsWith('Voorbeeldschool ')));
   assert.ok(!JSON.stringify(p).includes('@'));
 });
+
+test('invalid source JSON returns an actionable safe diagnostic, never demo fallback',()=> {
+  for (const invalid of ['[{ id: "secret-sheet" }]', "[{'id':'secret-sheet'}]", '[{"id":"secret-sheet",}]', '', '   ', '```json\n[]\n```']) {
+    const c=authContext('a@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl',DASHBOARD_SOURCES:invalid});
+    const payload=c.getDashboardData();
+    assert.equal(payload.error.code,'CONFIG_SOURCES_JSON');
+    assert.match(payload.error.message,/dubbele rechte aanhalingstekens/);
+    assert.equal(payload.records,undefined);assert.equal(payload.demo,undefined);
+    assert.ok(!JSON.stringify(payload).includes('secret-sheet'));
+  }
+});
+test('source config validates arrays, entries and booleans without incidental TypeErrors',()=> {
+  const cases=[['null','CONFIG_SOURCES_SHAPE'],['{}','CONFIG_SOURCES_SHAPE'],['[]','CONFIG_SOURCES_SHAPE'],
+    ['[null]','CONFIG_SOURCES_ENTRY'],['["source"]','CONFIG_SOURCES_ENTRY'],
+    ['[{"id":3,"label":"A"}]','CONFIG_SOURCES_ENTRY'],
+    ['[{"id":"a","label":"A","enabled":"false"}]','CONFIG_SOURCES_ENTRY'],
+    ['[{"id":"a","label":"A"},{"id":"a","label":"B"}]','CONFIG_SOURCES_ENTRY'],
+    ['[{"id":"a","label":"A","enabled":false}]','CONFIG_SOURCES_DISABLED']];
+  for(const [raw,expected] of cases) {
+    const c=authContext('a@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl',DASHBOARD_SOURCES:raw});
+    assert.equal(c.getDashboardData().error.code,expected);
+  }
+});
+test('deleted sources property uses Config.gs; valid JSON still loads live; demo typos fail closed',()=> {
+  const props={DASHBOARD_ALLOWED_EMAILS:'a@test.nl',DEMO_MODE:'true'};
+  assert.equal(authContext('a@test.nl',props).getDashboardData().demo,true);
+  const c=authContext('a@test.nl',{...props,DEMO_MODE:' false ',DASHBOARD_SOURCES:'[{"id":"a","label":"A","type":"googleSheets"}]'});
+  c.readSource_=()=>[headers,row];assert.equal(c.getDashboardData().records.length,1);
+  for(const value of ['yes','"false"','']) {
+    assert.equal(authContext('a@test.nl',{...props,DEMO_MODE:value}).getDashboardData().error.code,'CONFIG_DEMO_MODE');
+  }
+});
+function htmlMock(evaluate) {
+  return {createHtmlOutput:html=>({html,setTitle(){return this;},addMetaTag(){return this;}}),
+    createTemplateFromFile:()=>({evaluate})};
+}
+test('doGet denies unauthorized users before parsing config or evaluating templates',()=> {
+  let evaluated=false;
+  const c=authContext('outsider@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl',DASHBOARD_SOURCES:'bad json'},
+    {console:{error:()=>{}},HtmlService:htmlMock(()=>{evaluated=true;})});
+  const html=c.doGet().html;
+  assert.match(html,/<h1>Geen toegang<\/h1>/);assert.ok(!html.includes('CONFIG_'));assert.equal(evaluated,false);
+  assert.throws(()=>c.getDashboardData(),/Geen toegang/);
+});
+test('doGet separates authorized configuration failures from access denials',()=> {
+  let evaluated=false,logs=[];
+  const c=authContext('a@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl',DASHBOARD_SOURCES:'[{ secret: "private-sheet" }]'},
+    {console:{error:m=>logs.push(m)},HtmlService:htmlMock(()=>{evaluated=true;})});
+  const html=c.doGet().html;
+  assert.match(html,/<h1>Configuratiefout<\/h1>/);assert.match(html,/CONFIG_SOURCES_JSON/);
+  assert.ok(!html.includes('private-sheet'));assert.ok(!logs.join('').includes('private-sheet'));assert.equal(evaluated,false);
+});
+test('doGet labels template failure separately and never renders or logs raw exceptions',()=> {
+  const logs=[];
+  const c=authContext('a@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl'},
+    {console:{error:m=>logs.push(m)},HtmlService:htmlMock(()=>{throw Error('<script>privateToken()</script>');})});
+  const html=c.doGet().html;assert.match(html,/PAGE_RENDER_FAILED/);assert.ok(!html.includes('Geen toegang'));
+  assert.ok(!html.includes('privateToken'));assert.deepEqual(logs,['Workshopkompas: PAGE_RENDER_FAILED']);
+});
+test('unexpected identity-service error is not falsely reported as access denied',()=> {
+  const c=context({Session:{getActiveUser:()=>{throw Error('provider private details');}},console:{error:()=>{}},HtmlService:htmlMock(()=>{})});
+  const html=c.doGet().html;assert.match(html,/ACCESS_CHECK_FAILED/);assert.ok(!html.includes('provider private details'));
+});
+test('authorized doGet still serves the template and escapes diagnostic text',()=> {
+  const c=authContext('a@test.nl',{DASHBOARD_ALLOWED_EMAILS:'a@test.nl'},
+    {console:{error:()=>{}},HtmlService:htmlMock(()=>({html:'dashboard',setTitle(){return this;},addMetaTag(){return this;}}))});
+  assert.equal(c.doGet().html,'dashboard');
+  assert.match(c.startupErrorPage_(c.dashboardErrorInfo_('CONFIG_SOURCES_SHAPE')).html,/&quot;id&quot;/);
+});

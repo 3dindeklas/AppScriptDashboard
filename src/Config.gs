@@ -25,15 +25,31 @@ const CONFIG = Object.freeze({
 function settings_() {
   const p = PropertiesService.getScriptProperties();
   const raw = p.getProperty('DASHBOARD_SOURCES');
-  const sources = raw ? JSON.parse(raw) : CONFIG.sources;
-  if (!Array.isArray(sources) || !sources.length) throw new Error('Configureer ten minste één bron.');
+  // Script Properties contain JSON, unlike the JavaScript object in CONFIG.sources.
+  // Do not eval or silently fall back: that could hide a broken live configuration.
+  let sources = CONFIG.sources;
+  if (raw !== null) {
+    try {
+      sources = JSON.parse(raw);
+    } catch (error) {
+      throw dashboardError_('CONFIG_SOURCES_JSON');
+    }
+  }
+  if (!Array.isArray(sources) || !sources.length) throw dashboardError_('CONFIG_SOURCES_SHAPE');
   const ids = new Set();
   sources.forEach(s => {
-    if (!s.id || !s.label || ids.has(s.id)) throw new Error('Elke bron moet een unieke id en een label hebben.');
+    if (!s || typeof s !== 'object' || Array.isArray(s) ||
+        typeof s.id !== 'string' || !s.id.trim() ||
+        typeof s.label !== 'string' || !s.label.trim() || ids.has(s.id) ||
+        (s.enabled !== undefined && typeof s.enabled !== 'boolean')) {
+      throw dashboardError_('CONFIG_SOURCES_ENTRY');
+    }
     ids.add(s.id);
   });
   const enabled = sources.filter(s => s.enabled !== false);
-  if (!enabled.length) throw new Error('Schakel ten minste één bron in.');
-  return { sources: enabled,
-    demoMode: p.getProperty('DEMO_MODE') === null ? CONFIG.demoMode : p.getProperty('DEMO_MODE') === 'true' };
+  if (!enabled.length) throw dashboardError_('CONFIG_SOURCES_DISABLED');
+  const rawDemo = p.getProperty('DEMO_MODE');
+  const demo = rawDemo === null ? null : rawDemo.trim();
+  if (demo !== null && demo !== 'true' && demo !== 'false') throw dashboardError_('CONFIG_DEMO_MODE');
+  return { sources: enabled, demoMode: demo === null ? CONFIG.demoMode : demo === 'true' };
 }
