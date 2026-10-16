@@ -51,12 +51,14 @@ function getDashboardData() {
   requireAccess_();
 
   try {
-    const internalRecords = APP_CONFIG.demoMode ? demoRecords_() : readConfiguredSheets_();
+    const result = APP_CONFIG.demoMode ? demoDashboardData_() : readConfiguredSheets_();
 
     return {
       mode: APP_CONFIG.demoMode ? 'demo' : 'live',
       generatedAt: new Date().toISOString(),
-      records: internalRecords.map(publicRecord_)
+      complete: result.complete,
+      records: result.records.map(publicRecord_),
+      sources: result.sources.map(publicSourceStatus_)
     };
   } catch (error) {
     throw new Error('Dashboardgegevens konden niet worden geladen.');

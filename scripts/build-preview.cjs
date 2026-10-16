@@ -7,10 +7,13 @@ for (const file of ['Config.gs', 'Data.gs']) {
   vm.runInContext(fs.readFileSync('src/' + file, 'utf8'), context);
 }
 
+const demo = vm.runInContext('demoDashboardData_()', context);
 const payload = {
   mode: 'demo',
   generatedAt: new Date().toISOString(),
-  records: vm.runInContext('demoRecords_().map(publicRecord_)', context)
+  complete: demo.complete,
+  records: vm.runInContext('demoDashboardData_().records.map(publicRecord_)', context),
+  sources: vm.runInContext('demoDashboardData_().sources.map(publicSourceStatus_)', context)
 };
 
 let html = fs.readFileSync('src/Index.html', 'utf8').replace(

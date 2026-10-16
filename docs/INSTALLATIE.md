@@ -66,6 +66,7 @@ Vul eerst alleen Stichting A in:
 const APP_CONFIG = Object.freeze({
   title: 'Workshopkompas',
   demoMode: false,
+  maxRowsPerSource: 5000,
   allowedEmails: [
     'jouw.naam@organisatie.nl'
   ],
@@ -101,9 +102,13 @@ De app leest vanaf de ingestelde kopregel. Minimaal bruikbaar zijn deze kolommen
 
 Andere kolommen mogen gewoon aanwezig zijn. Persoonsgegevens worden niet naar de browser gestuurd.
 
+Onder **Bronnen & datakwaliteit** zie je per stichting of de bron geladen is, hoeveel workshopregels zijn ingelezen en welke vaste controles aandacht vragen. De standaardlimiet is 5.000 workshopregels per bron. Verhoog deze alleen bewust; de code hanteert altijd een harde bovengrens van 10.000 regels per bron.
+
 ## Stap 5 · Koppel de tweede Google Sheet
 
 Vul pas wanneer Stichting A werkt ook het `spreadsheetId` van Stichting B in. Beide sheets gebruiken dezelfde kopteksten en dezelfde kopregelinstelling.
+
+Als één bron niet bereikbaar is, blijven de gegevens van de andere bron zichtbaar. Het dashboard meldt dan dat het overzicht onvolledig is. Er wordt in live-modus nooit automatisch teruggevallen op demogegevens.
 
 ## Stap 6 · Publiceer een versie
 
