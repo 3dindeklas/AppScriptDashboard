@@ -148,7 +148,43 @@
         <p id="resultCount" class="result-count"></p>
       </section>
 
-      <section id="kpis" class="kpi-grid" aria-label="Kerncijfers"></section>
+      <section class="metrics-section" aria-labelledby="kpisTitle">
+        <div class="metrics-heading">
+          <p class="eyebrow">KERNCIJFERS</p>
+          <h2 id="kpisTitle">Wat laten de huidige filters zien?</h2>
+        </div>
+        <div id="kpis" class="kpi-grid"></div>
+        <p id="kpiQualityNote" class="kpi-quality" aria-live="polite"></p>
+      </section>
+
+      <section class="panel comparison" aria-labelledby="comparisonTitle">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">VERGELIJKING</p>
+            <h2 id="comparisonTitle">Stichtingen naast elkaar</h2>
+          </div>
+          <p id="comparisonSummary" class="comparison-summary"></p>
+        </div>
+        <div class="table-wrap">
+          <table class="comparison-table">
+            <caption class="visually-hidden">Vergelijking van de actieve kerncijfers per stichting</caption>
+            <thead>
+              <tr>
+                <th scope="col">Stichting</th>
+                <th scope="col">Aanvragen</th>
+                <th scope="col">Leerlingdeelnames</th>
+                <th scope="col">Scholen</th>
+                <th scope="col">Lesmomenten</th>
+                <th scope="col">Uitgevoerd</th>
+                <th scope="col">Gem. leerlingen</th>
+                <th scope="col">Aanvragen / school</th>
+                <th scope="col">Zonder leerlingaantal</th>
+              </tr>
+            </thead>
+            <tbody id="comparisonRows"></tbody>
+          </table>
+        </div>
+      </section>
 
       <section class="content-grid">
         <article class="panel">

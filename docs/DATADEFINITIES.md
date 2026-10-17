@@ -153,4 +153,21 @@ Een bronfout bevat in de browser alleen een vaste foutcode en een willekeurige r
 
 ## Tellingen
 
-`Leerlingdeelnames` is de som van geldige waarden in `Aantal leerlingen` per workshoprij. Het is geen telling van unieke leerlingen. Ontbrekende leerlingaantallen blijven onbekend en worden niet als nul opgeslagen.
+Alle onderstaande cijfers worden berekend over exact dezelfde workshopregels die na de actieve dropdown-, datum- en bereikfilters zichtbaar zijn. Eén workshoprij staat voor één aanvraag/workshop, ook wanneer `scheduledDates` meerdere lesdagen bevat.
+
+| Cijfer | Definitie |
+| --- | --- |
+| Aanvragen / workshops | aantal zichtbare workshopregels |
+| Leerlingdeelnames | som van alle bekende waarden in `students`; geen telling van unieke leerlingen |
+| Scholen | unieke combinatie van stichting, regio en genormaliseerde schoolnaam |
+| Lesmomenten | som van alle bekende waarden in `sessions` |
+| Uitgevoerd | aantal regels met `statusGroup` gelijk aan `Uitgevoerd` |
+| Gem. leerlingen / aanvraag | leerlingdeelnames gedeeld door het aantal regels met een bekend leerlingaantal |
+| Aanvragen / school | aantal regels met een bekende school gedeeld door het aantal unieke bekende scholen |
+| Zonder leerlingaantal | aantal zichtbare regels waarvoor `students` onbekend is |
+
+Bij het eenduidig tellen van scholen worden hoofdletters, accenten en overtollige spaties genegeerd. De stichting en regio blijven onderdeel van de sleutel: dezelfde schoolnaam in een andere regio of stichting telt daarom als een andere school. Een lege school of `Onbekende school` telt niet mee als school en ook niet in de teller van **Aanvragen / school**.
+
+Een leerlingaantal van nul is een bekende waarde en telt mee in som en gemiddelde. Ontbrekende leerlingaantallen blijven onbekend, worden nooit als nul geïnterpreteerd en worden onder de KPI’s en per stichting apart gemeld. Gemiddelden worden met één decimaal getoond; als er geen geldige deler is, verschijnt `—`.
+
+De stichtingvergelijking herhaalt dezelfde definities per bron. Ook wanneer het stichtingfilter actief is blijven beide stichtingen als rij zichtbaar; een door het filter uitgesloten stichting toont dan nulwaarden. Zo is direct zichtbaar dat de tabel dezelfde filters volgt.
