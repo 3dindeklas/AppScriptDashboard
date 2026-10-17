@@ -8,6 +8,7 @@
       mode: 'demo',
       generatedAt: '',
       complete: true,
+      canViewFinancials: false,
       dateMonths: [],
       studentBounds: null,
       loadStartedAt: 0,
@@ -15,6 +16,17 @@
     };
     const numberFormat = new Intl.NumberFormat('nl-NL');
     const decimalFormat = new Intl.NumberFormat('nl-NL', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1
+    });
+    const currencyFormat = new Intl.NumberFormat('nl-NL', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+    const percentFormat = new Intl.NumberFormat('nl-NL', {
+      style: 'percent',
       minimumFractionDigits: 1,
       maximumFractionDigits: 1
     });
@@ -69,6 +81,10 @@
       kpiQualityNote: document.getElementById('kpiQualityNote'),
       comparisonSummary: document.getElementById('comparisonSummary'),
       comparisonRows: document.getElementById('comparisonRows'),
+      financialOverview: document.getElementById('financialOverview'),
+      financialKpis: document.getElementById('financialKpis'),
+      financialCompleteness: document.getElementById('financialCompleteness'),
+      financialNote: document.getElementById('financialNote'),
       timelineMetric: document.getElementById('timelineMetric'),
       timelineSubtitle: document.getElementById('timelineSubtitle'),
       timelineLegend: document.getElementById('timelineLegend'),
@@ -137,6 +153,11 @@
       state.mode = payload.mode || 'live';
       state.generatedAt = payload.generatedAt || new Date().toISOString();
       state.complete = payload.complete !== false;
+      state.canViewFinancials = Boolean(
+        payload.permissions && payload.permissions.canViewFinancials === true
+      );
+      elements.financialOverview.hidden = !state.canViewFinancials;
+      if (!state.canViewFinancials) elements.financialOverview.open = false;
       if (!timelineMetrics[elements.timelineMetric.value]) elements.timelineMetric.value = 'requests';
 
       filters.forEach(filter => fillFilter(filter.element, valuesOf(filter.field)));
@@ -499,6 +520,8 @@
 
       renderKpis(records);
       renderComparison(records);
+      if (state.canViewFinancials) renderFinancial(records);
+      else clearFinancial();
       renderCharts(records);
       renderRecent(records);
     }
@@ -621,6 +644,96 @@
         });
         elements.comparisonRows.appendChild(row);
       });
+    }
+
+    function renderFinancial(records) {
+      const totals = financialMetrics(records);
+      const metrics = [
+        ['Totale kosten aanbieder', formatCurrency(totals.totalProviderCosts)],
+        ['Te factureren', formatCurrency(totals.totalInvoiceAmount)],
+        ['Marge complete regels', formatCurrency(totals.marginAmount)],
+        ['Gewogen marge', formatPercentage(totals.weightedMarginRate)]
+      ];
+
+      elements.financialKpis.replaceChildren(...metrics.map(metric => {
+        const card = document.createElement('article');
+        card.className = 'financial-kpi';
+        const label = document.createElement('p');
+        label.className = 'financial-kpi-label';
+        label.textContent = metric[0];
+        const value = document.createElement('p');
+        value.className = 'financial-kpi-value';
+        value.textContent = metric[1];
+        card.append(label, value);
+        return card;
+      }));
+
+      elements.financialCompleteness.replaceChildren(
+        financialQualityCard('Complete financiële regels', totals.completeCount, false),
+        financialQualityCard('Onvolledige financiële regels', totals.incompleteCount, true)
+      );
+
+      if (!records.length) {
+        elements.financialNote.textContent = 'Geen aanvragen binnen de huidige filters.';
+      } else if (!totals.completeCount) {
+        elements.financialNote.textContent = 'Geen enkele zichtbare regel bevat zowel kosten als een te factureren bedrag. Marge blijft daarom onbekend.';
+      } else if (totals.incompleteCount) {
+        elements.financialNote.textContent = numberFormat.format(totals.incompleteCount) +
+          (totals.incompleteCount === 1
+            ? ' regel is financieel onvolledig. Kosten en facturatie tellen bekende bedragen afzonderlijk; marge gebruikt alleen complete regels.'
+            : ' regels zijn financieel onvolledig. Kosten en facturatie tellen bekende bedragen afzonderlijk; marge gebruikt alleen complete regels.');
+      } else {
+        elements.financialNote.textContent = 'Alle zichtbare regels bevatten zowel kosten als een te factureren bedrag.';
+      }
+    }
+
+    function clearFinancial() {
+      elements.financialKpis.replaceChildren();
+      elements.financialCompleteness.replaceChildren();
+      elements.financialNote.textContent = '';
+    }
+
+    function financialQualityCard(labelText, valueText, incomplete) {
+      const card = document.createElement('div');
+      card.className = 'financial-quality' + (incomplete ? ' incomplete' : '');
+      const label = document.createElement('span');
+      label.className = 'financial-quality-label';
+      label.textContent = labelText;
+      const value = document.createElement('strong');
+      value.className = 'financial-quality-value';
+      value.textContent = numberFormat.format(valueText);
+      card.append(label, value);
+      return card;
+    }
+
+    function financialMetrics(records) {
+      const knownCosts = records.filter(record => isFinancialNumber(record.providerTotalCosts));
+      const knownInvoices = records.filter(record => isFinancialNumber(record.invoiceAmount));
+      const complete = records.filter(record =>
+        isFinancialNumber(record.providerTotalCosts) && isFinancialNumber(record.invoiceAmount)
+      );
+      const completeCosts = complete.reduce((total, record) => total + record.providerTotalCosts, 0);
+      const completeInvoices = complete.reduce((total, record) => total + record.invoiceAmount, 0);
+      const marginAmount = complete.length ? completeInvoices - completeCosts : null;
+
+      return {
+        totalProviderCosts: knownCosts.length
+          ? knownCosts.reduce((total, record) => total + record.providerTotalCosts, 0)
+          : null,
+        totalInvoiceAmount: knownInvoices.length
+          ? knownInvoices.reduce((total, record) => total + record.invoiceAmount, 0)
+          : null,
+        marginAmount: marginAmount,
+        weightedMarginRate: complete.length && completeInvoices !== 0
+          ? marginAmount / completeInvoices
+          : null,
+        completeCount: complete.length,
+        incompleteCount: records.length - complete.length
+      };
+    }
+
+    function isFinancialNumber(value) {
+      return typeof value === 'number' && Number.isFinite(value);
     }
 
     function renderCharts(records) {
@@ -898,6 +1011,14 @@
 
     function formatDecimal(value) {
       return value === null ? '—' : decimalFormat.format(value);
+    }
+
+    function formatCurrency(value) {
+      return value === null ? '—' : currencyFormat.format(Math.abs(value) < 0.0000001 ? 0 : value);
+    }
+
+    function formatPercentage(value) {
+      return value === null ? '—' : percentFormat.format(Math.abs(value) < 0.0000001 ? 0 : value);
     }
 
     function formatChartNumber(value) {

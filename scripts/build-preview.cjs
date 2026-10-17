@@ -12,7 +12,8 @@ const payload = {
   mode: 'demo',
   generatedAt: new Date().toISOString(),
   complete: demo.complete,
-  records: vm.runInContext('demoDashboardData_().records.map(publicRecord_)', context),
+  permissions: { canViewFinancials: true },
+  records: vm.runInContext('demoDashboardData_().records.map(function(record) { return publicRecord_(record, true); })', context),
   sources: vm.runInContext('demoDashboardData_().sources.map(publicSourceStatus_)', context)
 };
 

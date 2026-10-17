@@ -141,6 +141,31 @@
   .comparison-table th:not(:first-child), .comparison-table td:not(:first-child) { text-align: right; }
   .comparison-table tbody th { background: transparent; color: var(--ink); font-size: 0.82rem; }
 
+  .financial-panel { overflow: hidden; padding: 0; }
+  .financial-panel[hidden] { display: none; }
+  .financial-panel > summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.35rem 1.4rem; cursor: pointer; list-style: none; }
+  .financial-panel > summary::-webkit-details-marker { display: none; }
+  .financial-panel > summary::after { content: "⌄"; color: var(--teal); font-size: 1.25rem; font-weight: 800; transition: transform 180ms ease; }
+  .financial-panel[open] > summary::after { transform: rotate(180deg); }
+  .financial-panel .eyebrow { display: block; }
+  .financial-title { display: block; font-size: 1.1rem; font-weight: 750; letter-spacing: -0.02em; }
+  .financial-toggle { margin-left: auto; color: var(--teal); font-size: 0.74rem; font-weight: 750; }
+  .financial-toggle-close { display: none; }
+  .financial-panel[open] .financial-toggle-open { display: none; }
+  .financial-panel[open] .financial-toggle-close { display: inline; }
+  .financial-content { padding: 0 1.4rem 1.4rem; border-top: 1px solid var(--line); }
+  .financial-intro { max-width: 54rem; margin: 1.2rem 0; color: var(--muted); font-size: 0.78rem; line-height: 1.55; }
+  .financial-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.85rem; }
+  .financial-kpi { min-width: 0; padding: 1rem; border: 1px solid var(--line); border-radius: 0.75rem; background: #fafbf8; }
+  .financial-kpi-label { color: var(--muted); font-size: 0.72rem; line-height: 1.35; }
+  .financial-kpi-value { margin-top: 0.45rem; overflow-wrap: anywhere; font-size: 1.45rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+  .financial-completeness { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem; margin-top: 0.85rem; }
+  .financial-quality { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 0.8rem 1rem; border-radius: 0.7rem; background: #edf3e1; }
+  .financial-quality.incomplete { background: #fff8df; }
+  .financial-quality-label { color: var(--muted); font-size: 0.74rem; }
+  .financial-quality-value { font-size: 1.1rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .financial-note { margin-top: 0.85rem; color: var(--muted); font-size: 0.74rem; line-height: 1.5; }
+
   .analytics-section { margin: 2rem 0 1rem; }
   .analytics-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
   .analytics-heading > p { color: var(--muted); font-size: 0.76rem; text-align: right; }
@@ -189,6 +214,7 @@
   @media (max-width: 950px) {
     .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .financial-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .chart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
@@ -197,7 +223,9 @@
     .intro { align-items: start; }
     .load-meta { justify-items: start; }
     .intro, footer { flex-direction: column; }
-    .filter-grid, .range-filter-grid, .kpi-grid, .chart-grid, .source-grid { grid-template-columns: 1fr; }
+    .filter-grid, .range-filter-grid, .kpi-grid, .financial-grid, .financial-completeness, .chart-grid, .source-grid { grid-template-columns: 1fr; }
+    .financial-panel > summary { align-items: start; }
+    .financial-toggle { display: none; }
     .analytics-heading, .timeline-panel .panel-heading { align-items: start; flex-direction: column; }
     .analytics-heading > p, .source-summary, .comparison-summary { text-align: left; }
     .metric-select { width: 100%; }
@@ -205,6 +233,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation: none !important; scroll-behavior: auto !important; }
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   }
 </style>

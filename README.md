@@ -8,7 +8,7 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 
 - standaard Apps Script `doGet()` met `createTemplateFromFile('Index').evaluate()`;
 - standaard publieke `include(filename)` voor `Styles.html` en `Client.html`;
-- één expliciete account-allowlist in `Config.gs`;
+- één account-allowlist voor het dashboard en een aparte financiële allowlist in `Config.gs`;
 - toegangscontrole bij de pagina, HTML-includes en iedere data-aanvraag;
 - onafhankelijke laadstatus en datakwaliteit per Google-bron;
 - beschikbare data blijft zichtbaar wanneer één bron uitvalt;
@@ -20,6 +20,7 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - inclusief maandbereik op aanvraagdatum of één van de definitieve lesdagen en een bereik voor leerlingaantallen;
 - expliciete keuzes om regels zonder datum of leerlingaantal wel of niet mee te nemen;
 - zeven gefilterde kerncijfers en een vergelijking tussen de stichtingen;
+- een standaard ingeklapt financieel overzicht met kosten, facturatie, marge en volledigheid, uitsluitend voor apart toegestane accounts;
 - een maandgrafiek voor aanvragen, leerlingdeelnames en lesmomenten per stichting;
 - verdelingen voor PO/VO, regio, workshop, aanbieder en statusgroep;
 - gewogen PO- en VO-leerjaren, inclusief combinatiegroepen en onbekende waarden;
@@ -27,7 +28,7 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - uitsluitend centraal toegestane analysevelden naar de browser; geen namen van contactpersonen, e-mailadressen, telefoonnummers, notities of technische ID's;
 - demomodus zonder databronnen, maar nooit zonder toegangscontrole.
 
-Microsoft 365, rollen en financiële rapportages zijn bewust nog niet opgenomen. Die voegen we pas in de bijbehorende roadmapstap toe.
+Microsoft 365 en verschillende rollen zijn bewust nog niet opgenomen. Die voegen we pas in de bijbehorende roadmapstap toe.
 
 ## Bestanden
 
