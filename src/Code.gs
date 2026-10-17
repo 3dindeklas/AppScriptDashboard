@@ -48,24 +48,53 @@ function include(filename) {
  * Contactgegevens, notities, technische ID's en financiële detailvelden worden niet teruggestuurd.
  */
 function getDashboardData() {
+  return dashboardDataResponse_(false);
+}
+
+/** Haalt de Google-bronnen bewust opnieuw op en vervangt de gedeelde snapshot. */
+function refreshDashboardData() {
+  return dashboardDataResponse_(true);
+}
+
+function dashboardDataResponse_(forceRefresh) {
   const email = requireAccess_();
   const canViewFinancials = canViewFinancials_(email);
 
   try {
-    const result = APP_CONFIG.demoMode ? demoDashboardData_() : readConfiguredSheets_();
-    assertDashboardResult_(result);
+    let delivery;
+    if (APP_CONFIG.demoMode) {
+      const demo = demoDashboardData_();
+      assertDashboardResult_(demo);
+      delivery = {
+        source: 'demo',
+        snapshot: {
+          updatedAt: new Date().toISOString(),
+          complete: demo.complete,
+          records: demo.records.map(function(record) { return publicRecord_(record, true); }),
+          sources: demo.sources.map(publicSourceStatus_)
+        }
+      };
+    } else {
+      delivery = liveDashboardSnapshot_(forceRefresh === true);
+    }
+
+    const snapshot = delivery.snapshot;
 
     return {
       mode: APP_CONFIG.demoMode ? 'demo' : 'live',
-      generatedAt: new Date().toISOString(),
-      complete: result.complete,
+      generatedAt: snapshot.updatedAt,
+      complete: snapshot.complete,
+      snapshot: {
+        source: delivery.source,
+        cacheEnabled: !APP_CONFIG.demoMode && snapshotCacheEnabled_()
+      },
       permissions: {
         canViewFinancials: canViewFinancials
       },
-      records: result.records.map(function(record) {
+      records: snapshot.records.map(function(record) {
         return publicRecord_(record, canViewFinancials);
       }),
-      sources: result.sources.map(publicSourceStatus_)
+      sources: snapshot.sources.map(publicSourceStatus_)
     };
   } catch (error) {
     const reference = logServerError_('getDashboardData', error);
@@ -128,6 +157,14 @@ function requireAccess_() {
 function activeUserEmail_() {
   try {
     return normalizeEmail_(Session.getActiveUser().getEmail());
+  } catch (error) {
+    return '';
+  }
+}
+
+function effectiveUserEmail_() {
+  try {
+    return normalizeEmail_(Session.getEffectiveUser().getEmail());
   } catch (error) {
     return '';
   }

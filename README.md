@@ -14,6 +14,8 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - beschikbare data blijft zichtbaar wanneer één bron uitvalt;
 - maximaal 5.000 regels per bron, configureerbaar tot een harde grens van 10.000;
 - formule-only rijen worden via één compacte ankerscan vóór de brede data-import genegeerd en verbruiken de rijlimiet niet;
+- een gecomprimeerde, server-side snapshot voorkomt dat beide Sheets bij iedere opening opnieuw worden gescand;
+- handmatig vernieuwen en een optionele tijdtrigger vervangen de snapshot bewust;
 - gegevens asynchroon ophalen met `google.script.run`;
 - zichtbare laadstatus met spinner, stapsgewijze feedback en de werkelijk gemeten laadtijd;
 - negen combineerbare filters: stichting, schooljaar, regio, PO/VO, aanbieder, workshop, statusgroep, school en type;
@@ -37,6 +39,7 @@ Microsoft 365 en verschillende rollen zijn bewust nog niet opgenomen. Die voegen
 | `Config.gs` | server | enige configuratieplek, inclusief toegestane accounts |
 | `Code.gs` | server | toegang, `doGet`, `include` en `getDashboardData` |
 | `Data.gs` | server | Google Sheets lezen, normaliseren en browservelden toestaan |
+| `Cache.gs` | server | privacyveilige snapshots, compressie, locking en herstel bij een cache-miss |
 | `Index.html` | browser | paginastructuur |
 | `Styles.html` | browser | CSS binnen een `<style>`-tag |
 | `Client.html` | browser | browser-JavaScript binnen een `<script>`-tag |
@@ -72,3 +75,6 @@ De structuur volgt deze Google-documentatie:
 - [Communicate with Server Functions](https://developers.google.com/apps-script/guides/html/communication)
 - [Web Apps](https://developers.google.com/apps-script/guides/web)
 - [Session](https://developers.google.com/apps-script/reference/base/session)
+- [Cache Service](https://developers.google.com/apps-script/reference/cache/cache-service)
+- [Lock Service](https://developers.google.com/apps-script/reference/lock)
+- [Installable Triggers](https://developers.google.com/apps-script/guides/triggers/installable)
