@@ -16,6 +16,15 @@
       minimumFractionDigits: 1,
       maximumFractionDigits: 1
     });
+    const chartNumberFormat = new Intl.NumberFormat('nl-NL', {
+      maximumFractionDigits: 2
+    });
+    const timelineMetrics = {
+      requests: { label: 'Aanvragen / workshops' },
+      students: { label: 'Leerlingdeelnames' },
+      sessions: { label: 'Lesmomenten' }
+    };
+    const timelinePalette = ['#167c6a', '#9693cf', '#dca25e', '#83a8ba', '#b4c77b', '#c77f90'];
     const sourceStatusLabels = {
       demo: 'Demo',
       ok: 'Geladen',
@@ -57,8 +66,27 @@
       kpiQualityNote: document.getElementById('kpiQualityNote'),
       comparisonSummary: document.getElementById('comparisonSummary'),
       comparisonRows: document.getElementById('comparisonRows'),
+      timelineMetric: document.getElementById('timelineMetric'),
+      timelineSubtitle: document.getElementById('timelineSubtitle'),
+      timelineLegend: document.getElementById('timelineLegend'),
+      timelineChart: document.getElementById('timelineChart'),
+      timelineCaption: document.getElementById('timelineCaption'),
+      timelineTableHead: document.getElementById('timelineTableHead'),
+      timelineTableRows: document.getElementById('timelineTableRows'),
+      sectorChart: document.getElementById('sectorChart'),
+      sectorTableRows: document.getElementById('sectorTableRows'),
+      regionChart: document.getElementById('regionChart'),
+      regionTableRows: document.getElementById('regionTableRows'),
       statusChart: document.getElementById('statusChart'),
+      statusTableRows: document.getElementById('statusTableRows'),
       workshopChart: document.getElementById('workshopChart'),
+      workshopTableRows: document.getElementById('workshopTableRows'),
+      providerChart: document.getElementById('providerChart'),
+      providerTableRows: document.getElementById('providerTableRows'),
+      poChart: document.getElementById('poChart'),
+      poTableRows: document.getElementById('poTableRows'),
+      voChart: document.getElementById('voChart'),
+      voTableRows: document.getElementById('voTableRows'),
       recentRows: document.getElementById('recentRows'),
       recentDateHeading: document.getElementById('recentDateHeading')
     };
@@ -104,6 +132,7 @@
       state.mode = payload.mode || 'live';
       state.generatedAt = payload.generatedAt || new Date().toISOString();
       state.complete = payload.complete !== false;
+      if (!timelineMetrics[elements.timelineMetric.value]) elements.timelineMetric.value = 'requests';
 
       filters.forEach(filter => fillFilter(filter.element, valuesOf(filter.field)));
       configureDateRange(true);
@@ -366,6 +395,11 @@
       return new Intl.DateTimeFormat('nl-NL', { month: 'long', year: 'numeric' }).format(date);
     }
 
+    function formatMonthShort(month) {
+      const date = new Date(month + '-01T12:00:00');
+      return new Intl.DateTimeFormat('nl-NL', { month: 'short', year: '2-digit' }).format(date);
+    }
+
     function studentLabel(value) {
       return numberFormat.format(value) + (value === 1 ? ' leerling' : ' leerlingen');
     }
@@ -420,8 +454,7 @@
 
       renderKpis(records);
       renderComparison(records);
-      renderBars(elements.statusChart, countBy(records, 'status'), 8);
-      renderBars(elements.workshopChart, countBy(records, 'workshop'), 6);
+      renderCharts(records);
       renderRecent(records);
     }
 
@@ -545,12 +578,285 @@
       });
     }
 
+    function renderCharts(records) {
+      renderTimeline(records);
+      renderCategoryChart(
+        elements.sectorChart, elements.sectorTableRows, countBy(records, 'sector'), 8
+      );
+      renderCategoryChart(
+        elements.regionChart, elements.regionTableRows, countBy(records, 'region'), 8
+      );
+      renderCategoryChart(
+        elements.statusChart, elements.statusTableRows, countBy(records, 'statusGroup'), 8
+      );
+      renderCategoryChart(
+        elements.workshopChart, elements.workshopTableRows, countBy(records, 'workshop'), 6
+      );
+      renderCategoryChart(
+        elements.providerChart, elements.providerTableRows, countBy(records, 'provider'), 8
+      );
+      renderCategoryChart(
+        elements.poChart, elements.poTableRows, weightedGrades(records, 'PO'), 9
+      );
+      renderCategoryChart(
+        elements.voChart, elements.voTableRows, weightedGrades(records, 'VO'), 7
+      );
+    }
+
+    function renderCategoryChart(chart, tableRows, entries, limit) {
+      renderBars(chart, entries, limit);
+      tableRows.replaceChildren();
+
+      if (!entries.length) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 2;
+        cell.className = 'empty';
+        cell.textContent = 'Geen gegevens binnen deze filters.';
+        row.appendChild(cell);
+        tableRows.appendChild(row);
+        return;
+      }
+
+      entries.forEach(entry => {
+        const row = document.createElement('tr');
+        const label = document.createElement('th');
+        label.setAttribute('scope', 'row');
+        label.textContent = entry[0];
+        const value = document.createElement('td');
+        value.textContent = formatChartNumber(entry[1]);
+        row.append(label, value);
+        tableRows.appendChild(row);
+      });
+    }
+
+    function renderTimeline(records) {
+      const metricKey = timelineMetrics[elements.timelineMetric.value]
+        ? elements.timelineMetric.value
+        : 'requests';
+      const metric = timelineMetrics[metricKey];
+      const sources = [...new Set(records.map(record => record.source).filter(Boolean))]
+        .sort((a, b) => String(a).localeCompare(String(b), 'nl'));
+      const fromIndex = Number(elements.dateFrom.value);
+      const toIndex = Number(elements.dateTo.value);
+      const months = state.dateMonths.slice(fromIndex, toIndex + 1);
+      const values = new Map(months.map(month => [
+        month,
+        new Map(sources.map(source => [source, 0]))
+      ]));
+      let withoutDate = 0;
+      let withoutMetric = 0;
+
+      records.forEach(record => {
+        const weights = timelineMonthWeights(record, months);
+        if (!weights.length) {
+          withoutDate += 1;
+          return;
+        }
+
+        const value = timelineMetricValue(record, metricKey);
+        if (value === null) {
+          withoutMetric += 1;
+          return;
+        }
+
+        weights.forEach(weight => {
+          const monthValues = values.get(weight[0]);
+          if (!monthValues || !monthValues.has(record.source)) return;
+          monthValues.set(record.source, monthValues.get(record.source) + value * weight[1]);
+        });
+      });
+
+      const totals = months.map(month => sources.reduce(
+        (total, source) => total + values.get(month).get(source), 0
+      ));
+      const maximum = Math.max(0, ...totals);
+      renderTimelineLegend(sources);
+      renderTimelineTable(months, sources, values, metric.label);
+      renderTimelineSubtitle(metricKey, withoutDate, withoutMetric);
+      elements.timelineChart.replaceChildren();
+
+      if (!months.length || !sources.length || maximum === 0) {
+        elements.timelineChart.appendChild(emptyMessage('Geen gedateerde gegevens voor deze metriek binnen de filters.'));
+        return;
+      }
+
+      const columns = document.createElement('div');
+      columns.className = 'timeline-columns';
+      columns.style.minWidth = Math.max(36, months.length * 4.2) + 'rem';
+
+      months.forEach((month, monthIndex) => {
+        const total = totals[monthIndex];
+        const column = document.createElement('div');
+        column.className = 'timeline-column';
+        column.setAttribute('role', 'img');
+        column.setAttribute('aria-label', formatMonth(month) + ': ' + sources.map(source =>
+          source + ' ' + formatChartNumber(values.get(month).get(source))
+        ).join(', '));
+
+        const totalLabel = document.createElement('span');
+        totalLabel.className = 'timeline-total';
+        totalLabel.textContent = formatChartNumber(total);
+
+        const track = document.createElement('div');
+        track.className = 'timeline-track';
+        track.style.height = Math.max(2, (total / maximum) * 100) + '%';
+        track.setAttribute('aria-hidden', 'true');
+        sources.forEach((source, sourceIndex) => {
+          const sourceValue = values.get(month).get(source);
+          const segment = document.createElement('span');
+          segment.className = 'timeline-segment';
+          segment.style.height = (total ? (sourceValue / total) * 100 : 0) + '%';
+          segment.style.backgroundColor = timelinePalette[sourceIndex % timelinePalette.length];
+          track.appendChild(segment);
+        });
+
+        const monthLabel = document.createElement('span');
+        monthLabel.className = 'timeline-label';
+        monthLabel.textContent = formatMonthShort(month);
+        column.append(totalLabel, track, monthLabel);
+        columns.appendChild(column);
+      });
+
+      elements.timelineChart.appendChild(columns);
+    }
+
+    function timelineMonthWeights(record, visibleMonths) {
+      const visible = new Set(visibleMonths);
+      if (elements.dateBasis.value === 'requestedDate') {
+        const requestedMonth = monthValue(record.requestedDate);
+        return visible.has(requestedMonth) ? [[requestedMonth, 1]] : [];
+      }
+
+      const dates = Array.isArray(record.scheduledDates)
+        ? record.scheduledDates
+        : record.scheduledDate ? [record.scheduledDate] : [];
+      const counts = new Map();
+      dates.forEach(date => {
+        const month = monthValue(date);
+        if (visible.has(month)) counts.set(month, (counts.get(month) || 0) + 1);
+      });
+      const total = [...counts.values()].reduce((sum, count) => sum + count, 0);
+      return total ? [...counts.entries()].map(entry => [entry[0], entry[1] / total]) : [];
+    }
+
+    function timelineMetricValue(record, metric) {
+      if (metric === 'requests') return 1;
+      const value = record[metric];
+      return Number.isInteger(value) && value >= 0 ? value : null;
+    }
+
+    function renderTimelineLegend(sources) {
+      elements.timelineLegend.replaceChildren();
+      sources.forEach((source, index) => {
+        const item = document.createElement('span');
+        item.className = 'legend-item';
+        const swatch = document.createElement('span');
+        swatch.className = 'legend-swatch';
+        swatch.style.backgroundColor = timelinePalette[index % timelinePalette.length];
+        swatch.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.textContent = source;
+        item.append(swatch, label);
+        elements.timelineLegend.appendChild(item);
+      });
+    }
+
+    function renderTimelineTable(months, sources, values, metricLabel) {
+      elements.timelineCaption.textContent = metricLabel + ' per maand en stichting';
+      elements.timelineTableHead.replaceChildren();
+      elements.timelineTableRows.replaceChildren();
+
+      ['Maand'].concat(sources, ['Totaal']).forEach(labelText => {
+        const heading = document.createElement('th');
+        heading.setAttribute('scope', 'col');
+        heading.textContent = labelText;
+        elements.timelineTableHead.appendChild(heading);
+      });
+
+      if (!months.length || !sources.length) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = sources.length + 2;
+        cell.className = 'empty';
+        cell.textContent = 'Geen gedateerde gegevens binnen deze filters.';
+        row.appendChild(cell);
+        elements.timelineTableRows.appendChild(row);
+        return;
+      }
+
+      months.forEach(month => {
+        const row = document.createElement('tr');
+        const monthHeading = document.createElement('th');
+        monthHeading.setAttribute('scope', 'row');
+        monthHeading.textContent = formatMonth(month);
+        row.appendChild(monthHeading);
+        let total = 0;
+        sources.forEach(source => {
+          const value = values.get(month).get(source);
+          total += value;
+          const cell = document.createElement('td');
+          cell.textContent = formatChartNumber(value);
+          row.appendChild(cell);
+        });
+        const totalCell = document.createElement('td');
+        totalCell.textContent = formatChartNumber(total);
+        row.appendChild(totalCell);
+        elements.timelineTableRows.appendChild(row);
+      });
+    }
+
+    function renderTimelineSubtitle(metric, withoutDate, withoutMetric) {
+      const parts = [elements.dateBasis.value === 'requestedDate' ? 'Datum aanvraag' : 'Definitieve lesdatums'];
+      if (elements.dateBasis.value === 'scheduledDate') {
+        parts.push('meerdere lesdagen worden evenredig over de zichtbare lesmaanden verdeeld');
+      }
+      if (withoutDate) {
+        parts.push(formatInteger(withoutDate) + (withoutDate === 1
+          ? ' aanvraag zonder geldige datum staat niet in de grafiek'
+          : ' aanvragen zonder geldige datum staan niet in de grafiek'));
+      }
+      if (metric !== 'requests' && withoutMetric) {
+        parts.push(formatInteger(withoutMetric) + (withoutMetric === 1
+          ? ' aanvraag zonder geldig aantal staat niet in de grafiek'
+          : ' aanvragen zonder geldig aantal staan niet in de grafiek'));
+      }
+      elements.timelineSubtitle.textContent = parts.join(' · ');
+    }
+
+    function weightedGrades(records, sector) {
+      const maximum = sector === 'PO' ? 8 : 6;
+      const values = new Map();
+      let unknown = 0;
+
+      records.filter(record => record.sector === sector).forEach(record => {
+        const grades = [...new Set((Array.isArray(record.grades) ? record.grades : [])
+          .filter(grade => Number.isInteger(grade) && grade >= 1 && grade <= maximum))];
+        if (!grades.length) {
+          unknown += 1;
+          return;
+        }
+        const share = 1 / grades.length;
+        grades.forEach(grade => values.set(grade, (values.get(grade) || 0) + share));
+      });
+
+      const entries = [...values.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(entry => [(sector === 'PO' ? 'Groep ' : 'Leerjaar ') + entry[0], entry[1]]);
+      if (unknown) entries.push(['Onbekend', unknown]);
+      return entries;
+    }
+
     function formatInteger(value) {
       return numberFormat.format(value);
     }
 
     function formatDecimal(value) {
       return value === null ? '—' : decimalFormat.format(value);
+    }
+
+    function formatChartNumber(value) {
+      return chartNumberFormat.format(Math.abs(value) < 0.0000001 ? 0 : value);
     }
 
     function countBy(records, field) {
@@ -562,6 +868,12 @@
     function renderBars(container, entries, limit) {
       container.replaceChildren();
       const visible = entries.slice(0, limit);
+      if (entries.length > limit) {
+        visible.push([
+          'Overige (' + (entries.length - limit) + ')',
+          entries.slice(limit).reduce((total, entry) => total + entry[1], 0)
+        ]);
+      }
 
       if (!visible.length) {
         container.appendChild(emptyMessage('Geen gegevens binnen deze filters.'));
@@ -578,7 +890,7 @@
         const name = document.createElement('span');
         name.textContent = entry[0];
         const value = document.createElement('strong');
-        value.textContent = numberFormat.format(entry[1]);
+        value.textContent = formatChartNumber(entry[1]);
         label.append(name, value);
 
         const track = document.createElement('div');
@@ -586,6 +898,7 @@
         const fill = document.createElement('div');
         fill.className = 'bar-fill';
         fill.style.width = ((entry[1] / maximum) * 100) + '%';
+        track.setAttribute('aria-hidden', 'true');
         track.appendChild(fill);
 
         row.append(label, track);
@@ -676,10 +989,12 @@
     });
     elements.includeUnknownDate.addEventListener('change', render);
     elements.includeUnknownStudents.addEventListener('change', render);
+    elements.timelineMetric.addEventListener('change', render);
     elements.refresh.addEventListener('click', loadDashboard);
     elements.reset.addEventListener('click', () => {
       filters.forEach(filter => { filter.element.value = ''; });
       elements.dateBasis.value = 'scheduledDate';
+      elements.timelineMetric.value = 'requests';
       elements.includeUnknownDate.checked = true;
       elements.includeUnknownStudents.checked = true;
       configureDateRange(false);

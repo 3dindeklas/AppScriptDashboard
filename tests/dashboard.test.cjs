@@ -61,13 +61,17 @@ function clientHarness(records) {
     'includeUnknownDate', 'studentsFromRange', 'studentsToRange',
     'studentsFromValue', 'studentsToValue', 'includeUnknownStudents',
     'resultCount', 'kpis', 'kpiQualityNote', 'comparisonSummary',
-    'comparisonRows', 'statusChart', 'workshopChart', 'recentRows',
-    'recentDateHeading'
+    'comparisonRows', 'timelineMetric', 'timelineSubtitle', 'timelineLegend',
+    'timelineChart', 'timelineCaption', 'timelineTableHead', 'timelineTableRows',
+    'sectorChart', 'sectorTableRows', 'regionChart', 'regionTableRows',
+    'statusChart', 'statusTableRows', 'workshopChart', 'workshopTableRows',
+    'providerChart', 'providerTableRows', 'poChart', 'poTableRows',
+    'voChart', 'voTableRows', 'recentRows', 'recentDateHeading'
   ];
   const selectIds = new Set([
     'sourceFilter', 'schoolYearFilter', 'regionFilter', 'sectorFilter',
     'providerFilter', 'workshopFilter', 'statusGroupFilter', 'schoolFilter',
-    'typeFilter', 'dateBasis'
+    'typeFilter', 'dateBasis', 'timelineMetric'
   ]);
 
   function element(tagName = 'div', isSelect = false) {
@@ -254,7 +258,25 @@ test('stichtingsvergelijking gebruikt een toegankelijke tabel met alle stap-6-ci
   }
 });
 
-test('demo blijft werken en de browser ontvangt alleen de bestaande veilige velden', () => {
+test('iedere stap-7-grafiek heeft een leesbare tabelweergave zonder externe grafiekbibliotheek', () => {
+  const index = fs.readFileSync('src/Index.html', 'utf8');
+  const styles = fs.readFileSync('src/Styles.html', 'utf8');
+  assert.match(index, /<select id="timelineMetric">[\s\S]*?Aanvragen \/ workshops[\s\S]*?Leerlingdeelnames[\s\S]*?Lesmomenten/);
+  assert.match(index, /id="timelineTableHead"/);
+  assert.match(index, /id="timelineTableRows"/);
+
+  for (const id of [
+    'sectorTableRows', 'regionTableRows', 'statusTableRows', 'workshopTableRows',
+    'providerTableRows', 'poTableRows', 'voTableRows'
+  ]) {
+    assert.match(index, new RegExp('<tbody id="' + id + '">'));
+  }
+  assert.equal((index.match(/<details class="chart-data">/g) || []).length, 8);
+  assert.doesNotMatch(index, /<script[^>]+src=/i);
+  assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
+});
+
+test('demo blijft werken en de browser ontvangt alleen de veilige stap-7-velden', () => {
   const payload = context().getDashboardData();
   assert.equal(payload.mode, 'demo');
   assert.equal(payload.complete, true);
@@ -268,10 +290,11 @@ test('demo blijft werken en de browser ontvangt alleen de bestaande veilige veld
   assert.equal(payload.records.filter(record => record.scheduledDates.length > 1).length, 1);
   assert.equal(payload.records.filter(record => record.students === null).length, 1);
   assert.deepEqual(Object.keys(payload.records[0]).sort(), [
-    'provider', 'region', 'requestedDate', 'scheduledDate', 'scheduledDates',
+    'grades', 'provider', 'region', 'requestedDate', 'scheduledDate', 'scheduledDates',
     'school', 'schoolYear', 'sector', 'sessions', 'source', 'status', 'statusGroup',
     'students', 'type', 'workshop'
   ]);
+  assert.deepEqual(Array.from(payload.records[0].grades), [7, 8]);
 });
 
 test('demodata levert de gedocumenteerde stap-6-kerncijfers op', () => {
@@ -297,6 +320,107 @@ test('demodata levert de gedocumenteerde stap-6-kerncijfers op', () => {
     ['Stichting A', '5', '105', '5', '11', '2', '21,0', '1,0', '0'],
     ['Stichting B', '5', '99', '5', '11', '2', '24,8', '1,0', '1']
   ]);
+});
+
+test('demodata levert alle stap-7-verdelingen en gewogen leerjaren op', () => {
+  const payload = JSON.parse(JSON.stringify(context().getDashboardData()));
+  const elements = clientHarness(payload.records);
+  const rows = id => elements[id].children.map(row => row.children.map(cell => cell.textContent));
+
+  assert.deepEqual(rows('sectorTableRows'), [['PO', '8'], ['VO', '2']]);
+  assert.deepEqual(rows('statusTableRows'), [
+    ['Ingepland', '4'], ['Uitgevoerd', '4'], ['Open', '2']
+  ]);
+  assert.deepEqual(rows('poTableRows'), [
+    ['Groep 3', '0,5'], ['Groep 4', '0,5'], ['Groep 5', '1'],
+    ['Groep 6', '3,5'], ['Groep 7', '1,5'], ['Groep 8', '1']
+  ]);
+  assert.deepEqual(rows('voTableRows'), [['Leerjaar 1', '1'], ['Leerjaar 2', '1']]);
+  assert.equal(elements.timelineCaption.textContent, 'Aanvragen / workshops per maand en stichting');
+  assert.deepEqual(rows('timelineTableRows'), [
+    ['september 2026', '2,5', '3', '5,5'],
+    ['oktober 2026', '1,5', '2', '3,5']
+  ]);
+  assert.match(elements.timelineSubtitle.textContent, /evenredig over de zichtbare lesmaanden/);
+  assert.match(elements.timelineSubtitle.textContent, /1 aanvraag zonder geldige datum/);
+});
+
+test('maandgrafiek verdeelt meerdere lesdagen en wisselt tussen alle drie metrieken', () => {
+  const elements = clientHarness([
+    {
+      source: 'Stichting A', requestedDate: '2026-08-01',
+      scheduledDate: '2026-09-10', scheduledDates: ['2026-09-10', '2026-10-10'],
+      students: 20, sessions: 2, sector: 'PO', grades: [5, 6],
+      workshop: 'A', statusGroup: 'Ingepland'
+    },
+    {
+      source: 'Stichting B', requestedDate: '2026-08-02',
+      scheduledDate: '2026-09-20', scheduledDates: ['2026-09-20'],
+      students: 10, sessions: 1, sector: 'VO', grades: [1],
+      workshop: 'B', statusGroup: 'Open'
+    }
+  ]);
+  const timelineRows = () => elements.timelineTableRows.children.map(row =>
+    row.children.map(cell => cell.textContent)
+  );
+
+  assert.deepEqual(timelineRows(), [
+    ['september 2026', '0,5', '1', '1,5'],
+    ['oktober 2026', '0,5', '0', '0,5']
+  ]);
+
+  elements.timelineMetric.value = 'students';
+  elements.timelineMetric.trigger('change');
+  assert.deepEqual(timelineRows(), [
+    ['september 2026', '10', '10', '20'],
+    ['oktober 2026', '10', '0', '10']
+  ]);
+
+  elements.timelineMetric.value = 'sessions';
+  elements.timelineMetric.trigger('change');
+  assert.deepEqual(timelineRows(), [
+    ['september 2026', '1', '1', '2'],
+    ['oktober 2026', '1', '0', '1']
+  ]);
+
+  elements.dateFromRange.value = 1;
+  elements.dateFromRange.trigger('input');
+  assert.deepEqual(timelineRows(), [['oktober 2026', '2', '2']]);
+});
+
+test('onbekende leerjaren blijven apart en combinatiegroepen behouden samen één aanvraag', () => {
+  const elements = clientHarness([
+    { source: 'A', sector: 'PO', grades: [3, 4, 5], workshop: 'A' },
+    { source: 'A', sector: 'PO', grades: [], workshop: 'B' },
+    { source: 'A', sector: 'PO', grades: [9], workshop: 'C' },
+    { source: 'A', sector: 'VO', grades: [1, 2], workshop: 'D' },
+    { source: 'A', sector: 'Onbekend', grades: [1], workshop: 'E' }
+  ]);
+  const rows = id => elements[id].children.map(row => row.children.map(cell => cell.textContent));
+
+  assert.deepEqual(rows('poTableRows'), [
+    ['Groep 3', '0,33'], ['Groep 4', '0,33'], ['Groep 5', '0,33'], ['Onbekend', '2']
+  ]);
+  assert.deepEqual(rows('voTableRows'), [
+    ['Leerjaar 1', '0,5'], ['Leerjaar 2', '0,5']
+  ]);
+});
+
+test('een lege selectie geeft nette lege grafiek- en tabelstaten', () => {
+  const elements = clientHarness([
+    {
+      source: 'Stichting A', scheduledDate: '2026-09-01',
+      scheduledDates: ['2026-09-01'], sector: 'PO', grades: [6],
+      region: 'Regio', provider: 'Maker', workshop: 'Workshop', statusGroup: 'Open'
+    }
+  ]);
+  elements.sourceFilter.value = 'Niet aanwezig';
+  elements.sourceFilter.trigger('change');
+
+  assert.equal(elements.timelineChart.children[0].textContent, 'Geen gedateerde gegevens voor deze metriek binnen de filters.');
+  assert.equal(elements.timelineTableRows.children[0].children[0].textContent, 'Geen gedateerde gegevens binnen deze filters.');
+  assert.equal(elements.sectorChart.children[0].textContent, 'Geen gegevens binnen deze filters.');
+  assert.equal(elements.sectorTableRows.children[0].children[0].textContent, 'Geen gegevens binnen deze filters.');
 });
 
 test('toegang gebruikt een exacte genormaliseerde accountmatch', () => {
@@ -481,14 +605,15 @@ test('filtervelden verlaten gecontroleerd de server maar privacyvelden niet', ()
 
   assert.deepEqual(Object.keys(publicRecord), [
     'source', 'requestedDate', 'scheduledDate', 'scheduledDates', 'schoolYear',
-    'school', 'workshop', 'provider', 'region', 'sector', 'status', 'statusGroup',
-    'type', 'sessions', 'students'
+    'school', 'workshop', 'provider', 'region', 'sector', 'grades', 'status',
+    'statusGroup', 'type', 'sessions', 'students'
   ]);
   assert.equal(publicRecord.requestedDate, '2026-10-14');
   assert.equal(publicRecord.scheduledDate, '2026-11-20');
   assert.deepEqual(Array.from(publicRecord.scheduledDates), ['2026-11-20']);
   assert.equal(publicRecord.schoolYear, '2026–2027');
   assert.equal(publicRecord.school, 'School A');
+  assert.deepEqual(Array.from(publicRecord.grades), [6, 7, 8]);
   assert.equal(publicRecord.statusGroup, 'Ingepland');
   assert.equal(publicRecord.type, 'Workshop');
 
