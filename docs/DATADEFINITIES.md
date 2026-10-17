@@ -9,8 +9,9 @@ Alle Google Sheets-rijen worden eerst server-side omgezet naar één intern work
 | `source` | configuratie | naam van de stichting/bron |
 | `requestId` | `Aanvraag ID` | intern gebruikt voor datakwaliteitscontrole |
 | `requestedDate` | `Datum aanvraag` | geldige datum als `YYYY-MM-DD`, anders `null` |
-| `scheduledDate` | `Definitieve datum` | geldige datum als `YYYY-MM-DD`, anders `null` |
-| `schoolYear` | afgeleid | schooljaar van definitieve datum, anders aanvraagdatum |
+| `scheduledDate` | `Definitieve datum` | eerste geldige lesdag als `YYYY-MM-DD`, anders `null` |
+| `scheduledDates` | `Definitieve datum` | alle unieke geldige lesdagen, chronologisch gesorteerd |
+| `schoolYear` | afgeleid | schooljaar van de eerste definitieve lesdag, anders aanvraagdatum |
 | `school` | `Schoolnaam` | intern voorbereid voor latere filtering |
 | `schoolKey` | afgeleid | genormaliseerde schoolnaam plus regio |
 | `region` | `Gemeente / Regio` | lege waarde wordt `Onbekend` |
@@ -49,6 +50,7 @@ Contactpersoon, e-mailadres, telefoon, notities, debuggegevens en e-mail-/kalend
 | `source` | `source` |
 | `requestedDate` | `requestedDate`, anders lege tekst |
 | `scheduledDate` | `scheduledDate`, anders lege tekst |
+| `scheduledDates` | kopie van alle geldige definitieve lesdagen, anders lege lijst |
 | `schoolYear` | `schoolYear`, anders `Onbekend` |
 | `school` | `school`, anders `Onbekende school` |
 | `workshop` | `workshop` |
@@ -69,7 +71,9 @@ De negen filters vergelijken steeds de exacte genormaliseerde waarde. Alle actie
 
 ## Datum- en bereikfilters
 
-De gebruiker kiest of het maandbereik op `requestedDate` of `scheduledDate` werkt. De eerste dag tot en met de laatste dag van de gekozen eindmaand telt mee; een workshop op 30 april valt dus binnen een bereik dat eindigt in april. De sliderwaarden worden opgebouwd vanaf de vroegste tot en met de laatste geldige maand in de geladen data.
+De gebruiker kiest of het maandbereik op `requestedDate` of de definitieve lesdagen werkt. De eerste dag tot en met de laatste dag van de gekozen eindmaand telt mee; een workshop op 30 april valt dus binnen een bereik dat eindigt in april. Bij meerdere definitieve datums blijft de workshop zichtbaar zodra minimaal één lesdag binnen het gekozen bereik valt. De tabel toont alle lesdagen en sorteert de workshop op de laatste lesdag. De sliderwaarden worden opgebouwd vanaf de vroegste tot en met de laatste geldige maand in de geladen data.
+
+Een cel in `Definitieve datum` mag meerdere datums bevatten, bijvoorbeeld `20-11-2026, 27-11-2026` of datums op afzonderlijke regels. Nederlandse en ISO-notatie mogen worden gecombineerd. Dubbele datums worden verwijderd en de eerste chronologische lesdag blijft daarnaast beschikbaar als `scheduledDate` voor bestaande interne logica. Als een lijst zowel geldige als ongeldige datums bevat, blijven de geldige lesdagen bruikbaar en krijgt de bron één datakwaliteitswaarschuwing voor die regel.
 
 Het leerlingbereik gebruikt uitsluitend gehele, niet-negatieve aantallen. De minimum- en maximumslider starten op de laagste en hoogste bekende waarde. Onder- en bovengrens kunnen elkaar niet passeren.
 

@@ -250,11 +250,12 @@ test('demo blijft werken en de browser ontvangt alleen de bestaande veilige veld
   ]);
   assert.deepEqual([...new Set(payload.records.map(record => record.source))].sort(), ['Stichting A', 'Stichting B']);
   assert.equal(payload.records.filter(record => !record.scheduledDate).length, 1);
+  assert.equal(payload.records.filter(record => record.scheduledDates.length > 1).length, 1);
   assert.equal(payload.records.filter(record => record.students === null).length, 1);
   assert.deepEqual(Object.keys(payload.records[0]).sort(), [
-    'provider', 'region', 'requestedDate', 'scheduledDate', 'school', 'schoolYear',
-    'sector', 'sessions', 'source', 'status', 'statusGroup', 'students', 'type',
-    'workshop'
+    'provider', 'region', 'requestedDate', 'scheduledDate', 'scheduledDates',
+    'school', 'schoolYear', 'sector', 'sessions', 'source', 'status', 'statusGroup',
+    'students', 'type', 'workshop'
   ]);
 });
 
@@ -290,6 +291,7 @@ test('volledige kolomstructuur wordt naar één intern record genormaliseerd', (
   assert.equal(record.requestId, 'REQ-001');
   assert.equal(record.requestedDate, '2026-10-14');
   assert.equal(record.scheduledDate, '2026-11-20');
+  assert.deepEqual(Array.from(record.scheduledDates), ['2026-11-20']);
   assert.equal(record.schoolYear, '2026–2027');
   assert.equal(record.school, 'School A');
   assert.equal(record.schoolKey, 'school a|ameide');
@@ -358,6 +360,28 @@ test('datums ondersteunen Google Date, Nederlands, ISO en Excel-serienummers', (
   }
 });
 
+test('definitieve datum ondersteunt meerdere unieke lesdagen in één cel', () => {
+  const ctx = context();
+  assert.deepEqual(Array.from(ctx.dateValues_(
+    '27/11/2026, 20-11-2026\n2026-12-04; 20-11-2026'
+  )), ['2026-11-20', '2026-11-27', '2026-12-04']);
+
+  const result = normalize([headers, row({
+    'Definitieve datum': '27/11/2026, 20-11-2026 en 2026-12-04'
+  })]);
+  assert.equal(result.records[0].scheduledDate, '2026-11-20');
+  assert.deepEqual(Array.from(result.records[0].scheduledDates), [
+    '2026-11-20', '2026-11-27', '2026-12-04'
+  ]);
+  assert.equal(result.warnings.invalidScheduledDates, 0);
+
+  const partlyInvalid = normalize([headers, row({
+    'Definitieve datum': '31-02-2026 en 07-03-2026'
+  })]);
+  assert.deepEqual(Array.from(partlyInvalid.records[0].scheduledDates), ['2026-03-07']);
+  assert.equal(partlyInvalid.warnings.invalidScheduledDates, 1);
+});
+
 test('statuswaarden worden in vaste groepen geplaatst', () => {
   const ctx = context();
   for (const [status, group] of [
@@ -416,12 +440,13 @@ test('filtervelden verlaten gecontroleerd de server maar privacyvelden niet', ()
   const json = JSON.stringify(publicRecord);
 
   assert.deepEqual(Object.keys(publicRecord), [
-    'source', 'requestedDate', 'scheduledDate', 'schoolYear', 'school',
-    'workshop', 'provider', 'region', 'sector', 'status', 'statusGroup', 'type',
-    'sessions', 'students'
+    'source', 'requestedDate', 'scheduledDate', 'scheduledDates', 'schoolYear',
+    'school', 'workshop', 'provider', 'region', 'sector', 'status', 'statusGroup',
+    'type', 'sessions', 'students'
   ]);
   assert.equal(publicRecord.requestedDate, '2026-10-14');
   assert.equal(publicRecord.scheduledDate, '2026-11-20');
+  assert.deepEqual(Array.from(publicRecord.scheduledDates), ['2026-11-20']);
   assert.equal(publicRecord.schoolYear, '2026–2027');
   assert.equal(publicRecord.school, 'School A');
   assert.equal(publicRecord.statusGroup, 'Ingepland');
@@ -525,6 +550,39 @@ test('maand- en leerlingbereik filteren inclusief en reageren direct', () => {
   elements.studentsToRange.value = 20;
   elements.studentsToRange.trigger('input');
   assert.equal(elements.resultCount.textContent, '1 van 4 workshops zichtbaar');
+});
+
+test('een workshop matcht wanneer minstens één definitieve lesdag binnen de periode valt', () => {
+  const elements = clientHarness([
+    {
+      requestedDate: '2026-01-10', scheduledDate: '2026-03-01',
+      scheduledDates: ['2026-03-01', '2026-05-20'], students: 10,
+      source: 'Stichting A', workshop: 'Meerdere lessen', status: 'Ingepland'
+    },
+    {
+      requestedDate: '2026-02-10', scheduledDate: '2026-04-15',
+      scheduledDates: ['2026-04-15'], students: 20,
+      source: 'Stichting B', workshop: 'Eén les', status: 'Ingepland'
+    },
+    {
+      requestedDate: '2026-03-10', scheduledDate: '', scheduledDates: [], students: 30,
+      source: 'Stichting B', workshop: 'Nog onbekend', status: 'Open'
+    }
+  ]);
+
+  elements.dateFromRange.value = 2;
+  elements.dateFromRange.trigger('input');
+  elements.includeUnknownDate.checked = false;
+  elements.includeUnknownDate.trigger('change');
+  assert.equal(elements.resultCount.textContent, '1 van 3 workshops zichtbaar');
+  assert.equal(elements.recentRows.children[0].children[0].textContent, '1-3-2026 · 20-5-2026');
+
+  elements.dateFromRange.value = 1;
+  elements.dateFromRange.trigger('input');
+  elements.dateToRange.value = 1;
+  elements.dateToRange.trigger('input');
+  assert.equal(elements.resultCount.textContent, '1 van 3 workshops zichtbaar');
+  assert.equal(elements.recentRows.children[0].children[2].textContent, 'Eén les');
 });
 
 test('datumsoort, onbekende waarden en Filters wissen blijven voorspelbaar', () => {

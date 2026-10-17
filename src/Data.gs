@@ -18,6 +18,7 @@ const PUBLIC_RECORD_FIELDS_ = Object.freeze([
   'source',
   'requestedDate',
   'scheduledDate',
+  'scheduledDates',
   'schoolYear',
   'school',
   'workshop',
@@ -177,12 +178,13 @@ function normalizeSheet_(values, sourceName) {
     const requestedRaw = cell_(row, header, 'datum aanvraag');
     const scheduledRaw = cell_(row, header, 'definitieve datum');
     const requestedDate = dateValue_(requestedRaw);
-    const scheduledDate = dateValue_(scheduledRaw);
+    const scheduledDates = dateValues_(scheduledRaw);
+    const scheduledDate = scheduledDates[0] || null;
     const students = countValue_(cell_(row, header, 'aantal leerlingen'));
     const sector = sectorValue_(cell_(row, header, 'po / vo'));
 
     if (hasValue_(requestedRaw) && !requestedDate) warnings.invalidRequestedDates += 1;
-    if (hasValue_(scheduledRaw) && !scheduledDate) warnings.invalidScheduledDates += 1;
+    if (hasInvalidDateValues_(scheduledRaw, scheduledDates)) warnings.invalidScheduledDates += 1;
     if (hasValue_(cell_(row, header, 'aantal leerlingen')) && students === null) warnings.invalidStudentCounts += 1;
     if (hasValue_(cell_(row, header, 'po / vo')) && sector === 'Onbekend') warnings.unknownSectors += 1;
 
@@ -190,6 +192,7 @@ function normalizeSheet_(values, sourceName) {
       requestId: requestId,
       requestedDate: requestedDate,
       scheduledDate: scheduledDate,
+      scheduledDates: scheduledDates,
       students: students,
       sector: sector
     }));
@@ -213,6 +216,7 @@ function normalizeRow_(row, header, sourceName, parsed) {
     requestId: parsed.requestId,
     requestedDate: parsed.requestedDate,
     scheduledDate: parsed.scheduledDate,
+    scheduledDates: parsed.scheduledDates,
     schoolYear: schoolYear_(primaryDate),
     school: school,
     schoolKey: schoolKey_(school, region),
@@ -249,6 +253,9 @@ function publicRecord_(record) {
     source: record.source,
     requestedDate: record.requestedDate || '',
     scheduledDate: record.scheduledDate || '',
+    scheduledDates: Array.isArray(record.scheduledDates)
+      ? record.scheduledDates.slice()
+      : record.scheduledDate ? [record.scheduledDate] : [],
     schoolYear: record.schoolYear || 'Onbekend',
     school: record.school || 'Onbekende school',
     workshop: record.workshop,
@@ -410,6 +417,34 @@ function dateValue_(value) {
   return null;
 }
 
+/** Leest één of meer lesdatums uit een cel en geeft unieke datums chronologisch terug. */
+function dateValues_(value) {
+  const singleDate = dateValue_(value);
+  if (singleDate) return [singleDate];
+
+  const tokens = dateTokens_(value);
+  const dates = [];
+  tokens.forEach(function(token) {
+    const date = dateValue_(token);
+    if (date && dates.indexOf(date) === -1) dates.push(date);
+  });
+  return dates.sort();
+}
+
+/** Markeert ook een deels ongeldige lijst, zonder geldige lesdatums weg te gooien. */
+function hasInvalidDateValues_(value, dates) {
+  if (!hasValue_(value)) return false;
+  if (Object.prototype.toString.call(value) === '[object Date]' || typeof value === 'number') {
+    return !dates.length;
+  }
+  const tokens = dateTokens_(value);
+  return !tokens.length || tokens.some(function(token) { return !dateValue_(token); });
+}
+
+function dateTokens_(value) {
+  return textValue_(value).match(/\d{4}[-\/]\d{1,2}[-\/]\d{1,2}|\d{1,2}[-\/]\d{1,2}[-\/]\d{4}/g) || [];
+}
+
 function isoDate_(year, month, day) {
   const date = new Date(Date.UTC(year, month - 1, day));
   if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
@@ -509,10 +544,14 @@ function demoRecords_() {
     ['demo-b-4', 'Stichting B', '2026-10-06', 'Voorbeeldcollege Zuid', 'Parachute-uitdaging', 'Techniekteam', 'IJsselstein', 'VO', 'leerjaar 2', 'Optie', 2, 30],
     ['demo-b-5', 'Stichting B', '2026-10-15', 'Voorbeeldschool Het Atelier', 'Greenscreen stop-motion', '3Dindeklas', 'Gorinchem', 'PO', 'groep 6/7', 'Bevestiging', 2, 24]
   ].map(function(row) {
-    const scheduledDate = row[0] === 'demo-a-4' ? null : row[2];
+    const scheduledDates = row[0] === 'demo-a-4'
+      ? []
+      : row[0] === 'demo-a-3' ? [row[2], '2026-10-02'] : [row[2]];
+    const scheduledDate = scheduledDates[0] || null;
     const students = row[0] === 'demo-b-4' ? null : row[11];
     return {
-      requestId: row[0], source: row[1], requestedDate: row[2], scheduledDate: scheduledDate,
+      requestId: row[0], source: row[1], requestedDate: row[2],
+      scheduledDate: scheduledDate, scheduledDates: scheduledDates,
       schoolYear: schoolYear_(row[2]), school: row[3], schoolKey: schoolKey_(row[3], row[6]),
       workshop: row[4], provider: row[5], region: row[6], sector: row[7],
       gradeLabel: row[8], grades: gradeValues_(row[8], row[7]), status: row[9],

@@ -240,7 +240,8 @@
       const previousFrom = state.dateMonths[Number(elements.dateFrom.value)] || '';
       const previousTo = state.dateMonths[Number(elements.dateTo.value)] || '';
       const validMonths = state.records
-        .map(record => monthValue(record[elements.dateBasis.value]))
+        .reduce((dates, record) => dates.concat(recordDateValues(record)), [])
+        .map(monthValue)
         .filter(Boolean)
         .sort();
       state.dateMonths = validMonths.length
@@ -312,6 +313,16 @@
       return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? String(value).slice(0, 7) : '';
     }
 
+    function recordDateValues(record) {
+      if (elements.dateBasis.value === 'requestedDate') {
+        return monthValue(record.requestedDate) ? [record.requestedDate] : [];
+      }
+      const dates = Array.isArray(record.scheduledDates)
+        ? record.scheduledDates
+        : record.scheduledDate ? [record.scheduledDate] : [];
+      return [...new Set(dates.filter(date => monthValue(date)))].sort();
+    }
+
     function clamp(value, minimum, maximum) {
       return Math.min(maximum, Math.max(minimum, Number(value)));
     }
@@ -376,11 +387,12 @@
     }
 
     function recordMatchesRanges(record) {
-      const date = record[elements.dateBasis.value];
-      const month = monthValue(date);
-      const dateMatches = month
-        ? month >= state.dateMonths[Number(elements.dateFrom.value)] &&
+      const months = recordDateValues(record).map(monthValue);
+      const dateMatches = months.length
+        ? months.some(month =>
+          month >= state.dateMonths[Number(elements.dateFrom.value)] &&
           month <= state.dateMonths[Number(elements.dateTo.value)]
+        )
         : elements.includeUnknownDate.checked;
 
       const studentsKnown = Number.isInteger(record.students) && record.students >= 0;
@@ -468,9 +480,8 @@
 
     function renderRecent(records) {
       elements.recentRows.replaceChildren();
-      const dateField = elements.dateBasis.value;
       const recent = [...records]
-        .sort((a, b) => String(b[dateField] || '').localeCompare(String(a[dateField] || '')))
+        .sort((a, b) => recentDateValue(b).localeCompare(recentDateValue(a)))
         .slice(0, 8);
 
       if (!recent.length) {
@@ -486,7 +497,7 @@
 
       recent.forEach(record => {
         const row = document.createElement('tr');
-        [formatDate(record[dateField]), record.source, record.workshop, record.status,
+        [formatRecordDates(record), record.source, record.workshop, record.status,
           record.students === null ? '—' : numberFormat.format(record.students)]
           .forEach(value => {
             const cell = document.createElement('td');
@@ -495,6 +506,16 @@
           });
         elements.recentRows.appendChild(row);
       });
+    }
+
+    function recentDateValue(record) {
+      const dates = recordDateValues(record);
+      return dates.length ? dates[dates.length - 1] : '';
+    }
+
+    function formatRecordDates(record) {
+      const dates = recordDateValues(record);
+      return dates.length ? dates.map(formatDate).join(' · ') : 'Onbekend';
     }
 
     function sum(records, field) {
