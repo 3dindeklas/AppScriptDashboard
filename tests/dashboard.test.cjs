@@ -43,11 +43,36 @@ function liveContext(extra = {}, options = {}) {
 }
 
 function googleSheet(rows, overrides = {}) {
+  const formulaRows = overrides.formulaRows || rows.map(() => Array(headers.length).fill(''));
+  const onGetRange = overrides.onGetRange || (() => {});
+  const sheetOverrides = { ...overrides };
+  delete sheetOverrides.formulaRows;
+  delete sheetOverrides.onGetRange;
+
+  function rangeRows(startRow, numRows, matrixRows) {
+    const allRows = [headers, ...matrixRows];
+    const offset = startRow - 8;
+    return allRows.slice(offset, offset + numRows);
+  }
+
   return {
     getLastRow: () => 8 + rows.length,
     getLastColumn: () => headers.length,
-    getRange: () => ({ getValues: () => [headers, ...rows] }),
-    ...overrides
+    getRange: (startRow, startColumn, numRows, numColumns) => {
+      onGetRange(startRow, startColumn, numRows, numColumns);
+      const sliceColumns = matrix => matrix.map(row =>
+        row.slice(startColumn - 1, startColumn - 1 + numColumns)
+      );
+      return {
+        getValues: () => sliceColumns(rangeRows(startRow, numRows, rows)),
+        getFormulas: () => sliceColumns(rangeRows(
+          startRow,
+          numRows,
+          formulaRows
+        ).map((row, index) => startRow + index === 8 ? Array(headers.length).fill('') : row))
+      };
+    },
+    ...sheetOverrides
   };
 }
 
@@ -865,14 +890,11 @@ test('stap-6-kerncijfers en stichtingvergelijking gebruiken exact dezelfde filte
 
 test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {
   let requestedRange;
-  const sheet = {
-    getLastRow: () => 10,
-    getLastColumn: () => headers.length,
-    getRange: (...args) => {
-      requestedRange = args;
-      return { getValues: () => [headers, row(), row({ 'Aanvraag ID': 'REQ-002' })] };
+  const sheet = googleSheet([row(), row({ 'Aanvraag ID': 'REQ-002' })], {
+    onGetRange: (...args) => {
+      if (args[0] === 8 && args[2] > 1 && args[3] === headers.length) requestedRange = args;
     }
-  };
+  });
   const ctx = context({ SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) } });
   const result = ctx.readGoogleSheet_({ name: 'Stichting A', spreadsheetId: 'test', sheetName: 'Workshops', headerRow: 8 });
   assert.deepEqual(requestedRange, [8, 1, 3, headers.length]);
@@ -883,9 +905,8 @@ test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {
 test('Google Sheet respecteert de rijlimiet en meldt overgeslagen rijen', () => {
   let requestedRange;
   const sheet = googleSheet([row(), row(), row()], {
-    getRange: (...args) => {
-      requestedRange = args;
-      return { getValues: () => [headers, row()] };
+    onGetRange: (...args) => {
+      if (args[0] === 8 && args[2] > 1 && args[3] === headers.length) requestedRange = args;
     }
   });
   const ctx = liveContext({
@@ -898,6 +919,85 @@ test('Google Sheet respecteert de rijlimiet en meldt overgeslagen rijen', () => 
   assert.deepEqual(requestedRange, [8, 1, 2, headers.length]);
   assert.equal(result.records.length, 1);
   assert.equal(result.warnings.rowsTruncated, 2);
+});
+
+test('formule-only rijen worden niet geladen of als workshop en waarschuwing geteld', () => {
+  const blank = () => Array(headers.length).fill('');
+  const formulaOnlyRow = status => {
+    const values = blank();
+    values[headers.indexOf('Status')] = status;
+    return values;
+  };
+  const formulaOnlyCells = () => {
+    const formulas = blank();
+    formulas[headers.indexOf('Status')] = '=IF(A2="";"Open";"Uitgevoerd")';
+    return formulas;
+  };
+  const dataRows = [
+    row({ 'Aanvraag ID': 'REQ-001' }),
+    formulaOnlyRow('Open'),
+    row({ 'Aanvraag ID': 'REQ-002' }),
+    formulaOnlyRow('Open'),
+    formulaOnlyRow('Open')
+  ];
+  const formulaRows = [blank(), formulaOnlyCells(), blank(), formulaOnlyCells(), formulaOnlyCells()];
+  let wideRange;
+  const sheet = googleSheet(dataRows, {
+    formulaRows,
+    onGetRange: (...args) => {
+      if (args[0] === 8 && args[2] > 1 && args[3] === headers.length) wideRange = args;
+    }
+  });
+  const ctx = context({ SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) } });
+  const result = ctx.readGoogleSheet_({
+    name: 'Stichting A', spreadsheetId: 'test', sheetName: 'Workshops', headerRow: 8
+  });
+
+  assert.deepEqual(wideRange, [8, 1, 4, headers.length]);
+  assert.deepEqual(Array.from(result.records, record => record.requestId), ['REQ-001', 'REQ-002']);
+  assert.equal(result.warnings.emptyRows, 0);
+  assert.equal(result.warnings.rowsTruncated, 0);
+});
+
+test('formule-only tussenrijen verbruiken de ingestelde rijlimiet niet', () => {
+  const blank = () => Array(headers.length).fill('');
+  const formulaValues = blank();
+  formulaValues[headers.indexOf('Status')] = 'Open';
+  const formulaCells = blank();
+  formulaCells[headers.indexOf('Status')] = '=IF(A2="";"Open";"Uitgevoerd")';
+  const rows = [
+    row({ 'Aanvraag ID': 'REQ-001' }),
+    formulaValues,
+    row({ 'Aanvraag ID': 'REQ-002' }),
+    formulaValues,
+    row({ 'Aanvraag ID': 'REQ-003' })
+  ];
+  const sheet = googleSheet(rows, {
+    formulaRows: [blank(), formulaCells, blank(), formulaCells, blank()]
+  });
+  const ctx = liveContext({
+    SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) }
+  }, { maxRows: 2 });
+  const result = ctx.readGoogleSheet_({
+    name: 'Stichting A', spreadsheetId: 'source-a-id', sheetName: 'Workshops', headerRow: 8
+  });
+
+  assert.deepEqual(Array.from(result.records, record => record.requestId), ['REQ-001', 'REQ-002']);
+  assert.equal(result.warnings.rowsTruncated, 1);
+  assert.equal(result.warnings.emptyRows, 0);
+});
+
+test('een echte waarde naast formules houdt de workshoprij wel in de bron', () => {
+  const formulaRow = Array(headers.length).fill('');
+  formulaRow[headers.indexOf('Status')] = '=IF(A2="";"Open";"Uitgevoerd")';
+  const sheet = googleSheet([row()], { formulaRows: [formulaRow] });
+  const ctx = context({ SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) } });
+  const result = ctx.readGoogleSheet_({
+    name: 'Stichting A', spreadsheetId: 'test', sheetName: 'Workshops', headerRow: 8
+  });
+
+  assert.equal(result.records.length, 1);
+  assert.equal(result.records[0].requestId, 'REQ-001');
 });
 
 test('rijlimiet heeft een veilige standaard en harde bovengrens', () => {

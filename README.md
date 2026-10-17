@@ -13,6 +13,7 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - onafhankelijke laadstatus en datakwaliteit per Google-bron;
 - beschikbare data blijft zichtbaar wanneer één bron uitvalt;
 - maximaal 5.000 regels per bron, configureerbaar tot een harde grens van 10.000;
+- formule-only rijen worden vóór de brede data-import genegeerd en verbruiken de rijlimiet niet;
 - gegevens asynchroon ophalen met `google.script.run`;
 - negen combineerbare filters: stichting, schooljaar, regio, PO/VO, aanbieder, workshop, statusgroep, school en type;
 - inclusief maandbereik op aanvraagdatum of één van de definitieve lesdagen en een bereik voor leerlingaantallen;
