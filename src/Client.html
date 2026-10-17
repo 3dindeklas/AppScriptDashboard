@@ -12,6 +12,10 @@
       studentBounds: null
     };
     const numberFormat = new Intl.NumberFormat('nl-NL');
+    const decimalFormat = new Intl.NumberFormat('nl-NL', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1
+    });
     const sourceStatusLabels = {
       demo: 'Demo',
       ok: 'Geladen',
@@ -50,6 +54,9 @@
       includeUnknownStudents: document.getElementById('includeUnknownStudents'),
       resultCount: document.getElementById('resultCount'),
       kpis: document.getElementById('kpis'),
+      kpiQualityNote: document.getElementById('kpiQualityNote'),
+      comparisonSummary: document.getElementById('comparisonSummary'),
+      comparisonRows: document.getElementById('comparisonRows'),
       statusChart: document.getElementById('statusChart'),
       workshopChart: document.getElementById('workshopChart'),
       recentRows: document.getElementById('recentRows'),
@@ -412,16 +419,22 @@
         numberFormat.format(state.records.length) + ' workshops zichtbaar';
 
       renderKpis(records);
+      renderComparison(records);
       renderBars(elements.statusChart, countBy(records, 'status'), 8);
       renderBars(elements.workshopChart, countBy(records, 'workshop'), 6);
       renderRecent(records);
     }
 
     function renderKpis(records) {
+      const totals = dashboardMetrics(records);
       const metrics = [
-        ['Workshops', records.length],
-        ['Lesmomenten', sum(records, 'sessions')],
-        ['Leerlingdeelnames', sum(records, 'students')]
+        ['Aanvragen / workshops', formatInteger(totals.requests)],
+        ['Leerlingdeelnames', formatInteger(totals.studentParticipations)],
+        ['Scholen', formatInteger(totals.schools)],
+        ['Lesmomenten', formatInteger(totals.sessions)],
+        ['Uitgevoerd', formatInteger(totals.completed)],
+        ['Gem. leerlingen / aanvraag', formatDecimal(totals.averageStudents)],
+        ['Aanvragen / school', formatDecimal(totals.requestsPerSchool)]
       ];
 
       elements.kpis.replaceChildren(...metrics.map(metric => {
@@ -432,10 +445,112 @@
         label.textContent = metric[0];
         const value = document.createElement('p');
         value.className = 'kpi-value';
-        value.textContent = numberFormat.format(metric[1]);
+        value.textContent = metric[1];
         card.append(label, value);
         return card;
       }));
+
+      if (!totals.requests) {
+        elements.kpiQualityNote.textContent = 'Geen aanvragen binnen de huidige filters.';
+      } else if (totals.unknownStudentCounts) {
+        elements.kpiQualityNote.textContent = numberFormat.format(totals.unknownStudentCounts) +
+          (totals.unknownStudentCounts === 1
+            ? ' aanvraag heeft geen bekend leerlingaantal. Gemiddelden gebruiken alleen bekende aantallen.'
+            : ' aanvragen hebben geen bekend leerlingaantal. Gemiddelden gebruiken alleen bekende aantallen.');
+      } else {
+        elements.kpiQualityNote.textContent = 'Alle zichtbare aanvragen hebben een bekend leerlingaantal.';
+      }
+    }
+
+    function dashboardMetrics(records) {
+      const knownStudents = records.filter(record => Number.isInteger(record.students) && record.students >= 0);
+      const recordsWithSchool = records.filter(record => schoolIdentity(record));
+      const schools = new Set(recordsWithSchool.map(schoolIdentity));
+      const studentParticipations = sum(knownStudents, 'students');
+
+      return {
+        requests: records.length,
+        studentParticipations: studentParticipations,
+        schools: schools.size,
+        sessions: sum(records, 'sessions'),
+        completed: records.filter(record => record.statusGroup === 'Uitgevoerd').length,
+        averageStudents: knownStudents.length ? studentParticipations / knownStudents.length : null,
+        requestsPerSchool: schools.size ? recordsWithSchool.length / schools.size : null,
+        unknownStudentCounts: records.length - knownStudents.length
+      };
+    }
+
+    function schoolIdentity(record) {
+      const school = normalizedIdentity(record.school);
+      if (!school || school === 'onbekende school') return '';
+      return [record.source, record.region, record.school].map(normalizedIdentity).join('|');
+    }
+
+    function normalizedIdentity(value) {
+      return String(value || '')
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLocaleLowerCase('nl-NL');
+    }
+
+    function comparisonSources() {
+      const names = state.sources.map(source => source.name)
+        .concat(state.records.map(record => record.source))
+        .filter(Boolean);
+      return [...new Set(names)].sort((a, b) => String(a).localeCompare(String(b), 'nl'));
+    }
+
+    function renderComparison(records) {
+      const sources = comparisonSources();
+      elements.comparisonRows.replaceChildren();
+      elements.comparisonSummary.textContent = numberFormat.format(records.length) +
+        (records.length === 1 ? ' zichtbare aanvraag' : ' zichtbare aanvragen');
+
+      if (!sources.length) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 9;
+        cell.className = 'empty';
+        cell.textContent = 'Geen stichtingen beschikbaar binnen deze gegevens.';
+        row.appendChild(cell);
+        elements.comparisonRows.appendChild(row);
+        return;
+      }
+
+      sources.forEach(source => {
+        const totals = dashboardMetrics(records.filter(record => record.source === source));
+        const row = document.createElement('tr');
+        const name = document.createElement('th');
+        name.setAttribute('scope', 'row');
+        name.textContent = source;
+        row.appendChild(name);
+
+        [
+          formatInteger(totals.requests),
+          formatInteger(totals.studentParticipations),
+          formatInteger(totals.schools),
+          formatInteger(totals.sessions),
+          formatInteger(totals.completed),
+          formatDecimal(totals.averageStudents),
+          formatDecimal(totals.requestsPerSchool),
+          formatInteger(totals.unknownStudentCounts)
+        ].forEach(value => {
+          const cell = document.createElement('td');
+          cell.textContent = value;
+          row.appendChild(cell);
+        });
+        elements.comparisonRows.appendChild(row);
+      });
+    }
+
+    function formatInteger(value) {
+      return numberFormat.format(value);
+    }
+
+    function formatDecimal(value) {
+      return value === null ? '—' : decimalFormat.format(value);
     }
 
     function countBy(records, field) {

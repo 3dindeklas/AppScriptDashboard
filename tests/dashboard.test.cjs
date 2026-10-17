@@ -60,7 +60,8 @@ function clientHarness(records) {
     'dateFromRange', 'dateToRange', 'dateFromValue', 'dateToValue',
     'includeUnknownDate', 'studentsFromRange', 'studentsToRange',
     'studentsFromValue', 'studentsToValue', 'includeUnknownStudents',
-    'resultCount', 'kpis', 'statusChart', 'workshopChart', 'recentRows',
+    'resultCount', 'kpis', 'kpiQualityNote', 'comparisonSummary',
+    'comparisonRows', 'statusChart', 'workshopChart', 'recentRows',
     'recentDateHeading'
   ];
   const selectIds = new Set([
@@ -239,6 +240,20 @@ test('bereikfilters gebruiken gelabelde native invoervelden en leesbare outputs'
   assert.match(index, /<legend>Aantal leerlingen<\/legend>/);
 });
 
+test('stichtingsvergelijking gebruikt een toegankelijke tabel met alle stap-6-cijfers', () => {
+  const index = fs.readFileSync('src/Index.html', 'utf8');
+  assert.match(index, /id="kpisTitle"/);
+  assert.match(index, /id="kpiQualityNote"[^>]+aria-live="polite"/);
+  assert.match(index, /<table class="comparison-table">/);
+  assert.match(index, /<caption class="visually-hidden">Vergelijking van de actieve kerncijfers per stichting<\/caption>/);
+  for (const heading of [
+    'Stichting', 'Aanvragen', 'Leerlingdeelnames', 'Scholen', 'Lesmomenten',
+    'Uitgevoerd', 'Gem. leerlingen', 'Aanvragen / school', 'Zonder leerlingaantal'
+  ]) {
+    assert.match(index, new RegExp('<th scope="col">' + heading.replace('/', '\\/') + '<\\/th>'));
+  }
+});
+
 test('demo blijft werken en de browser ontvangt alleen de bestaande veilige velden', () => {
   const payload = context().getDashboardData();
   assert.equal(payload.mode, 'demo');
@@ -256,6 +271,31 @@ test('demo blijft werken en de browser ontvangt alleen de bestaande veilige veld
     'provider', 'region', 'requestedDate', 'scheduledDate', 'scheduledDates',
     'school', 'schoolYear', 'sector', 'sessions', 'source', 'status', 'statusGroup',
     'students', 'type', 'workshop'
+  ]);
+});
+
+test('demodata levert de gedocumenteerde stap-6-kerncijfers op', () => {
+  const payload = JSON.parse(JSON.stringify(context().getDashboardData()));
+  const elements = clientHarness(payload.records);
+  const kpis = Object.fromEntries(elements.kpis.children.map(card => [
+    card.children[0].textContent,
+    card.children[1].textContent
+  ]));
+
+  assert.deepEqual(kpis, {
+    'Aanvragen / workshops': '10',
+    'Leerlingdeelnames': '204',
+    'Scholen': '10',
+    'Lesmomenten': '22',
+    'Uitgevoerd': '4',
+    'Gem. leerlingen / aanvraag': '22,7',
+    'Aanvragen / school': '1,0'
+  });
+  assert.deepEqual(elements.comparisonRows.children.map(row =>
+    row.children.map(cell => cell.textContent)
+  ), [
+    ['Stichting A', '5', '105', '5', '11', '2', '21,0', '1,0', '0'],
+    ['Stichting B', '5', '99', '5', '11', '2', '24,8', '1,0', '1']
   ]);
 });
 
@@ -629,6 +669,73 @@ test('datumsoort, onbekende waarden en Filters wissen blijven voorspelbaar', () 
   assert.equal(elements.includeUnknownDate.checked, true);
   assert.equal(elements.includeUnknownStudents.checked, true);
   assert.equal(elements.resultCount.textContent, '4 van 4 workshops zichtbaar');
+});
+
+test('stap-6-kerncijfers en stichtingvergelijking gebruiken exact dezelfde filters', () => {
+  const records = [
+    {
+      source: 'Stichting A', region: 'Noord', school: 'School Eén', students: 20,
+      sessions: 2, statusGroup: 'Uitgevoerd', scheduledDate: '2026-09-01',
+      scheduledDates: ['2026-09-01'], workshop: 'A', status: 'Uitgevoerd'
+    },
+    {
+      source: 'Stichting A', region: ' noord ', school: '  SCHOOL ÉÉN ', students: null,
+      sessions: 1, statusGroup: 'Open', scheduledDate: '2026-09-02',
+      scheduledDates: ['2026-09-02'], workshop: 'B', status: 'Open'
+    },
+    {
+      source: 'Stichting A', region: 'Zuid', school: 'School Eén', students: 30,
+      sessions: 3, statusGroup: 'Uitgevoerd', scheduledDate: '2026-09-03',
+      scheduledDates: ['2026-09-03'], workshop: 'C', status: 'Uitgevoerd'
+    },
+    {
+      source: 'Stichting B', region: 'Noord', school: 'School Eén', students: 10,
+      sessions: 1, statusGroup: 'Uitgevoerd', scheduledDate: '2026-09-04',
+      scheduledDates: ['2026-09-04'], workshop: 'D', status: 'Uitgevoerd'
+    },
+    {
+      source: 'Stichting B', region: 'Noord', school: 'Onbekende school', students: 0,
+      sessions: null, statusGroup: 'Open', scheduledDate: '2026-09-05',
+      scheduledDates: ['2026-09-05'], workshop: 'E', status: 'Open'
+    }
+  ];
+  const elements = clientHarness(records);
+  const kpis = () => Object.fromEntries(elements.kpis.children.map(card => [
+    card.children[0].textContent,
+    card.children[1].textContent
+  ]));
+  const rows = () => elements.comparisonRows.children.map(row =>
+    row.children.map(cell => cell.textContent)
+  );
+
+  assert.deepEqual(kpis(), {
+    'Aanvragen / workshops': '5',
+    'Leerlingdeelnames': '60',
+    'Scholen': '3',
+    'Lesmomenten': '7',
+    'Uitgevoerd': '3',
+    'Gem. leerlingen / aanvraag': '15,0',
+    'Aanvragen / school': '1,3'
+  });
+  assert.equal(
+    elements.kpiQualityNote.textContent,
+    '1 aanvraag heeft geen bekend leerlingaantal. Gemiddelden gebruiken alleen bekende aantallen.'
+  );
+  assert.deepEqual(rows(), [
+    ['Stichting A', '3', '50', '2', '6', '2', '25,0', '1,5', '1'],
+    ['Stichting B', '2', '10', '1', '1', '1', '5,0', '1,0', '0']
+  ]);
+
+  elements.sourceFilter.value = 'Stichting B';
+  elements.sourceFilter.trigger('change');
+  assert.equal(kpis()['Aanvragen / workshops'], '2');
+  assert.equal(kpis()['Leerlingdeelnames'], '10');
+  assert.equal(kpis()['Gem. leerlingen / aanvraag'], '5,0');
+  assert.equal(elements.comparisonSummary.textContent, '2 zichtbare aanvragen');
+  assert.deepEqual(rows(), [
+    ['Stichting A', '0', '0', '0', '0', '0', '—', '—', '0'],
+    ['Stichting B', '2', '10', '1', '1', '1', '5,0', '1,0', '0']
+  ]);
 });
 
 test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {

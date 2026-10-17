@@ -17,7 +17,8 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - negen combineerbare filters: stichting, schooljaar, regio, PO/VO, aanbieder, workshop, statusgroep, school en type;
 - inclusief maandbereik op aanvraagdatum of één van de definitieve lesdagen en een bereik voor leerlingaantallen;
 - expliciete keuzes om regels zonder datum of leerlingaantal wel of niet mee te nemen;
-- kerncijfers, twee eenvoudige staafgrafieken en een recente-workshoptabel;
+- zeven gefilterde kerncijfers en een vergelijking tussen de stichtingen;
+- twee eenvoudige staafgrafieken en een recente-workshoptabel;
 - uitsluitend centraal toegestane analysevelden naar de browser; geen namen van contactpersonen, e-mailadressen, telefoonnummers, notities of technische ID's;
 - demomodus zonder databronnen, maar nooit zonder toegangscontrole.
 
