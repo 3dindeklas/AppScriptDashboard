@@ -63,8 +63,10 @@ Contactpersoon, e-mailadres, telefoon, notities, debuggegevens en e-mail-/kalend
 | `type` | `type`, anders `Onbekend` |
 | `sessions` | `sessions` |
 | `students` | `students` |
+| `providerTotalCosts` | `providerTotalCosts`, anders `null` |
+| `invoiceAmount` | `invoiceAmount`, anders `null` |
 
-Aanvraag-ID, schoolKey, locatie, de oorspronkelijke tekst uit `Groep / leerjaar`, contactgegevens en financiële velden blijven server-side. Alleen de genormaliseerde numerieke leerjaren verlaten vanaf stap 7 de server, omdat deze nodig zijn voor de gewogen PO/VO-grafieken. Schoolnaam is vanaf stap 4 zichtbaar voor toegestane accounts omdat deze nodig is voor het schoolfilter.
+Aanvraag-ID, schoolKey, locatie, de oorspronkelijke tekst uit `Groep / leerjaar`, contactgegevens en financiële detailvelden blijven server-side. Alleen `Totale kosten aanbieder` en `Te factureren i_lab` verlaten vanaf stap 8 de server, omdat deze nodig zijn voor het gefilterde financiële overzicht. De browser leidt daaruit zelf af of een regel compleet is. De bronkolommen `Marge (€)` en `Marge (%)` worden niet naar de browser gestuurd en niet voor de dashboardberekening gebruikt. Alle browserdata blijft achter dezelfde accountcontrole en vaste allowlist vallen.
 
 ## Dropdownfilters
 
@@ -88,6 +90,23 @@ Een lege of ongeldige datum en een leeg of ongeldig leerlingaantal blijven onbek
 - Een punt met drie cijfers erachter wordt als duizendtalseparator behandeld: `1.234` → `1234`.
 - Aantallen zijn uitsluitend gehele, niet-negatieve waarden.
 - Bij lesmomenten is ook een eenvoudige waarde zoals `2x` toegestaan.
+
+## Financieel overzicht
+
+Het financiële blok gebruikt exact dezelfde workshopregels als de overige kerncijfers nadat alle dropdown-, datum- en leerlingfilters zijn toegepast. Het blok staat standaard ingeklapt.
+
+| Cijfer | Definitie |
+| --- | --- |
+| Totale kosten aanbieder | som van alle bekende waarden in `providerTotalCosts` |
+| Te factureren | som van alle bekende waarden in `invoiceAmount` |
+| Marge complete regels | som van `invoiceAmount - providerTotalCosts`, uitsluitend voor regels waarop beide bedragen bekend zijn |
+| Gewogen marge | totale marge van de complete regels gedeeld door hun totale te factureren bedrag |
+| Complete financiële regels | aantal zichtbare regels met zowel kosten als een te factureren bedrag |
+| Onvolledige financiële regels | aantal zichtbare regels waarop minstens één van beide bedragen ontbreekt of ongeldig is |
+
+Een numerieke nul is een bekend bedrag. Een leeg of ongeldig bedrag blijft `null` en wordt nooit als nul in een totaal verwerkt. Daardoor kunnen **Totale kosten aanbieder** en **Te factureren** bekende bedragen uit onvolledige regels bevatten, terwijl **Marge complete regels** alleen de onderling vergelijkbare complete regels gebruikt. Als er geen complete regel is, blijft de marge `—`. Als de complete regels samen een te factureren bedrag van nul hebben, blijft alleen het gewogen margepercentage `—` omdat delen door nul niet mogelijk is.
+
+Het gewogen margepercentage is nadrukkelijk niet het gemiddelde van de percentages per workshop. De berekening gebruikt de opgetelde bedragen, zodat een kleine workshop niet even zwaar meetelt als een grote workshop. Eventuele bestaande sheetwaarden in `Marge (€)` en `Marge (%)` blijven beschikbaar in het interne record voor controle, maar bepalen het dashboardresultaat niet.
 
 ## Datums en schooljaren
 

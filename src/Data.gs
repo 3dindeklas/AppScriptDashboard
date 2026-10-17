@@ -30,7 +30,9 @@ const PUBLIC_RECORD_FIELDS_ = Object.freeze([
   'statusGroup',
   'type',
   'sessions',
-  'students'
+  'students',
+  'providerTotalCosts',
+  'invoiceAmount'
 ]);
 
 /** Vaste datakwaliteitssignalen die als aantallen naar de browser mogen. */
@@ -296,8 +298,10 @@ function normalizeRow_(row, header, sourceName, parsed) {
   };
 }
 
-/** Expliciete browserprojectie. Interne IDs, contactdata, locaties en financiën blijven server-side. */
+/** Expliciete browserprojectie. Alleen de financiële basisvelden voor stap 8 worden toegevoegd. */
 function publicRecord_(record) {
+  const providerTotalCosts = publicNumber_(record.providerTotalCosts);
+  const invoiceAmount = publicNumber_(record.invoiceAmount);
   const prepared = {
     source: record.source,
     requestedDate: record.requestedDate || '',
@@ -316,13 +320,19 @@ function publicRecord_(record) {
     statusGroup: record.statusGroup || 'Overig',
     type: record.type || 'Onbekend',
     sessions: record.sessions,
-    students: record.students
+    students: record.students,
+    providerTotalCosts: providerTotalCosts,
+    invoiceAmount: invoiceAmount
   };
 
   return PUBLIC_RECORD_FIELDS_.reduce(function(publicRecord, field) {
     publicRecord[field] = prepared[field];
     return publicRecord;
   }, {});
+}
+
+function publicNumber_(value) {
+  return typeof value === 'number' && isFinite(value) ? value : null;
 }
 
 /** Expliciete projectie van bronstatus; technische fouten en IDs ontbreken altijd. */
@@ -603,16 +613,16 @@ function demoDashboardData_() {
 /** Fictieve interne records waarmee de web-app direct blijft werken. */
 function demoRecords_() {
   return [
-    ['demo-a-1', 'Stichting A', '2026-09-03', 'Voorbeeldschool De Horizon', '3D-sleutelhanger', '3Dindeklas', 'Vijfheerenlanden', 'PO', 'groep 7/8', 'Uitgevoerd', 2, 24],
-    ['demo-a-2', 'Stichting A', '2026-09-10', 'Voorbeeldschool Het Kompas', 'Paper Circuits', '3Dindeklas', 'Molenlanden', 'PO', 'groep 5/6', 'Uitgevoerd', 1, 15],
-    ['demo-a-3', 'Stichting A', '2026-09-18', 'Voorbeeldschool De Brug', 'Codeer een robot met kleuren', '3Dindeklas', 'Gorinchem', 'PO', 'groep 3/4', 'Bevestiging', 2, 28],
-    ['demo-a-4', 'Stichting A', '2026-10-02', 'Voorbeeldcollege Noord', 'Micro:bit Magic', '3Dindeklas', 'Vijfheerenlanden', 'VO', 'leerjaar 1', 'Open', 4, 20],
-    ['demo-a-5', 'Stichting A', '2026-10-12', 'Voorbeeldschool De Regenboog', 'Duurzaam huis met licht', 'MakerLab', 'Altena', 'PO', 'groep 6', 'Akkoord', 2, 18],
-    ['demo-b-1', 'Stichting B', '2026-09-05', 'Voorbeeldschool De Uitvinder', 'Bouw een Spin Art-machine', '3Dindeklas', 'Sliedrecht', 'PO', 'groep 5/6', 'Uitgevoerd', 3, 27],
-    ['demo-b-2', 'Stichting B', '2026-09-16', 'Voorbeeldschool De Pionier', 'Programmeer een alarm', '3Dindeklas', 'Molenlanden', 'PO', 'groep 7/8', 'Uitgevoerd', 2, 22],
-    ['demo-b-3', 'Stichting B', '2026-09-25', 'Voorbeeldschool De Ruimte', '3D-sleutelhanger', '3Dindeklas', 'Nieuwegein', 'PO', 'groep 6', 'Ingepland', 2, 26],
-    ['demo-b-4', 'Stichting B', '2026-10-06', 'Voorbeeldcollege Zuid', 'Parachute-uitdaging', 'Techniekteam', 'IJsselstein', 'VO', 'leerjaar 2', 'Optie', 2, 30],
-    ['demo-b-5', 'Stichting B', '2026-10-15', 'Voorbeeldschool Het Atelier', 'Greenscreen stop-motion', '3Dindeklas', 'Gorinchem', 'PO', 'groep 6/7', 'Bevestiging', 2, 24]
+    ['demo-a-1', 'Stichting A', '2026-09-03', 'Voorbeeldschool De Horizon', '3D-sleutelhanger', '3Dindeklas', 'Vijfheerenlanden', 'PO', 'groep 7/8', 'Uitgevoerd', 2, 24, 450, 600],
+    ['demo-a-2', 'Stichting A', '2026-09-10', 'Voorbeeldschool Het Kompas', 'Paper Circuits', '3Dindeklas', 'Molenlanden', 'PO', 'groep 5/6', 'Uitgevoerd', 1, 15, 300, 450],
+    ['demo-a-3', 'Stichting A', '2026-09-18', 'Voorbeeldschool De Brug', 'Codeer een robot met kleuren', '3Dindeklas', 'Gorinchem', 'PO', 'groep 3/4', 'Bevestiging', 2, 28, 500, 700],
+    ['demo-a-4', 'Stichting A', '2026-10-02', 'Voorbeeldcollege Noord', 'Micro:bit Magic', '3Dindeklas', 'Vijfheerenlanden', 'VO', 'leerjaar 1', 'Open', 4, 20, 800, 1000],
+    ['demo-a-5', 'Stichting A', '2026-10-12', 'Voorbeeldschool De Regenboog', 'Duurzaam huis met licht', 'MakerLab', 'Altena', 'PO', 'groep 6', 'Akkoord', 2, 18, 400, null],
+    ['demo-b-1', 'Stichting B', '2026-09-05', 'Voorbeeldschool De Uitvinder', 'Bouw een Spin Art-machine', '3Dindeklas', 'Sliedrecht', 'PO', 'groep 5/6', 'Uitgevoerd', 3, 27, 650, 850],
+    ['demo-b-2', 'Stichting B', '2026-09-16', 'Voorbeeldschool De Pionier', 'Programmeer een alarm', '3Dindeklas', 'Molenlanden', 'PO', 'groep 7/8', 'Uitgevoerd', 2, 22, 500, 650],
+    ['demo-b-3', 'Stichting B', '2026-09-25', 'Voorbeeldschool De Ruimte', '3D-sleutelhanger', '3Dindeklas', 'Nieuwegein', 'PO', 'groep 6', 'Ingepland', 2, 26, 450, 600],
+    ['demo-b-4', 'Stichting B', '2026-10-06', 'Voorbeeldcollege Zuid', 'Parachute-uitdaging', 'Techniekteam', 'IJsselstein', 'VO', 'leerjaar 2', 'Optie', 2, 30, null, 900],
+    ['demo-b-5', 'Stichting B', '2026-10-15', 'Voorbeeldschool Het Atelier', 'Greenscreen stop-motion', '3Dindeklas', 'Gorinchem', 'PO', 'groep 6/7', 'Bevestiging', 2, 24, 700, 950]
   ].map(function(row) {
     const scheduledDates = row[0] === 'demo-a-4'
       ? []
@@ -628,8 +638,9 @@ function demoRecords_() {
       statusGroup: statusGroup_(row[9]), sessions: row[10], students: students,
       desiredPeriod: '', location: '', type: 'Workshop', points: null,
       providerWorkshopPrice: null, travelCosts: null, extraCosts: null,
-      providerTotalCosts: null, invoiceAmount: null, marginAmount: null,
-      marginPercent: null, financialComplete: false, lastContactDate: null, actionRequired: ''
+      providerTotalCosts: row[12], invoiceAmount: row[13], marginAmount: null,
+      marginPercent: null, financialComplete: row[12] !== null && row[13] !== null,
+      lastContactDate: null, actionRequired: ''
     };
   });
 }

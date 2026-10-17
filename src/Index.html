@@ -186,6 +186,25 @@
         </div>
       </section>
 
+      <details id="financialOverview" class="panel financial-panel">
+        <summary>
+          <span>
+            <span class="eyebrow">FINANCIEEL</span>
+            <span class="financial-title">Kosten, facturatie en marge</span>
+          </span>
+          <span class="financial-toggle" aria-hidden="true">
+            <span class="financial-toggle-open">Toon overzicht</span>
+            <span class="financial-toggle-close">Verberg overzicht</span>
+          </span>
+        </summary>
+        <div class="financial-content">
+          <p class="financial-intro">Alle bedragen volgen dezelfde actieve filters. Kosten en facturatie gebruiken alle bekende bedragen; marge gebruikt alleen financieel complete regels.</p>
+          <div id="financialKpis" class="financial-grid"></div>
+          <div id="financialCompleteness" class="financial-completeness"></div>
+          <p id="financialNote" class="financial-note" aria-live="polite"></p>
+        </div>
+      </details>
+
       <section class="analytics-section" aria-labelledby="chartsTitle">
         <div class="analytics-heading">
           <div>

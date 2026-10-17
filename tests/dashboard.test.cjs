@@ -97,7 +97,8 @@ function clientHarness(records, options = {}) {
     'includeUnknownDate', 'studentsFromRange', 'studentsToRange',
     'studentsFromValue', 'studentsToValue', 'includeUnknownStudents',
     'resultCount', 'kpis', 'kpiQualityNote', 'comparisonSummary',
-    'comparisonRows', 'timelineMetric', 'timelineSubtitle', 'timelineLegend',
+    'comparisonRows', 'financialKpis', 'financialCompleteness', 'financialNote',
+    'timelineMetric', 'timelineSubtitle', 'timelineLegend',
     'timelineChart', 'timelineCaption', 'timelineTableHead', 'timelineTableRows',
     'sectorChart', 'sectorTableRows', 'regionChart', 'regionTableRows',
     'statusChart', 'statusTableRows', 'workshopChart', 'workshopTableRows',
@@ -329,6 +330,19 @@ test('stichtingsvergelijking gebruikt een toegankelijke tabel met alle stap-6-ci
   }
 });
 
+test('financieel overzicht staat standaard ingeklapt en benoemt de berekeningsbasis', () => {
+  const index = fs.readFileSync('src/Index.html', 'utf8');
+  const openingTag = index.match(/<details id="financialOverview"[^>]*>/);
+
+  assert.ok(openingTag);
+  assert.doesNotMatch(openingTag[0], /\sopen(?:\s|=|>)/);
+  assert.match(index, /<summary>[\s\S]*?Kosten, facturatie en marge[\s\S]*?<\/summary>/);
+  assert.match(index, /id="financialKpis"/);
+  assert.match(index, /id="financialCompleteness"/);
+  assert.match(index, /id="financialNote"[^>]+aria-live="polite"/);
+  assert.match(index, /marge gebruikt alleen financieel complete regels/);
+});
+
 test('iedere stap-7-grafiek heeft een leesbare tabelweergave zonder externe grafiekbibliotheek', () => {
   const index = fs.readFileSync('src/Index.html', 'utf8');
   const styles = fs.readFileSync('src/Styles.html', 'utf8');
@@ -347,7 +361,7 @@ test('iedere stap-7-grafiek heeft een leesbare tabelweergave zonder externe graf
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
-test('demo blijft werken en de browser ontvangt alleen de veilige stap-7-velden', () => {
+test('demo blijft werken en de browser ontvangt alleen de veilige stap-8-velden', () => {
   const payload = context().getDashboardData();
   assert.equal(payload.mode, 'demo');
   assert.equal(payload.complete, true);
@@ -360,12 +374,17 @@ test('demo blijft werken en de browser ontvangt alleen de veilige stap-7-velden'
   assert.equal(payload.records.filter(record => !record.scheduledDate).length, 1);
   assert.equal(payload.records.filter(record => record.scheduledDates.length > 1).length, 1);
   assert.equal(payload.records.filter(record => record.students === null).length, 1);
+  assert.equal(payload.records.filter(record =>
+    record.providerTotalCosts !== null && record.invoiceAmount !== null
+  ).length, 8);
   assert.deepEqual(Object.keys(payload.records[0]).sort(), [
-    'grades', 'provider', 'region', 'requestedDate', 'scheduledDate', 'scheduledDates',
-    'school', 'schoolYear', 'sector', 'sessions', 'source', 'status', 'statusGroup',
-    'students', 'type', 'workshop'
+    'grades', 'invoiceAmount', 'provider', 'providerTotalCosts', 'region', 'requestedDate',
+    'scheduledDate', 'scheduledDates', 'school', 'schoolYear', 'sector', 'sessions',
+    'source', 'status', 'statusGroup', 'students', 'type', 'workshop'
   ]);
   assert.deepEqual(Array.from(payload.records[0].grades), [7, 8]);
+  assert.equal(payload.records[0].providerTotalCosts, 450);
+  assert.equal(payload.records[0].invoiceAmount, 600);
 });
 
 test('lang laden geeft stapsgewijze feedback en herstelt de bediening na succes', () => {
@@ -424,6 +443,100 @@ test('demodata levert de gedocumenteerde stap-6-kerncijfers op', () => {
     ['Stichting A', '5', '105', '5', '11', '2', '21,0', '1,0', '0'],
     ['Stichting B', '5', '99', '5', '11', '2', '24,8', '1,0', '1']
   ]);
+});
+
+test('demodata levert de gedocumenteerde stap-8-financiële totalen op', () => {
+  const payload = JSON.parse(JSON.stringify(context().getDashboardData()));
+  const elements = clientHarness(payload.records);
+  const readable = value => value.replace(/\s/g, ' ');
+  const financial = Object.fromEntries(elements.financialKpis.children.map(card => [
+    card.children[0].textContent,
+    readable(card.children[1].textContent)
+  ]));
+  const completeness = Object.fromEntries(elements.financialCompleteness.children.map(card => [
+    card.children[0].textContent,
+    card.children[1].textContent
+  ]));
+
+  assert.deepEqual(financial, {
+    'Totale kosten aanbieder': '€ 4.750,00',
+    'Te factureren': '€ 6.700,00',
+    'Marge complete regels': '€ 1.450,00',
+    'Gewogen marge': '25,0%'
+  });
+  assert.deepEqual(completeness, {
+    'Complete financiële regels': '8',
+    'Onvolledige financiële regels': '2'
+  });
+});
+
+test('financiële totalen gebruiken bekende bedragen en marge alleen uit complete regels', () => {
+  const elements = clientHarness([
+    {
+      source: 'Stichting A', workshop: 'Compleet A',
+      providerTotalCosts: 100, invoiceAmount: 200, financialComplete: true
+    },
+    {
+      source: 'Stichting A', workshop: 'Alleen kosten',
+      providerTotalCosts: 50, invoiceAmount: null, financialComplete: false
+    },
+    {
+      source: 'Stichting B', workshop: 'Compleet B',
+      providerTotalCosts: 80, invoiceAmount: 100, financialComplete: true
+    },
+    {
+      source: 'Stichting B', workshop: 'Alleen factuur',
+      providerTotalCosts: null, invoiceAmount: 300, financialComplete: false
+    }
+  ]);
+  const readable = value => value.replace(/\s/g, ' ');
+  const financial = () => Object.fromEntries(elements.financialKpis.children.map(card => [
+    card.children[0].textContent,
+    readable(card.children[1].textContent)
+  ]));
+  const completeness = () => Object.fromEntries(elements.financialCompleteness.children.map(card => [
+    card.children[0].textContent,
+    card.children[1].textContent
+  ]));
+
+  assert.deepEqual(financial(), {
+    'Totale kosten aanbieder': '€ 230,00',
+    'Te factureren': '€ 600,00',
+    'Marge complete regels': '€ 120,00',
+    'Gewogen marge': '40,0%'
+  });
+  assert.deepEqual(completeness(), {
+    'Complete financiële regels': '2',
+    'Onvolledige financiële regels': '2'
+  });
+
+  elements.sourceFilter.value = 'Stichting A';
+  elements.sourceFilter.trigger('change');
+  assert.deepEqual(financial(), {
+    'Totale kosten aanbieder': '€ 150,00',
+    'Te factureren': '€ 200,00',
+    'Marge complete regels': '€ 100,00',
+    'Gewogen marge': '50,0%'
+  });
+  assert.deepEqual(completeness(), {
+    'Complete financiële regels': '1',
+    'Onvolledige financiële regels': '1'
+  });
+
+  elements.resetButton.trigger('click');
+  elements.workshopFilter.value = 'Alleen kosten';
+  elements.workshopFilter.trigger('change');
+  assert.deepEqual(financial(), {
+    'Totale kosten aanbieder': '€ 50,00',
+    'Te factureren': '—',
+    'Marge complete regels': '—',
+    'Gewogen marge': '—'
+  });
+  assert.deepEqual(completeness(), {
+    'Complete financiële regels': '0',
+    'Onvolledige financiële regels': '1'
+  });
+  assert.match(elements.financialNote.textContent, /Marge blijft daarom onbekend/);
 });
 
 test('demodata levert alle stap-7-verdelingen en gewogen leerjaren op', () => {
@@ -549,6 +662,16 @@ test('demomodus omzeilt de toegangscontrole niet', () => {
     () => context({ Session: session('niet-toegestaan@voorbeeld.nl') }).getDashboardData(),
     /Geen toegang/
   );
+});
+
+test('financiële browservelden vallen onder dezelfde verplichte toegangscontrole', () => {
+  const denied = context({ Session: session('niet-toegestaan@voorbeeld.nl') });
+  assert.throws(() => denied.getDashboardData(), /Geen toegang/);
+
+  const allowedRecord = context().getDashboardData().records[0];
+  assert.equal(allowedRecord.providerTotalCosts, 450);
+  assert.equal(allowedRecord.invoiceAmount, 600);
+  assert.equal(Object.prototype.hasOwnProperty.call(allowedRecord, 'financialComplete'), false);
 });
 
 test('volledige kolomstructuur wordt naar één intern record genormaliseerd', () => {
@@ -702,7 +825,7 @@ test('ontbrekende IDs, dubbele IDs en ongeldige waarden worden geteld', () => {
   });
 });
 
-test('filtervelden verlaten gecontroleerd de server maar privacyvelden niet', () => {
+test('dashboardvelden verlaten gecontroleerd de server maar privacy- en detailvelden niet', () => {
   const internal = { ...normalize().records[0], laterToegevoegdGeheim: 'nieuw-geheim' };
   const publicRecord = context().publicRecord_(internal);
   const json = JSON.stringify(publicRecord);
@@ -710,7 +833,8 @@ test('filtervelden verlaten gecontroleerd de server maar privacyvelden niet', ()
   assert.deepEqual(Object.keys(publicRecord), [
     'source', 'requestedDate', 'scheduledDate', 'scheduledDates', 'schoolYear',
     'school', 'workshop', 'provider', 'region', 'sector', 'grades', 'status',
-    'statusGroup', 'type', 'sessions', 'students'
+    'statusGroup', 'type', 'sessions', 'students', 'providerTotalCosts',
+    'invoiceAmount'
   ]);
   assert.equal(publicRecord.requestedDate, '2026-10-14');
   assert.equal(publicRecord.scheduledDate, '2026-11-20');
@@ -720,14 +844,37 @@ test('filtervelden verlaten gecontroleerd de server maar privacyvelden niet', ()
   assert.deepEqual(Array.from(publicRecord.grades), [6, 7, 8]);
   assert.equal(publicRecord.statusGroup, 'Ingepland');
   assert.equal(publicRecord.type, 'Workshop');
+  assert.equal(publicRecord.providerTotalCosts, 485.5);
+  assert.equal(publicRecord.invoiceAmount, 650);
+
+  for (const privateField of [
+    'requestId', 'schoolKey', 'location', 'providerWorkshopPrice', 'travelCosts',
+    'extraCosts', 'marginAmount', 'marginPercent', 'financialComplete',
+    'lastContactDate', 'actionRequired'
+  ]) {
+    assert.equal(Object.prototype.hasOwnProperty.call(publicRecord, privateField), false, privateField);
+  }
 
   for (const privateValue of [
     'REQ-001', 'Privé Persoon', 'private@example.test', '0612345678',
     'Technieklokaal', 'secret-draft-id', 'secret-calendar-id', 'secret-source-id',
-    'Niet naar de browser sturen', 'private-debug', '485.5', '650', '164.5', 'nieuw-geheim'
+    'Niet naar de browser sturen', 'private-debug', '164.5', '25.31', 'nieuw-geheim'
   ]) {
     assert.ok(!json.includes(privateValue), privateValue);
   }
+});
+
+test('ontbrekende financiële bedragen blijven null in de browserprojectie', () => {
+  const publicRecord = context().publicRecord_({
+    source: 'Stichting A',
+    providerTotalCosts: undefined,
+    invoiceAmount: 0,
+    financialComplete: true
+  });
+
+  assert.equal(publicRecord.providerTotalCosts, null);
+  assert.equal(publicRecord.invoiceAmount, 0);
+  assert.equal(Object.prototype.hasOwnProperty.call(publicRecord, 'financialComplete'), false);
 });
 
 test('alle negen dropdownfilters worden uit de records opgebouwd en gecombineerd', () => {

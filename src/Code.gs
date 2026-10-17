@@ -45,7 +45,7 @@ function include(filename) {
 
 /**
  * Enige functie die vanuit de browser wordt aangeroepen.
- * Contactgegevens, notities en technische ID's worden niet teruggestuurd.
+ * Contactgegevens, notities, technische ID's en financiële detailvelden worden niet teruggestuurd.
  */
 function getDashboardData() {
   requireAccess_();
