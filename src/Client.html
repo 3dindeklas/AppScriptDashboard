@@ -39,7 +39,7 @@
       students: { label: 'Leerlingdeelnames' },
       sessions: { label: 'Lesmomenten' }
     };
-    const timelinePalette = ['#167c6a', '#9693cf', '#dca25e', '#83a8ba', '#b4c77b', '#c77f90'];
+    const timelinePalette = ['#4c325b', '#5ab3b1', '#fbbd30', '#8c6b9f', '#33817f', '#c88529'];
     const sourceStatusLabels = {
       demo: 'Demo',
       ok: 'Geladen',
@@ -60,6 +60,7 @@
     const elements = {
       dashboard: document.getElementById('dashboard'),
       refresh: document.getElementById('refreshButton'),
+      print: document.getElementById('printButton'),
       reset: document.getElementById('resetButton'),
       message: document.getElementById('message'),
       mode: document.getElementById('modeBadge'),
@@ -327,6 +328,13 @@
       if (source === 'cache') return 'snelle snapshot';
       if (source === 'live') return 'rechtstreeks uit Google Sheets';
       return 'demogegevens';
+    }
+
+    function printDashboard() {
+      const financialWasOpen = elements.financialOverview.open;
+      if (!elements.financialOverview.hidden) elements.financialOverview.open = true;
+      window.print();
+      if (!financialWasOpen) elements.financialOverview.open = false;
     }
 
     function valuesOf(field) {
@@ -1173,6 +1181,7 @@
     elements.includeUnknownStudents.addEventListener('change', render);
     elements.timelineMetric.addEventListener('change', render);
     elements.refresh.addEventListener('click', () => loadDashboard(true));
+    elements.print.addEventListener('click', printDashboard);
     elements.reset.addEventListener('click', () => {
       filters.forEach(filter => { filter.element.value = ''; });
       elements.dateBasis.value = 'scheduledDate';
