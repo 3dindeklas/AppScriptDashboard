@@ -120,6 +120,10 @@ Onder **Bronnen & datakwaliteit** zie je per stichting of de bron geladen is, ho
 
 Formules mogen onder de echte gegevens alvast zijn doorgetrokken. Rijen die uitsluitend formules bevatten worden niet geladen, tellen niet als workshop en verbruiken de rijlimiet niet. Test dit desgewenst door een formule enkele honderden rijen naar beneden door te trekken: het getoonde aantal workshops hoort gelijk te blijven. Een echte workshoprij met daarnaast berekende formulevelden blijft wel gewoon zichtbaar.
 
+Tijdens het ophalen blijft bovenaan een laadmelding met spinner zichtbaar. Na 1,5, 5 en 10 seconden verandert de tekst, zodat zichtbaar blijft dat de pagina nog op Apps Script en de Sheets wacht. Dit is geen geschat percentage. Na een succesvolle laadactie toont **Bijgewerkt** ook de werkelijk gemeten laadtijd. De knop **Vernieuwen** is tijdens het laden uitgeschakeld om dubbele aanvragen te voorkomen.
+
+De bronimport leest per Sheet eerst de kopregel, daarna één compact ankerbereik en ten slotte één keer de benodigde brede tabel. Test bij voorkeur ook met de grootste echte Sheet en met ver doorgetrokken formules. Blijft de melding langer dan 10 seconden staan, controleer dan in Apps Script onder **Uitvoeringen** of het wachten in de bronimport zit en noteer de getoonde laadtijd na afloop.
+
 ## Stap 5 · Koppel de tweede Google Sheet
 
 Vul pas wanneer Stichting A werkt ook het `spreadsheetId` van Stichting B in. Beide sheets gebruiken dezelfde kopteksten en dezelfde kopregelinstelling.

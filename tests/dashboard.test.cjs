@@ -45,9 +45,13 @@ function liveContext(extra = {}, options = {}) {
 function googleSheet(rows, overrides = {}) {
   const formulaRows = overrides.formulaRows || rows.map(() => Array(headers.length).fill(''));
   const onGetRange = overrides.onGetRange || (() => {});
+  const onGetValues = overrides.onGetValues || (() => {});
+  const onGetFormulas = overrides.onGetFormulas || (() => {});
   const sheetOverrides = { ...overrides };
   delete sheetOverrides.formulaRows;
   delete sheetOverrides.onGetRange;
+  delete sheetOverrides.onGetValues;
+  delete sheetOverrides.onGetFormulas;
 
   function rangeRows(startRow, numRows, matrixRows) {
     const allRows = [headers, ...matrixRows];
@@ -59,26 +63,33 @@ function googleSheet(rows, overrides = {}) {
     getLastRow: () => 8 + rows.length,
     getLastColumn: () => headers.length,
     getRange: (startRow, startColumn, numRows, numColumns) => {
-      onGetRange(startRow, startColumn, numRows, numColumns);
+      const rangeArgs = [startRow, startColumn, numRows, numColumns];
+      onGetRange(...rangeArgs);
       const sliceColumns = matrix => matrix.map(row =>
         row.slice(startColumn - 1, startColumn - 1 + numColumns)
       );
       return {
-        getValues: () => sliceColumns(rangeRows(startRow, numRows, rows)),
-        getFormulas: () => sliceColumns(rangeRows(
-          startRow,
-          numRows,
-          formulaRows
-        ).map((row, index) => startRow + index === 8 ? Array(headers.length).fill('') : row))
+        getValues: () => {
+          onGetValues(...rangeArgs);
+          return sliceColumns(rangeRows(startRow, numRows, rows));
+        },
+        getFormulas: () => {
+          onGetFormulas(...rangeArgs);
+          return sliceColumns(rangeRows(
+            startRow,
+            numRows,
+            formulaRows
+          ).map((row, index) => startRow + index === 8 ? Array(headers.length).fill('') : row));
+        }
       };
     },
     ...sheetOverrides
   };
 }
 
-function clientHarness(records) {
+function clientHarness(records, options = {}) {
   const ids = [
-    'refreshButton', 'resetButton', 'message', 'modeBadge', 'updatedAt',
+    'dashboard', 'refreshButton', 'resetButton', 'message', 'modeBadge', 'updatedAt',
     'sourceSummary', 'sourceCards', 'sourceFilter', 'schoolYearFilter',
     'regionFilter', 'sectorFilter', 'providerFilter', 'workshopFilter',
     'statusGroupFilter', 'schoolFilter', 'typeFilter', 'dateBasis',
@@ -118,7 +129,8 @@ function clientHarness(records) {
       options: isSelect ? [{ value: '', textContent: '' }] : [],
       classList: {
         add: (...names) => names.forEach(name => classNames.add(name)),
-        remove: (...names) => names.forEach(name => classNames.delete(name))
+        remove: (...names) => names.forEach(name => classNames.delete(name)),
+        contains: name => classNames.has(name)
       },
       setAttribute(name, value) { attributes[name] = String(value); },
       getAttribute(name) { return attributes[name]; },
@@ -145,6 +157,30 @@ function clientHarness(records) {
   };
   const client = fs.readFileSync('src/Client.html', 'utf8')
     .replace(/^<script>\s*|\s*<\/script>\s*$/g, '');
+  let timerId = 0;
+  const timers = new Map();
+  let successHandler;
+  let failureHandler;
+  const runner = {
+    withSuccessHandler(handler) {
+      successHandler = handler;
+      return this;
+    },
+    withFailureHandler(handler) {
+      failureHandler = handler;
+      return this;
+    },
+    getDashboardData() {}
+  };
+  const window = options.deferLoad ? {} : {
+    __DEMO_PAYLOAD__: {
+      mode: 'demo',
+      generatedAt: '2026-10-17T00:00:00.000Z',
+      complete: true,
+      sources: [],
+      records
+    }
+  };
   vm.runInNewContext(client, {
     Date,
     Intl,
@@ -152,16 +188,26 @@ function clientHarness(records) {
     Set,
     console: silentConsole,
     document,
-    window: {
-      __DEMO_PAYLOAD__: {
-        mode: 'demo',
-        generatedAt: '2026-10-17T00:00:00.000Z',
-        complete: true,
-        sources: [],
-        records
-      }
-    }
+    window,
+    google: options.deferLoad ? { script: { run: runner } } : undefined,
+    setTimeout(handler, delay) {
+      timerId += 1;
+      timers.set(timerId, { handler, delay });
+      return timerId;
+    },
+    clearTimeout(id) { timers.delete(id); }
   });
+  elements.__runTimersThrough = delay => {
+    [...timers.entries()]
+      .filter(entry => entry[1].delay <= delay)
+      .sort((a, b) => a[1].delay - b[1].delay)
+      .forEach(entry => {
+        timers.delete(entry[0]);
+        entry[1].handler();
+      });
+  };
+  elements.__resolveLoad = payload => successHandler(payload);
+  elements.__rejectLoad = error => failureHandler(error);
   return elements;
 }
 
@@ -320,6 +366,39 @@ test('demo blijft werken en de browser ontvangt alleen de veilige stap-7-velden'
     'students', 'type', 'workshop'
   ]);
   assert.deepEqual(Array.from(payload.records[0].grades), [7, 8]);
+});
+
+test('lang laden geeft stapsgewijze feedback en herstelt de bediening na succes', () => {
+  const elements = clientHarness([], { deferLoad: true });
+
+  assert.equal(elements.dashboard.getAttribute('aria-busy'), 'true');
+  assert.equal(elements.refreshButton.disabled, true);
+  assert.equal(elements.refreshButton.textContent, 'Laden…');
+  assert.equal(elements.message.textContent, 'Dashboardgegevens worden geladen…');
+  assert.equal(elements.message.classList.contains('loading'), true);
+
+  elements.__runTimersThrough(1500);
+  assert.equal(elements.message.textContent, 'De Google Sheets worden gecontroleerd…');
+  elements.__runTimersThrough(5000);
+  assert.equal(elements.message.textContent, 'De workshopregels van beide bronnen worden samengevoegd…');
+  elements.__runTimersThrough(10000);
+  assert.match(elements.message.textContent, /duurt langer dan normaal/);
+
+  elements.__resolveLoad({
+    mode: 'live',
+    generatedAt: '2026-10-17T00:00:00.000Z',
+    complete: true,
+    sources: [],
+    records: []
+  });
+
+  assert.equal(elements.dashboard.getAttribute('aria-busy'), 'false');
+  assert.equal(elements.refreshButton.disabled, false);
+  assert.equal(elements.refreshButton.textContent, 'Vernieuwen');
+  assert.equal(elements.message.classList.contains('loading'), false);
+  assert.equal(elements.message.hidden, true);
+  assert.equal(elements.modeBadge.textContent, 'Live gegevens');
+  assert.match(elements.updatedAt.textContent, /geladen in \d+,\d s$/);
 });
 
 test('demodata levert de gedocumenteerde stap-6-kerncijfers op', () => {
@@ -900,6 +979,26 @@ test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {
   assert.deepEqual(requestedRange, [8, 1, 3, headers.length]);
   assert.equal(result.records.length, 2);
   assert.equal(result.warnings.duplicateRequestIds, 0);
+});
+
+test('Google Sheet gebruikt één compacte ankerscan en één brede dataread', () => {
+  const ranges = [];
+  const formulaRanges = [];
+  const sheet = googleSheet([row(), row({ 'Aanvraag ID': 'REQ-002' })], {
+    onGetRange: (...args) => ranges.push(args),
+    onGetFormulas: (...args) => formulaRanges.push(args)
+  });
+  const ctx = context({ SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) } });
+  ctx.readGoogleSheet_({
+    name: 'Stichting A', spreadsheetId: 'test', sheetName: 'Workshops', headerRow: 8
+  });
+
+  assert.deepEqual(ranges, [
+    [8, 1, 1, headers.length],
+    [9, 2, 2, 9],
+    [8, 1, 3, headers.length]
+  ]);
+  assert.deepEqual(formulaRanges, [[9, 2, 2, 9]]);
 });
 
 test('Google Sheet respecteert de rijlimiet en meldt overgeslagen rijen', () => {
