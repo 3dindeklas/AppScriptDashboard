@@ -57,13 +57,14 @@ Contactpersoon, e-mailadres, telefoon, notities, debuggegevens en e-mail-/kalend
 | `provider` | `provider` |
 | `region` | `region` |
 | `sector` | `sector` |
+| `grades` | kopie van de genormaliseerde PO- of VO-leerjaren, anders lege lijst |
 | `status` | `status` |
 | `statusGroup` | `statusGroup`, anders `Overig` |
 | `type` | `type`, anders `Onbekend` |
 | `sessions` | `sessions` |
 | `students` | `students` |
 
-Aanvraag-ID, schoolKey, locatie, leerjaren, contactgegevens en financiële velden blijven server-side. Schoolnaam is vanaf stap 4 zichtbaar voor toegestane accounts omdat deze nodig is voor het schoolfilter.
+Aanvraag-ID, schoolKey, locatie, de oorspronkelijke tekst uit `Groep / leerjaar`, contactgegevens en financiële velden blijven server-side. Alleen de genormaliseerde numerieke leerjaren verlaten vanaf stap 7 de server, omdat deze nodig zijn voor de gewogen PO/VO-grafieken. Schoolnaam is vanaf stap 4 zichtbaar voor toegestane accounts omdat deze nodig is voor het schoolfilter.
 
 ## Dropdownfilters
 
@@ -120,7 +121,37 @@ Voorbeelden die worden herkend:
 
 PO accepteert groep 1 tot en met 8. VO accepteert leerjaar 1 tot en met 6. Als één getal buiten de sector valt, blijft de gehele leerjarenlijst leeg zodat geen gedeeltelijk onjuiste verdeling ontstaat.
 
+## Grafieken en gewogen verdelingen
+
+Alle grafieken gebruiken exact dezelfde workshopregels als de KPI's, vergelijking en recente-workshoptabel. Een wijziging in een dropdown, datumslider, leerlingslider of keuze voor onbekende waarden wordt daarom direct in iedere grafiek en bijbehorende tabel verwerkt.
+
+De verdelingsgrafieken tellen per zichtbare workshopregel één aanvraag voor:
+
+- onderwijssector (`PO`, `VO` of `Onbekend`);
+- gemeente/regio;
+- workshop;
+- aanbieder;
+- statusgroep.
+
+De staafweergave toont bij lange lijsten de grootste categorieën en voegt de rest samen als **Overige**. De uitklapbare tabel onder iedere grafiek blijft volledig en toont alle categorieën afzonderlijk. Een lege selectie krijgt zowel in de grafiek als tabel een expliciete lege staat.
+
+### Maandgrafiek
+
+De maandgrafiek kan wisselen tussen aanvragen/workshops, leerlingdeelnames en lesmomenten. De waarden worden per stichting getoond. Bij **Datum aanvraag** hoort een workshop bij de ene maand van `requestedDate`.
+
+Bij **Definitieve datum** worden alle geldige lesdagen binnen het zichtbare maandbereik gebruikt. Heeft één workshop meerdere zichtbare lesdagen, dan wordt zijn waarde evenredig over die lesdagen verdeeld en daarna per maand opgeteld. Twee lesdagen in september en één in oktober leveren dus 2/3 in september en 1/3 in oktober op. Hierdoor telt één workshop binnen de zichtbare periode samen nog steeds als één aanvraag; het leerlingaantal en het aantal lesmomenten worden op dezelfde manier verdeeld en niet automatisch vermenigvuldigd. Wanneer de periode wordt verkleind, wordt de verdeling opnieuw bepaald over de lesdagen die binnen die zichtbare periode vallen.
+
+Workshopregels zonder geldige gekozen datum staan niet in de maandgrafiek, ook als **Workshops zonder gekozen datum meenemen** aanstaat. Zij blijven wel zichtbaar in de overige onderdelen en hun aantal wordt onder de grafiektitel gemeld. Bij leerlingdeelnames of lesmomenten worden regels zonder geldig bijbehorend aantal eveneens uit de maandgrafiek gelaten en apart gemeld.
+
+### Gewogen PO/VO-leerjaren
+
+PO en VO worden afzonderlijk berekend. Eén aanvraag wordt evenredig verdeeld over de herkende leerjaren: `groep 5/6` telt als 0,5 bij groep 5 en 0,5 bij groep 6. Een combinatie van drie groepen krijgt per groep exact 1/3. De berekening rondt tussentijds niet af; de interface toont maximaal twee decimalen. Een regel met de juiste sector maar zonder geldige leerjaren telt als **Onbekend**. Een onbekende sector wordt niet stilzwijgend bij PO of VO geplaatst.
+
 ## Datakwaliteitssignalen
+
+Voor het uitlezen bepaalt de server eerst via de identificerende kolommen `Aanvraag ID`, `Datum aanvraag`, `Schoolnaam`, `Workshopnaam`, `Definitieve datum` en `Status` welke rijen echte brongegevens bevatten. Minstens één van deze velden moet een niet-lege waarde bevatten die niet uitsluitend het resultaat van een formule is. Daardoor trekken vooraf doorgetrokken formules `getLastRow()` niet kunstmatig naar beneden. De brede tabel wordt pas daarna en alleen tot de benodigde echte gegevensrij gelezen.
+
+Een rij die uitsluitend formules bevat wordt volledig overgeslagen. Zo'n rij wordt niet als workshop, lege-rijwaarschuwing of onderdeel van `maxRowsPerSource` geteld. Een echte workshoprij mag daarnaast gewoon formulevelden bevatten; zodra bijvoorbeeld aanvraag-ID, school of workshopnaam als bronwaarde aanwezig is, blijft de rij behouden.
 
 De normalisatie telt per bron:
 

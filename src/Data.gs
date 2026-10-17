@@ -25,6 +25,7 @@ const PUBLIC_RECORD_FIELDS_ = Object.freeze([
   'provider',
   'region',
   'sector',
+  'grades',
   'status',
   'statusGroup',
   'type',
@@ -125,18 +126,74 @@ function readGoogleSheet_(source) {
     return { records: [], warnings: emptyWarnings_() };
   }
 
-  const availableRows = lastRow - headerRow;
-  const rowsToRead = Math.min(availableRows, sourceRowLimit_());
-  const values = sheet.getRange(
+  const headerValues = sheet.getRange(headerRow, 1, 1, lastColumn).getValues()[0];
+  const header = headerMap_(headerValues, source.name);
+  const dataRowOffsets = dataRowOffsets_(sheet, headerRow, lastRow, header);
+  if (!dataRowOffsets.length) {
+    return { records: [], warnings: emptyWarnings_() };
+  }
+
+  const recordsToRead = Math.min(dataRowOffsets.length, sourceRowLimit_());
+  const rowsToRead = dataRowOffsets[recordsToRead - 1] + 1;
+  const dataRange = sheet.getRange(
     headerRow,
     1,
     rowsToRead + 1,
     lastColumn
-  ).getValues();
+  );
+  const values = dataRange.getValues();
+  const formulas = dataRange.getFormulas();
 
-  const result = normalizeSheet_(values, source.name);
-  result.warnings.rowsTruncated = availableRows - rowsToRead;
+  const result = normalizeSheet_(values, source.name, formulas);
+  result.warnings.rowsTruncated = dataRowOffsets.length - recordsToRead;
   return result;
+}
+
+/**
+ * Bepaalt echte workshoprijen via alleen de identificerende kolommen.
+ * Formules zonder handmatig brongegeven trekken getLastRow() daardoor niet langer
+ * kunstmatig naar beneden en tellen ook niet mee voor de ingestelde rijlimiet.
+ */
+function dataRowOffsets_(sheet, headerRow, lastRow, header) {
+  const candidateRows = lastRow - headerRow;
+  if (candidateRows < 1) return [];
+
+  const columnIndexes = workshopIdentityFields_()
+    .filter(function(name) { return Object.prototype.hasOwnProperty.call(header, name); })
+    .map(function(name) { return header[name]; })
+    .sort(function(a, b) { return a - b; });
+  const spans = contiguousColumnSpans_(columnIndexes);
+  const dataRows = Array(candidateRows).fill(false);
+
+  spans.forEach(function(span) {
+    const range = sheet.getRange(headerRow + 1, span.start + 1, candidateRows, span.width);
+    const values = range.getValues();
+    const formulas = range.getFormulas();
+
+    for (let rowIndex = 0; rowIndex < values.length; rowIndex += 1) {
+      const hasLiteralIdentity = values[rowIndex].some(function(value, columnOffset) {
+        return hasValue_(value) && !hasFormula_(formulas[rowIndex][columnOffset]);
+      });
+      if (hasLiteralIdentity) dataRows[rowIndex] = true;
+    }
+  });
+
+  return dataRows.reduce(function(offsets, isDataRow, rowIndex) {
+    if (isDataRow) offsets.push(rowIndex);
+    return offsets;
+  }, []);
+}
+
+function contiguousColumnSpans_(columnIndexes) {
+  return columnIndexes.reduce(function(spans, columnIndex) {
+    const previous = spans[spans.length - 1];
+    if (previous && previous.start + previous.width === columnIndex) {
+      previous.width += 1;
+    } else {
+      spans.push({ start: columnIndex, width: 1 });
+    }
+    return spans;
+  }, []);
 }
 
 function sourceRowLimit_() {
@@ -149,7 +206,7 @@ function sourceRowLimit_() {
  * Zet een volledige sheetmatrix om naar interne workshoprecords.
  * Kolomvolgorde is niet van belang; lege spacer-kolommen worden genegeerd.
  */
-function normalizeSheet_(values, sourceName) {
+function normalizeSheet_(values, sourceName, formulas) {
   if (!Array.isArray(values) || !values.length) {
     return { records: [], warnings: emptyWarnings_() };
   }
@@ -160,7 +217,11 @@ function normalizeSheet_(values, sourceName) {
   const duplicateRequestIds = new Set();
   const records = [];
 
-  values.slice(1).forEach(function(row) {
+  values.slice(1).forEach(function(row, rowIndex) {
+    const formulaRow = Array.isArray(formulas) && Array.isArray(formulas[rowIndex + 1])
+      ? formulas[rowIndex + 1]
+      : [];
+    if (isFormulaOnlyRow_(row, formulaRow)) return;
     if (isEmptyWorkshopRow_(row, header)) {
       warnings.emptyRows += 1;
       return;
@@ -262,6 +323,7 @@ function publicRecord_(record) {
     provider: record.provider,
     region: record.region,
     sector: record.sector,
+    grades: Array.isArray(record.grades) ? record.grades.slice() : [],
     status: record.status,
     statusGroup: record.statusGroup || 'Overig',
     type: record.type || 'Onbekend',
@@ -330,12 +392,28 @@ function cell_(row, header, name) {
 }
 
 function isEmptyWorkshopRow_(row, header) {
-  return ![
-    'aanvraag id', 'datum aanvraag', 'schoolnaam', 'workshopnaam',
-    'definitieve datum', 'status'
-  ].some(function(name) {
+  return !workshopIdentityFields_().some(function(name) {
     return hasValue_(cell_(row, header, name));
   });
+}
+
+function workshopIdentityFields_() {
+  return [
+    'aanvraag id', 'datum aanvraag', 'schoolnaam', 'workshopnaam',
+    'definitieve datum', 'status'
+  ];
+}
+
+/** Een rij met uitsluitend formules is geen workshop en ook geen kwaliteitswaarschuwing. */
+function isFormulaOnlyRow_(row, formulaRow) {
+  if (!formulaRow.some(hasFormula_)) return false;
+  return !row.some(function(value, columnIndex) {
+    return hasValue_(value) && !hasFormula_(formulaRow[columnIndex]);
+  });
+}
+
+function hasFormula_(value) {
+  return textValue_(value).charAt(0) === '=';
 }
 
 function hasValue_(value) {

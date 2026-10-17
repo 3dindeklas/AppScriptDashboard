@@ -27,6 +27,7 @@
   button:focus-visible,
   select:focus-visible,
   input:focus-visible,
+  summary:focus-visible,
   a:focus-visible {
     outline: 3px solid #c36d1c;
     outline-offset: 3px;
@@ -138,13 +139,37 @@
   .comparison-table th:not(:first-child), .comparison-table td:not(:first-child) { text-align: right; }
   .comparison-table tbody th { background: transparent; color: var(--ink); font-size: 0.82rem; }
 
-  .content-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .analytics-section { margin: 2rem 0 1rem; }
+  .analytics-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+  .analytics-heading > p { color: var(--muted); font-size: 0.76rem; text-align: right; }
+  .chart-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+  .chart-card { display: flex; min-width: 0; flex-direction: column; }
+  .chart-card .panel-heading { margin-bottom: 1rem; }
+  .chart-subtitle { margin-top: 0.45rem; color: var(--muted); font-size: 0.76rem; line-height: 1.45; }
+  .metric-select { width: min(14rem, 100%); }
+  .metric-select select { min-width: 12rem; }
   .bar-chart { display: grid; gap: 0.9rem; min-height: 8rem; }
   .bar-row { display: grid; gap: 0.38rem; }
   .bar-label { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.78rem; }
   .bar-label span { overflow-wrap: anywhere; }
   .bar-track { height: 0.55rem; overflow: hidden; border-radius: 99rem; background: #edf1eb; }
   .bar-fill { height: 100%; border-radius: inherit; background: var(--teal); transform-origin: left; animation: grow 320ms ease-out both; }
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 0.55rem 1rem; min-height: 1.4rem; margin-bottom: 1rem; color: var(--muted); font-size: 0.74rem; }
+  .legend-item { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .legend-swatch { width: 0.65rem; height: 0.65rem; border-radius: 0.2rem; }
+  .timeline-chart { min-height: 16rem; overflow-x: auto; padding: 0.5rem 0 0.25rem; }
+  .timeline-columns { display: flex; align-items: stretch; gap: 0.65rem; height: 15rem; min-width: max(100%, var(--timeline-width, 36rem)); }
+  .timeline-column { display: grid; flex: 1 0 3.25rem; grid-template-rows: 1.4rem 1fr 2.25rem; gap: 0.35rem; min-width: 3.25rem; text-align: center; }
+  .timeline-total { align-self: end; font-size: 0.7rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+  .timeline-track { display: flex; align-self: end; flex-direction: column-reverse; width: min(2.25rem, 80%); min-height: 0.25rem; margin: 0 auto; overflow: hidden; border-radius: 0.4rem 0.4rem 0 0; background: #edf1eb; transform-origin: bottom; animation: grow-up 320ms ease-out both; }
+  .timeline-segment { width: 100%; min-height: 0; }
+  .timeline-label { color: var(--muted); font-size: 0.65rem; line-height: 1.2; }
+  .chart-data { margin-top: 1rem; border-top: 1px solid var(--line); padding-top: 0.8rem; }
+  .chart-data summary { cursor: pointer; color: var(--teal); font-size: 0.74rem; font-weight: 750; }
+  .chart-data[open] summary { margin-bottom: 0.65rem; }
+  .chart-table { min-width: 22rem; }
+  .chart-table th:not(:first-child), .chart-table td:not(:first-child) { text-align: right; }
+  .chart-note { margin: 0.25rem 0 1.5rem; color: var(--muted); font-size: 0.76rem; }
 
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
@@ -156,10 +181,12 @@
   footer { display: flex; justify-content: space-between; gap: 1rem; padding-top: 1rem; color: var(--muted); font-size: 0.72rem; }
 
   @keyframes grow { from { transform: scaleX(0); } }
+  @keyframes grow-up { from { transform: scaleY(0); } }
 
   @media (max-width: 950px) {
     .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .chart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
   @media (max-width: 700px) {
@@ -167,8 +194,11 @@
     .intro { align-items: start; }
     .load-meta { justify-items: start; }
     .intro, footer { flex-direction: column; }
-    .filter-grid, .range-filter-grid, .kpi-grid, .content-grid, .source-grid { grid-template-columns: 1fr; }
-    .source-summary, .comparison-summary { text-align: left; }
+    .filter-grid, .range-filter-grid, .kpi-grid, .chart-grid, .source-grid { grid-template-columns: 1fr; }
+    .analytics-heading, .timeline-panel .panel-heading { align-items: start; flex-direction: column; }
+    .analytics-heading > p, .source-summary, .comparison-summary { text-align: left; }
+    .metric-select { width: 100%; }
+    .metric-select select { min-width: 0; }
   }
 
   @media (prefers-reduced-motion: reduce) {

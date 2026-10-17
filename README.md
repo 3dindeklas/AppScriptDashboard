@@ -13,16 +13,20 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - onafhankelijke laadstatus en datakwaliteit per Google-bron;
 - beschikbare data blijft zichtbaar wanneer één bron uitvalt;
 - maximaal 5.000 regels per bron, configureerbaar tot een harde grens van 10.000;
+- formule-only rijen worden vóór de brede data-import genegeerd en verbruiken de rijlimiet niet;
 - gegevens asynchroon ophalen met `google.script.run`;
 - negen combineerbare filters: stichting, schooljaar, regio, PO/VO, aanbieder, workshop, statusgroep, school en type;
 - inclusief maandbereik op aanvraagdatum of één van de definitieve lesdagen en een bereik voor leerlingaantallen;
 - expliciete keuzes om regels zonder datum of leerlingaantal wel of niet mee te nemen;
 - zeven gefilterde kerncijfers en een vergelijking tussen de stichtingen;
-- twee eenvoudige staafgrafieken en een recente-workshoptabel;
+- een maandgrafiek voor aanvragen, leerlingdeelnames en lesmomenten per stichting;
+- verdelingen voor PO/VO, regio, workshop, aanbieder en statusgroep;
+- gewogen PO- en VO-leerjaren, inclusief combinatiegroepen en onbekende waarden;
+- een toegankelijke tabelweergave onder iedere grafiek en een recente-workshoptabel;
 - uitsluitend centraal toegestane analysevelden naar de browser; geen namen van contactpersonen, e-mailadressen, telefoonnummers, notities of technische ID's;
 - demomodus zonder databronnen, maar nooit zonder toegangscontrole.
 
-Microsoft 365, rollen, financiële rapportages en uitgebreide grafieken zijn bewust nog niet opgenomen. Die voegen we pas in de bijbehorende roadmapstap toe.
+Microsoft 365, rollen en financiële rapportages zijn bewust nog niet opgenomen. Die voegen we pas in de bijbehorende roadmapstap toe.
 
 ## Bestanden
 

@@ -43,11 +43,36 @@ function liveContext(extra = {}, options = {}) {
 }
 
 function googleSheet(rows, overrides = {}) {
+  const formulaRows = overrides.formulaRows || rows.map(() => Array(headers.length).fill(''));
+  const onGetRange = overrides.onGetRange || (() => {});
+  const sheetOverrides = { ...overrides };
+  delete sheetOverrides.formulaRows;
+  delete sheetOverrides.onGetRange;
+
+  function rangeRows(startRow, numRows, matrixRows) {
+    const allRows = [headers, ...matrixRows];
+    const offset = startRow - 8;
+    return allRows.slice(offset, offset + numRows);
+  }
+
   return {
     getLastRow: () => 8 + rows.length,
     getLastColumn: () => headers.length,
-    getRange: () => ({ getValues: () => [headers, ...rows] }),
-    ...overrides
+    getRange: (startRow, startColumn, numRows, numColumns) => {
+      onGetRange(startRow, startColumn, numRows, numColumns);
+      const sliceColumns = matrix => matrix.map(row =>
+        row.slice(startColumn - 1, startColumn - 1 + numColumns)
+      );
+      return {
+        getValues: () => sliceColumns(rangeRows(startRow, numRows, rows)),
+        getFormulas: () => sliceColumns(rangeRows(
+          startRow,
+          numRows,
+          formulaRows
+        ).map((row, index) => startRow + index === 8 ? Array(headers.length).fill('') : row))
+      };
+    },
+    ...sheetOverrides
   };
 }
 
@@ -61,13 +86,17 @@ function clientHarness(records) {
     'includeUnknownDate', 'studentsFromRange', 'studentsToRange',
     'studentsFromValue', 'studentsToValue', 'includeUnknownStudents',
     'resultCount', 'kpis', 'kpiQualityNote', 'comparisonSummary',
-    'comparisonRows', 'statusChart', 'workshopChart', 'recentRows',
-    'recentDateHeading'
+    'comparisonRows', 'timelineMetric', 'timelineSubtitle', 'timelineLegend',
+    'timelineChart', 'timelineCaption', 'timelineTableHead', 'timelineTableRows',
+    'sectorChart', 'sectorTableRows', 'regionChart', 'regionTableRows',
+    'statusChart', 'statusTableRows', 'workshopChart', 'workshopTableRows',
+    'providerChart', 'providerTableRows', 'poChart', 'poTableRows',
+    'voChart', 'voTableRows', 'recentRows', 'recentDateHeading'
   ];
   const selectIds = new Set([
     'sourceFilter', 'schoolYearFilter', 'regionFilter', 'sectorFilter',
     'providerFilter', 'workshopFilter', 'statusGroupFilter', 'schoolFilter',
-    'typeFilter', 'dateBasis'
+    'typeFilter', 'dateBasis', 'timelineMetric'
   ]);
 
   function element(tagName = 'div', isSelect = false) {
@@ -254,7 +283,25 @@ test('stichtingsvergelijking gebruikt een toegankelijke tabel met alle stap-6-ci
   }
 });
 
-test('demo blijft werken en de browser ontvangt alleen de bestaande veilige velden', () => {
+test('iedere stap-7-grafiek heeft een leesbare tabelweergave zonder externe grafiekbibliotheek', () => {
+  const index = fs.readFileSync('src/Index.html', 'utf8');
+  const styles = fs.readFileSync('src/Styles.html', 'utf8');
+  assert.match(index, /<select id="timelineMetric">[\s\S]*?Aanvragen \/ workshops[\s\S]*?Leerlingdeelnames[\s\S]*?Lesmomenten/);
+  assert.match(index, /id="timelineTableHead"/);
+  assert.match(index, /id="timelineTableRows"/);
+
+  for (const id of [
+    'sectorTableRows', 'regionTableRows', 'statusTableRows', 'workshopTableRows',
+    'providerTableRows', 'poTableRows', 'voTableRows'
+  ]) {
+    assert.match(index, new RegExp('<tbody id="' + id + '">'));
+  }
+  assert.equal((index.match(/<details class="chart-data">/g) || []).length, 8);
+  assert.doesNotMatch(index, /<script[^>]+src=/i);
+  assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
+});
+
+test('demo blijft werken en de browser ontvangt alleen de veilige stap-7-velden', () => {
   const payload = context().getDashboardData();
   assert.equal(payload.mode, 'demo');
   assert.equal(payload.complete, true);
@@ -268,10 +315,11 @@ test('demo blijft werken en de browser ontvangt alleen de bestaande veilige veld
   assert.equal(payload.records.filter(record => record.scheduledDates.length > 1).length, 1);
   assert.equal(payload.records.filter(record => record.students === null).length, 1);
   assert.deepEqual(Object.keys(payload.records[0]).sort(), [
-    'provider', 'region', 'requestedDate', 'scheduledDate', 'scheduledDates',
+    'grades', 'provider', 'region', 'requestedDate', 'scheduledDate', 'scheduledDates',
     'school', 'schoolYear', 'sector', 'sessions', 'source', 'status', 'statusGroup',
     'students', 'type', 'workshop'
   ]);
+  assert.deepEqual(Array.from(payload.records[0].grades), [7, 8]);
 });
 
 test('demodata levert de gedocumenteerde stap-6-kerncijfers op', () => {
@@ -297,6 +345,107 @@ test('demodata levert de gedocumenteerde stap-6-kerncijfers op', () => {
     ['Stichting A', '5', '105', '5', '11', '2', '21,0', '1,0', '0'],
     ['Stichting B', '5', '99', '5', '11', '2', '24,8', '1,0', '1']
   ]);
+});
+
+test('demodata levert alle stap-7-verdelingen en gewogen leerjaren op', () => {
+  const payload = JSON.parse(JSON.stringify(context().getDashboardData()));
+  const elements = clientHarness(payload.records);
+  const rows = id => elements[id].children.map(row => row.children.map(cell => cell.textContent));
+
+  assert.deepEqual(rows('sectorTableRows'), [['PO', '8'], ['VO', '2']]);
+  assert.deepEqual(rows('statusTableRows'), [
+    ['Ingepland', '4'], ['Uitgevoerd', '4'], ['Open', '2']
+  ]);
+  assert.deepEqual(rows('poTableRows'), [
+    ['Groep 3', '0,5'], ['Groep 4', '0,5'], ['Groep 5', '1'],
+    ['Groep 6', '3,5'], ['Groep 7', '1,5'], ['Groep 8', '1']
+  ]);
+  assert.deepEqual(rows('voTableRows'), [['Leerjaar 1', '1'], ['Leerjaar 2', '1']]);
+  assert.equal(elements.timelineCaption.textContent, 'Aanvragen / workshops per maand en stichting');
+  assert.deepEqual(rows('timelineTableRows'), [
+    ['september 2026', '2,5', '3', '5,5'],
+    ['oktober 2026', '1,5', '2', '3,5']
+  ]);
+  assert.match(elements.timelineSubtitle.textContent, /evenredig over de zichtbare lesmaanden/);
+  assert.match(elements.timelineSubtitle.textContent, /1 aanvraag zonder geldige datum/);
+});
+
+test('maandgrafiek verdeelt meerdere lesdagen en wisselt tussen alle drie metrieken', () => {
+  const elements = clientHarness([
+    {
+      source: 'Stichting A', requestedDate: '2026-08-01',
+      scheduledDate: '2026-09-10', scheduledDates: ['2026-09-10', '2026-10-10'],
+      students: 20, sessions: 2, sector: 'PO', grades: [5, 6],
+      workshop: 'A', statusGroup: 'Ingepland'
+    },
+    {
+      source: 'Stichting B', requestedDate: '2026-08-02',
+      scheduledDate: '2026-09-20', scheduledDates: ['2026-09-20'],
+      students: 10, sessions: 1, sector: 'VO', grades: [1],
+      workshop: 'B', statusGroup: 'Open'
+    }
+  ]);
+  const timelineRows = () => elements.timelineTableRows.children.map(row =>
+    row.children.map(cell => cell.textContent)
+  );
+
+  assert.deepEqual(timelineRows(), [
+    ['september 2026', '0,5', '1', '1,5'],
+    ['oktober 2026', '0,5', '0', '0,5']
+  ]);
+
+  elements.timelineMetric.value = 'students';
+  elements.timelineMetric.trigger('change');
+  assert.deepEqual(timelineRows(), [
+    ['september 2026', '10', '10', '20'],
+    ['oktober 2026', '10', '0', '10']
+  ]);
+
+  elements.timelineMetric.value = 'sessions';
+  elements.timelineMetric.trigger('change');
+  assert.deepEqual(timelineRows(), [
+    ['september 2026', '1', '1', '2'],
+    ['oktober 2026', '1', '0', '1']
+  ]);
+
+  elements.dateFromRange.value = 1;
+  elements.dateFromRange.trigger('input');
+  assert.deepEqual(timelineRows(), [['oktober 2026', '2', '2']]);
+});
+
+test('onbekende leerjaren blijven apart en combinatiegroepen behouden samen één aanvraag', () => {
+  const elements = clientHarness([
+    { source: 'A', sector: 'PO', grades: [3, 4, 5], workshop: 'A' },
+    { source: 'A', sector: 'PO', grades: [], workshop: 'B' },
+    { source: 'A', sector: 'PO', grades: [9], workshop: 'C' },
+    { source: 'A', sector: 'VO', grades: [1, 2], workshop: 'D' },
+    { source: 'A', sector: 'Onbekend', grades: [1], workshop: 'E' }
+  ]);
+  const rows = id => elements[id].children.map(row => row.children.map(cell => cell.textContent));
+
+  assert.deepEqual(rows('poTableRows'), [
+    ['Groep 3', '0,33'], ['Groep 4', '0,33'], ['Groep 5', '0,33'], ['Onbekend', '2']
+  ]);
+  assert.deepEqual(rows('voTableRows'), [
+    ['Leerjaar 1', '0,5'], ['Leerjaar 2', '0,5']
+  ]);
+});
+
+test('een lege selectie geeft nette lege grafiek- en tabelstaten', () => {
+  const elements = clientHarness([
+    {
+      source: 'Stichting A', scheduledDate: '2026-09-01',
+      scheduledDates: ['2026-09-01'], sector: 'PO', grades: [6],
+      region: 'Regio', provider: 'Maker', workshop: 'Workshop', statusGroup: 'Open'
+    }
+  ]);
+  elements.sourceFilter.value = 'Niet aanwezig';
+  elements.sourceFilter.trigger('change');
+
+  assert.equal(elements.timelineChart.children[0].textContent, 'Geen gedateerde gegevens voor deze metriek binnen de filters.');
+  assert.equal(elements.timelineTableRows.children[0].children[0].textContent, 'Geen gedateerde gegevens binnen deze filters.');
+  assert.equal(elements.sectorChart.children[0].textContent, 'Geen gegevens binnen deze filters.');
+  assert.equal(elements.sectorTableRows.children[0].children[0].textContent, 'Geen gegevens binnen deze filters.');
 });
 
 test('toegang gebruikt een exacte genormaliseerde accountmatch', () => {
@@ -481,14 +630,15 @@ test('filtervelden verlaten gecontroleerd de server maar privacyvelden niet', ()
 
   assert.deepEqual(Object.keys(publicRecord), [
     'source', 'requestedDate', 'scheduledDate', 'scheduledDates', 'schoolYear',
-    'school', 'workshop', 'provider', 'region', 'sector', 'status', 'statusGroup',
-    'type', 'sessions', 'students'
+    'school', 'workshop', 'provider', 'region', 'sector', 'grades', 'status',
+    'statusGroup', 'type', 'sessions', 'students'
   ]);
   assert.equal(publicRecord.requestedDate, '2026-10-14');
   assert.equal(publicRecord.scheduledDate, '2026-11-20');
   assert.deepEqual(Array.from(publicRecord.scheduledDates), ['2026-11-20']);
   assert.equal(publicRecord.schoolYear, '2026–2027');
   assert.equal(publicRecord.school, 'School A');
+  assert.deepEqual(Array.from(publicRecord.grades), [6, 7, 8]);
   assert.equal(publicRecord.statusGroup, 'Ingepland');
   assert.equal(publicRecord.type, 'Workshop');
 
@@ -740,14 +890,11 @@ test('stap-6-kerncijfers en stichtingvergelijking gebruiken exact dezelfde filte
 
 test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {
   let requestedRange;
-  const sheet = {
-    getLastRow: () => 10,
-    getLastColumn: () => headers.length,
-    getRange: (...args) => {
-      requestedRange = args;
-      return { getValues: () => [headers, row(), row({ 'Aanvraag ID': 'REQ-002' })] };
+  const sheet = googleSheet([row(), row({ 'Aanvraag ID': 'REQ-002' })], {
+    onGetRange: (...args) => {
+      if (args[0] === 8 && args[2] > 1 && args[3] === headers.length) requestedRange = args;
     }
-  };
+  });
   const ctx = context({ SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) } });
   const result = ctx.readGoogleSheet_({ name: 'Stichting A', spreadsheetId: 'test', sheetName: 'Workshops', headerRow: 8 });
   assert.deepEqual(requestedRange, [8, 1, 3, headers.length]);
@@ -758,9 +905,8 @@ test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {
 test('Google Sheet respecteert de rijlimiet en meldt overgeslagen rijen', () => {
   let requestedRange;
   const sheet = googleSheet([row(), row(), row()], {
-    getRange: (...args) => {
-      requestedRange = args;
-      return { getValues: () => [headers, row()] };
+    onGetRange: (...args) => {
+      if (args[0] === 8 && args[2] > 1 && args[3] === headers.length) requestedRange = args;
     }
   });
   const ctx = liveContext({
@@ -773,6 +919,85 @@ test('Google Sheet respecteert de rijlimiet en meldt overgeslagen rijen', () => 
   assert.deepEqual(requestedRange, [8, 1, 2, headers.length]);
   assert.equal(result.records.length, 1);
   assert.equal(result.warnings.rowsTruncated, 2);
+});
+
+test('formule-only rijen worden niet geladen of als workshop en waarschuwing geteld', () => {
+  const blank = () => Array(headers.length).fill('');
+  const formulaOnlyRow = status => {
+    const values = blank();
+    values[headers.indexOf('Status')] = status;
+    return values;
+  };
+  const formulaOnlyCells = () => {
+    const formulas = blank();
+    formulas[headers.indexOf('Status')] = '=IF(A2="";"Open";"Uitgevoerd")';
+    return formulas;
+  };
+  const dataRows = [
+    row({ 'Aanvraag ID': 'REQ-001' }),
+    formulaOnlyRow('Open'),
+    row({ 'Aanvraag ID': 'REQ-002' }),
+    formulaOnlyRow('Open'),
+    formulaOnlyRow('Open')
+  ];
+  const formulaRows = [blank(), formulaOnlyCells(), blank(), formulaOnlyCells(), formulaOnlyCells()];
+  let wideRange;
+  const sheet = googleSheet(dataRows, {
+    formulaRows,
+    onGetRange: (...args) => {
+      if (args[0] === 8 && args[2] > 1 && args[3] === headers.length) wideRange = args;
+    }
+  });
+  const ctx = context({ SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) } });
+  const result = ctx.readGoogleSheet_({
+    name: 'Stichting A', spreadsheetId: 'test', sheetName: 'Workshops', headerRow: 8
+  });
+
+  assert.deepEqual(wideRange, [8, 1, 4, headers.length]);
+  assert.deepEqual(Array.from(result.records, record => record.requestId), ['REQ-001', 'REQ-002']);
+  assert.equal(result.warnings.emptyRows, 0);
+  assert.equal(result.warnings.rowsTruncated, 0);
+});
+
+test('formule-only tussenrijen verbruiken de ingestelde rijlimiet niet', () => {
+  const blank = () => Array(headers.length).fill('');
+  const formulaValues = blank();
+  formulaValues[headers.indexOf('Status')] = 'Open';
+  const formulaCells = blank();
+  formulaCells[headers.indexOf('Status')] = '=IF(A2="";"Open";"Uitgevoerd")';
+  const rows = [
+    row({ 'Aanvraag ID': 'REQ-001' }),
+    formulaValues,
+    row({ 'Aanvraag ID': 'REQ-002' }),
+    formulaValues,
+    row({ 'Aanvraag ID': 'REQ-003' })
+  ];
+  const sheet = googleSheet(rows, {
+    formulaRows: [blank(), formulaCells, blank(), formulaCells, blank()]
+  });
+  const ctx = liveContext({
+    SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) }
+  }, { maxRows: 2 });
+  const result = ctx.readGoogleSheet_({
+    name: 'Stichting A', spreadsheetId: 'source-a-id', sheetName: 'Workshops', headerRow: 8
+  });
+
+  assert.deepEqual(Array.from(result.records, record => record.requestId), ['REQ-001', 'REQ-002']);
+  assert.equal(result.warnings.rowsTruncated, 1);
+  assert.equal(result.warnings.emptyRows, 0);
+});
+
+test('een echte waarde naast formules houdt de workshoprij wel in de bron', () => {
+  const formulaRow = Array(headers.length).fill('');
+  formulaRow[headers.indexOf('Status')] = '=IF(A2="";"Open";"Uitgevoerd")';
+  const sheet = googleSheet([row()], { formulaRows: [formulaRow] });
+  const ctx = context({ SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) } });
+  const result = ctx.readGoogleSheet_({
+    name: 'Stichting A', spreadsheetId: 'test', sheetName: 'Workshops', headerRow: 8
+  });
+
+  assert.equal(result.records.length, 1);
+  assert.equal(result.records[0].requestId, 'REQ-001');
 });
 
 test('rijlimiet heeft een veilige standaard en harde bovengrens', () => {
