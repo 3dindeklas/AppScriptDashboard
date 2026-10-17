@@ -48,7 +48,8 @@ function include(filename) {
  * Contactgegevens, notities, technische ID's en financiële detailvelden worden niet teruggestuurd.
  */
 function getDashboardData() {
-  requireAccess_();
+  const email = requireAccess_();
+  const canViewFinancials = canViewFinancials_(email);
 
   try {
     const result = APP_CONFIG.demoMode ? demoDashboardData_() : readConfiguredSheets_();
@@ -58,7 +59,12 @@ function getDashboardData() {
       mode: APP_CONFIG.demoMode ? 'demo' : 'live',
       generatedAt: new Date().toISOString(),
       complete: result.complete,
-      records: result.records.map(publicRecord_),
+      permissions: {
+        canViewFinancials: canViewFinancials
+      },
+      records: result.records.map(function(record) {
+        return publicRecord_(record, canViewFinancials);
+      }),
       sources: result.sources.map(publicSourceStatus_)
     };
   } catch (error) {
@@ -129,6 +135,12 @@ function activeUserEmail_() {
 
 function normalizeEmail_(email) {
   return String(email || '').trim().toLowerCase();
+}
+
+/** Financiële toegang is een expliciete tweede allowlist boven op dashboardtoegang. */
+function canViewFinancials_(email) {
+  const allowedEmails = (APP_CONFIG.financialAllowedEmails || []).map(normalizeEmail_);
+  return allowedEmails.indexOf(normalizeEmail_(email)) !== -1;
 }
 
 /** Bouwt een vaste foutpagina zonder account-, bron- of foutdetails. */

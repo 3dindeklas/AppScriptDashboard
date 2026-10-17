@@ -36,6 +36,16 @@ allowedEmails: [
 
 Gebruik voor ieder extra account een nieuwe regel. De controle negeert hoofdletters en spaties, maar accepteert alleen volledige e-mailadressen; een domeinnaam alleen is niet voldoende. Laat je de lijst leeg of kan Google geen account vaststellen, dan wordt toegang geweigerd.
 
+Zet daarna alleen de accounts die ook financiële bedragen mogen bekijken in de tweede lijst:
+
+```javascript
+financialAllowedEmails: [
+  'jouw.naam@organisatie.nl'
+],
+```
+
+Een account in `financialAllowedEmails` moet ook in `allowedEmails` staan. Alleen in de financiële lijst staan geeft dus geen toegang tot de app. Een lege financiële lijst is toegestaan: het dashboard blijft dan werken, maar het financiële blok blijft voor iedereen verborgen en de bedragen worden niet naar de browser gestuurd.
+
 Zet geen wachtwoorden, tokens, spreadsheet-ID's of andere geheimen in deze lijst.
 
 ## Stap 3 · Test eerst de demomodus
@@ -73,6 +83,9 @@ const APP_CONFIG = Object.freeze({
   demoMode: false,
   maxRowsPerSource: 5000,
   allowedEmails: [
+    'jouw.naam@organisatie.nl'
+  ],
+  financialAllowedEmails: [
     'jouw.naam@organisatie.nl'
   ],
   sources: [
@@ -122,7 +135,7 @@ Met de volledige demoselectie tonen de kerncijfers 10 aanvragen/workshops, 204 l
 
 Controleer daarna de grafieken. In de demodata zijn 8 aanvragen voor PO en 2 voor VO. De PO-leerjaarverdeling toont onder andere 3,5 gewogen aanvragen voor groep 6; de VO-verdeling toont 1 aanvraag voor leerjaar 1 en 1 voor leerjaar 2. Wissel in de maandgrafiek tussen aanvragen/workshops, leerlingdeelnames en lesmomenten. De aanvraag met twee definitieve lesdagen wordt evenredig over september en oktober verdeeld. Open bij iedere grafiek **Bekijk cijfers als tabel** en controleer dat dezelfde waarden ook zonder de visuele staven leesbaar zijn.
 
-Open daarna **Kosten, facturatie en marge**. Dit blok hoort bij het laden standaard dicht te staan. Met alle demogegevens zichtbaar zijn de verwachte waarden € 4.750,00 kosten, € 6.700,00 te factureren, € 1.450,00 marge, 25,0% gewogen marge, 8 complete regels en 2 onvolledige regels. Kies daarna één stichting of workshop en controleer dat alle financiële waarden direct dezelfde filters volgen.
+Open daarna als account uit `financialAllowedEmails` **Kosten, facturatie en marge**. Dit blok hoort bij het laden standaard dicht te staan. Met alle demogegevens zichtbaar zijn de verwachte waarden € 4.750,00 kosten, € 6.700,00 te factureren, € 1.450,00 marge, 25,0% gewogen marge, 8 complete regels en 2 onvolledige regels. Kies daarna één stichting of workshop en controleer dat alle financiële waarden direct dezelfde filters volgen. Test ook met een account dat alleen in `allowedEmails` staat: het financiële blok hoort dan volledig te ontbreken.
 
 De kosten- en facturatietotalen tellen ieder hun bekende bedragen. Marge wordt alleen berekend voor regels waarop beide bedragen aanwezig zijn. Controleer dit ook met één lege kostencel en één lege factuurcel: de lege cel mag niet als € 0,00 worden behandeld en de betreffende regel moet als onvolledig worden geteld.
 

@@ -30,7 +30,11 @@ const PUBLIC_RECORD_FIELDS_ = Object.freeze([
   'statusGroup',
   'type',
   'sessions',
-  'students',
+  'students'
+]);
+
+/** Bedragen die uitsluitend voor accounts op de financiële allowlist beschikbaar zijn. */
+const PUBLIC_FINANCIAL_FIELDS_ = Object.freeze([
   'providerTotalCosts',
   'invoiceAmount'
 ]);
@@ -299,7 +303,7 @@ function normalizeRow_(row, header, sourceName, parsed) {
 }
 
 /** Expliciete browserprojectie. Alleen de financiële basisvelden voor stap 8 worden toegevoegd. */
-function publicRecord_(record) {
+function publicRecord_(record, includeFinancials) {
   const providerTotalCosts = publicNumber_(record.providerTotalCosts);
   const invoiceAmount = publicNumber_(record.invoiceAmount);
   const prepared = {
@@ -325,7 +329,11 @@ function publicRecord_(record) {
     invoiceAmount: invoiceAmount
   };
 
-  return PUBLIC_RECORD_FIELDS_.reduce(function(publicRecord, field) {
+  const fields = includeFinancials === true
+    ? PUBLIC_RECORD_FIELDS_.concat(PUBLIC_FINANCIAL_FIELDS_)
+    : PUBLIC_RECORD_FIELDS_;
+
+  return fields.reduce(function(publicRecord, field) {
     publicRecord[field] = prepared[field];
     return publicRecord;
   }, {});

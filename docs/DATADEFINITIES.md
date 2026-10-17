@@ -63,10 +63,10 @@ Contactpersoon, e-mailadres, telefoon, notities, debuggegevens en e-mail-/kalend
 | `type` | `type`, anders `Onbekend` |
 | `sessions` | `sessions` |
 | `students` | `students` |
-| `providerTotalCosts` | `providerTotalCosts`, anders `null` |
-| `invoiceAmount` | `invoiceAmount`, anders `null` |
+| `providerTotalCosts` | bij financiële toegang: geldig bedrag of `null`; zonder financiële toegang ontbreekt het veld |
+| `invoiceAmount` | bij financiële toegang: geldig bedrag of `null`; zonder financiële toegang ontbreekt het veld |
 
-Aanvraag-ID, schoolKey, locatie, de oorspronkelijke tekst uit `Groep / leerjaar`, contactgegevens en financiële detailvelden blijven server-side. Alleen `Totale kosten aanbieder` en `Te factureren i_lab` verlaten vanaf stap 8 de server, omdat deze nodig zijn voor het gefilterde financiële overzicht. De browser leidt daaruit zelf af of een regel compleet is. De bronkolommen `Marge (€)` en `Marge (%)` worden niet naar de browser gestuurd en niet voor de dashboardberekening gebruikt. Alle browserdata blijft achter dezelfde accountcontrole en vaste allowlist vallen.
+Aanvraag-ID, schoolKey, locatie, de oorspronkelijke tekst uit `Groep / leerjaar`, contactgegevens en financiële detailvelden blijven server-side. Alleen voor een account dat zowel in `allowedEmails` als `financialAllowedEmails` staat, verlaten `Totale kosten aanbieder` en `Te factureren i_lab` vanaf stap 8 de server. Voor andere toegestane dashboardaccounts ontbreken deze velden volledig in het antwoord en blijft het financiële blok verborgen. De browser leidt bij financiële toegang zelf af of een regel compleet is. De bronkolommen `Marge (€)` en `Marge (%)` worden nooit naar de browser gestuurd en niet voor de dashboardberekening gebruikt.
 
 ## Dropdownfilters
 
@@ -93,7 +93,7 @@ Een lege of ongeldige datum en een leeg of ongeldig leerlingaantal blijven onbek
 
 ## Financieel overzicht
 
-Het financiële blok gebruikt exact dezelfde workshopregels als de overige kerncijfers nadat alle dropdown-, datum- en leerlingfilters zijn toegepast. Het blok staat standaard ingeklapt.
+Het financiële blok is alleen beschikbaar voor accounts in `financialAllowedEmails` en gebruikt daarna exact dezelfde workshopregels als de overige kerncijfers nadat alle dropdown-, datum- en leerlingfilters zijn toegepast. Het blok staat standaard ingeklapt. Een lege financiële allowlist geeft niemand financiële toegang.
 
 | Cijfer | Definitie |
 | --- | --- |

@@ -8,6 +8,7 @@
       mode: 'demo',
       generatedAt: '',
       complete: true,
+      canViewFinancials: false,
       dateMonths: [],
       studentBounds: null,
       loadStartedAt: 0,
@@ -80,6 +81,7 @@
       kpiQualityNote: document.getElementById('kpiQualityNote'),
       comparisonSummary: document.getElementById('comparisonSummary'),
       comparisonRows: document.getElementById('comparisonRows'),
+      financialOverview: document.getElementById('financialOverview'),
       financialKpis: document.getElementById('financialKpis'),
       financialCompleteness: document.getElementById('financialCompleteness'),
       financialNote: document.getElementById('financialNote'),
@@ -151,6 +153,11 @@
       state.mode = payload.mode || 'live';
       state.generatedAt = payload.generatedAt || new Date().toISOString();
       state.complete = payload.complete !== false;
+      state.canViewFinancials = Boolean(
+        payload.permissions && payload.permissions.canViewFinancials === true
+      );
+      elements.financialOverview.hidden = !state.canViewFinancials;
+      if (!state.canViewFinancials) elements.financialOverview.open = false;
       if (!timelineMetrics[elements.timelineMetric.value]) elements.timelineMetric.value = 'requests';
 
       filters.forEach(filter => fillFilter(filter.element, valuesOf(filter.field)));
@@ -513,7 +520,8 @@
 
       renderKpis(records);
       renderComparison(records);
-      renderFinancial(records);
+      if (state.canViewFinancials) renderFinancial(records);
+      else clearFinancial();
       renderCharts(records);
       renderRecent(records);
     }
@@ -677,6 +685,12 @@
       } else {
         elements.financialNote.textContent = 'Alle zichtbare regels bevatten zowel kosten als een te factureren bedrag.';
       }
+    }
+
+    function clearFinancial() {
+      elements.financialKpis.replaceChildren();
+      elements.financialCompleteness.replaceChildren();
+      elements.financialNote.textContent = '';
     }
 
     function financialQualityCard(labelText, valueText, incomplete) {
