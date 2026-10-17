@@ -68,6 +68,12 @@ Contactpersoon, e-mailadres, telefoon, notities, debuggegevens en e-mail-/kalend
 
 Aanvraag-ID, schoolKey, locatie, de oorspronkelijke tekst uit `Groep / leerjaar`, contactgegevens en financiële detailvelden blijven server-side. Alleen voor een account dat zowel in `allowedEmails` als `financialAllowedEmails` staat, verlaten `Totale kosten aanbieder` en `Te factureren i_lab` vanaf stap 8 de server. Voor andere toegestane dashboardaccounts ontbreken deze velden volledig in het antwoord en blijft het financiële blok verborgen. De browser leidt bij financiële toegang zelf af of een regel compleet is. De bronkolommen `Marge (€)` en `Marge (%)` worden nooit naar de browser gestuurd en niet voor de dashboardberekening gebruikt.
 
+## Snapshot en actualiteit
+
+De live snapshot verandert geen telling, filter of financiële definitie. Voor de snapshot wordt eerst dezelfde normalisatie uitgevoerd; daarna bewaart de server uitsluitend de hierboven beschreven browserveilige velden en de publieke bronstatus. Contactgegevens, notities, technische ID's en losse financiële detailvelden worden niet in de snapshot opgenomen.
+
+De financiële basisvelden zitten server-side in de veilige snapshot, maar worden bij ieder antwoord opnieuw verwijderd wanneer het actieve account niet in `financialAllowedEmails` staat. `generatedAt` is het moment waarop de brongegevens voor de snapshot zijn ingelezen, niet het tijdstip waarop de gebruiker de pagina opent. Daardoor blijft in de interface zichtbaar hoe actueel de getoonde data werkelijk is.
+
 ## Dropdownfilters
 
 De negen filters vergelijken steeds de exacte genormaliseerde waarde. Alle actieve dropdowns worden met `EN` gecombineerd: een workshopregel moet dus aan iedere gekozen waarde voldoen. De opties worden opnieuw uit de geladen gegevens opgebouwd na verversen. Schooljaren staan aflopend; overige opties alfabetisch volgens Nederlandse sortering.

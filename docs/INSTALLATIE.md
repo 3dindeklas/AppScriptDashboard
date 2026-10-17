@@ -2,13 +2,14 @@
 
 Gebruik bij voorkeur een **nieuw leeg Apps Script-project**. Zo blijven oude `.gs`-bestanden, foutcodes en verkeerd aangemaakte HTML-bestanden niet onzichtbaar meedraaien.
 
-## Stap 1 · Maak exact zes bestanden
+## Stap 1 · Maak exact zeven bestanden
 
-Maak in Apps Script drie scriptbestanden via **+ → Script**:
+Maak in Apps Script vier scriptbestanden via **+ → Script**:
 
 1. `Config`
 2. `Code`
 3. `Data`
+4. `Cache`
 
 Maak daarna drie HTML-bestanden via **+ → HTML**:
 
@@ -20,7 +21,7 @@ Kopieer de inhoud uit de gelijknamige bestanden in `src/`.
 
 Controleer de bestandstypen goed:
 
-- `Config`, `Code` en `Data` krijgen in Apps Script de extensie `.gs`;
+- `Config`, `Code`, `Data` en `Cache` krijgen in Apps Script de extensie `.gs`;
 - `Index`, `Styles` en `Client` krijgen de extensie `.html`;
 - `document` en `window` mogen nergens in een `.gs`-bestand staan.
 
@@ -71,7 +72,7 @@ Je hoort nu zonder verdere instellingen te zien:
 - gewogen PO- en VO-leerjaren;
 - een leesbare tabelweergave onder iedere grafiek en de recente-workshoptabel.
 
-Werkt dit niet, koppel dan nog geen echte data. Controleer eerst of alle zes bestanden het juiste type en exact dezelfde naam hebben.
+Werkt dit niet, koppel dan nog geen echte data. Controleer eerst of alle zeven bestanden het juiste type en exact dezelfde naam hebben.
 
 ## Stap 4 · Koppel één Google Sheet
 
@@ -82,6 +83,10 @@ const APP_CONFIG = Object.freeze({
   title: 'Workshopkompas',
   demoMode: false,
   maxRowsPerSource: 5000,
+  snapshotCache: Object.freeze({
+    enabled: true,
+    ttlSeconds: 21600
+  }),
   allowedEmails: [
     'jouw.naam@organisatie.nl'
   ],
@@ -145,9 +150,49 @@ Onder **Bronnen & datakwaliteit** zie je per stichting of de bron geladen is, ho
 
 Formules mogen onder de echte gegevens alvast zijn doorgetrokken. Rijen die uitsluitend formules bevatten worden niet geladen, tellen niet als workshop en verbruiken de rijlimiet niet. Test dit desgewenst door een formule enkele honderden rijen naar beneden door te trekken: het getoonde aantal workshops hoort gelijk te blijven. Een echte workshoprij met daarnaast berekende formulevelden blijft wel gewoon zichtbaar.
 
-Tijdens het ophalen blijft bovenaan een laadmelding met spinner zichtbaar. Na 1,5, 5 en 10 seconden verandert de tekst, zodat zichtbaar blijft dat de pagina nog op Apps Script en de Sheets wacht. Dit is geen geschat percentage. Na een succesvolle laadactie toont **Bijgewerkt** ook de werkelijk gemeten laadtijd. De knop **Vernieuwen** is tijdens het laden uitgeschakeld om dubbele aanvragen te voorkomen.
+Tijdens het ophalen blijft bovenaan een laadmelding met spinner zichtbaar. Na 1,5, 5 en 10 seconden verandert de tekst, zodat zichtbaar blijft dat de pagina nog op Apps Script en de Sheets wacht. Dit is geen geschat percentage. Na een succesvolle laadactie toont **Gegevens bijgewerkt** ook de werkelijk gemeten laadtijd en of de data uit een snelle snapshot of rechtstreeks uit Google Sheets kwam. De knop **Brongegevens vernieuwen** is tijdens het laden uitgeschakeld om dubbele aanvragen te voorkomen.
 
 De bronimport leest per Sheet eerst de kopregel, daarna één compact ankerbereik en ten slotte één keer de benodigde brede tabel. Test bij voorkeur ook met de grootste echte Sheet en met ver doorgetrokken formules. Blijft de melding langer dan 10 seconden staan, controleer dan in Apps Script onder **Uitvoeringen** of het wachten in de bronimport zit en noteer de getoonde laadtijd na afloop.
+
+## Stap 4a · Gebruik de snelle snapshot
+
+In live-modus probeert het dashboard eerst de gedeelde Apps Script-snapshot. De eerste aanvraag zonder geldige snapshot leest beide Google Sheets en slaat daarna een gecomprimeerde, privacyveilige kopie op. Volgende aanvragen gebruiken die kopie en hoeven de bronbladen niet opnieuw te scannen.
+
+De standaardinstelling is:
+
+```javascript
+snapshotCache: Object.freeze({
+  enabled: true,
+  ttlSeconds: 21600
+}),
+```
+
+`ttlSeconds` mag maximaal `21600` zijn: zes uur. Google kan een cache-item eerder verwijderen. Dat is geen fout; de eerstvolgende aanvraag leest dan automatisch opnieuw de Sheets en bouwt een nieuwe snapshot. Een onvolledig eerste resultaat, bijvoorbeeld doordat één bron tijdelijk uitvalt, wordt hooguit vijf minuten bewaard zodat herstel snel opnieuw wordt geprobeerd. Bestond al een complete snapshot, dan wordt die niet door een mislukte verversing overschreven. Zet `enabled` alleen tijdelijk op `false` wanneer je de cache bij een diagnose volledig wilt uitschakelen.
+
+De knop **Brongegevens vernieuwen** omzeilt de bestaande snapshot, leest beide Sheets opnieuw en vervangt de snapshot. Een gewone herlaadactie gebruikt juist de bestaande snapshot. Test dit als volgt:
+
+1. open de live app en wacht op `rechtstreeks uit Google Sheets`;
+2. herlaad de pagina en controleer dat `snelle snapshot` wordt getoond;
+3. wijzig een herkenbare testwaarde in een bronblad;
+4. herlaad normaal en controleer dat de snapshot nog wordt gebruikt;
+5. kies **Brongegevens vernieuwen** en controleer dat de nieuwe waarde verschijnt;
+6. open de app met een account zonder financiële toegang en controleer dat financiële velden ook vanuit de snapshot ontbreken.
+
+De snapshot bevat nooit contactpersonen, e-mailadressen, telefoonnummers, notities of technische ID's. De twee financiële basisbedragen worden alleen na controle van `financialAllowedEmails` aan het browserantwoord toegevoegd.
+
+### Optioneel ieder uur automatisch vernieuwen
+
+Wil je de snapshot ook zonder geopende browser actueel houden, maak dan één tijdtrigger aan:
+
+1. zet `demoMode` eerst op `false`;
+2. open links in Apps Script **Triggers**;
+3. kies **Trigger toevoegen**;
+4. selecteer de functie `refreshDashboardSnapshot`;
+5. kies als gebeurtenisbron **Tijdgestuurd**;
+6. kies **Uurtimer** en bijvoorbeeld **Elk uur**;
+7. sla de trigger op en geef toestemming wanneer Google daarom vraagt.
+
+De trigger draait met het Google-account van de maker. Dit account moet in `allowedEmails` staan en toegang hebben tot beide bronbladen. Maak maar één trigger aan; meerdere identieke triggers leveren alleen onnodige Sheet-reads op.
 
 ## Stap 5 · Koppel de tweede Google Sheet
 
@@ -188,6 +233,8 @@ Technische details worden niet in het dashboard getoond. Bij een onverwachte fou
 - `SOURCE_READ_FAILED`: controleer de tabbladnaam en of het actieve Google-account toegang tot de Sheet heeft.
 
 De server logt alleen wanneer iets mislukt. Providerdetails blijven in de afgeschermde Apps Script-uitvoeringslog en worden niet naar de browser gestuurd.
+
+Een ontbrekende, verlopen of onvolledige snapshot krijgt geen aparte foutcode: de app valt dan automatisch terug op de live Google Sheets. Cacheproblemen zijn alleen als `[snapshot-cache:...]` in de afgeschermde serverlog herkenbaar.
 
 ## Waarom Microsoft 365 nog ontbreekt
 

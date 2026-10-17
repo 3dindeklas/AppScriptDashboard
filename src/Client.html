@@ -7,6 +7,7 @@
       sources: [],
       mode: 'demo',
       generatedAt: '',
+      snapshotSource: 'demo',
       complete: true,
       canViewFinancials: false,
       dateMonths: [],
@@ -121,14 +122,15 @@
       ['type', document.getElementById('typeFilter')]
     ].map(filter => ({ field: filter[0], element: filter[1] }));
 
-    function loadDashboard() {
-      beginLoadingFeedback();
+    function loadDashboard(forceRefresh) {
+      beginLoadingFeedback(forceRefresh === true);
 
       if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run
+        const request = google.script.run
           .withSuccessHandler(handleData)
-          .withFailureHandler(handleError)
-          .getDashboardData();
+          .withFailureHandler(handleError);
+        if (forceRefresh === true) request.refreshDashboardData();
+        else request.getDashboardData();
         return;
       }
 
@@ -152,6 +154,9 @@
       state.sources = Array.isArray(payload.sources) ? payload.sources : [];
       state.mode = payload.mode || 'live';
       state.generatedAt = payload.generatedAt || new Date().toISOString();
+      state.snapshotSource = payload.snapshot && payload.snapshot.source
+        ? payload.snapshot.source
+        : state.mode;
       state.complete = payload.complete !== false;
       state.canViewFinancials = Boolean(
         payload.permissions && payload.permissions.canViewFinancials === true
@@ -165,7 +170,8 @@
       configureStudentRange(true);
 
       elements.mode.textContent = state.mode === 'demo' ? 'Demogegevens' : 'Live gegevens';
-      elements.updated.textContent = 'Bijgewerkt ' + formatDateTime(state.generatedAt) +
+      elements.updated.textContent = 'Gegevens bijgewerkt ' + formatDateTime(state.generatedAt) +
+        ' · ' + snapshotSourceLabel(state.snapshotSource) +
         ' · geladen in ' + formatLoadDuration(loadDuration);
       renderSourceStatus();
       renderLoadMessage();
@@ -270,20 +276,24 @@
 
     function setLoading(loading) {
       elements.refresh.disabled = loading;
-      elements.refresh.textContent = loading ? 'Laden…' : 'Vernieuwen';
+      elements.refresh.textContent = loading ? 'Laden…' : 'Brongegevens vernieuwen';
       elements.dashboard.setAttribute('aria-busy', loading ? 'true' : 'false');
     }
 
-    function beginLoadingFeedback() {
+    function beginLoadingFeedback(forceRefresh) {
       stopLoadingFeedback();
       state.loadStartedAt = Date.now();
       setLoading(true);
       elements.mode.textContent = 'Laden…';
-      elements.updated.textContent = 'Brongegevens worden opgehaald';
+      elements.updated.textContent = forceRefresh
+        ? 'Google Sheets worden opnieuw ingelezen'
+        : 'Snelle snapshot wordt gecontroleerd';
       elements.message.hidden = false;
       elements.message.classList.remove('error', 'warning');
       elements.message.classList.add('loading');
-      elements.message.textContent = 'Dashboardgegevens worden geladen…';
+      elements.message.textContent = forceRefresh
+        ? 'Brongegevens worden vernieuwd…'
+        : 'Dashboardgegevens worden geladen…';
 
       [
         [1500, 'De Google Sheets worden gecontroleerd…'],
@@ -311,6 +321,12 @@
         minimumFractionDigits: 1,
         maximumFractionDigits: 1
       }).format(milliseconds / 1000) + ' s';
+    }
+
+    function snapshotSourceLabel(source) {
+      if (source === 'cache') return 'snelle snapshot';
+      if (source === 'live') return 'rechtstreeks uit Google Sheets';
+      return 'demogegevens';
     }
 
     function valuesOf(field) {
@@ -1156,7 +1172,7 @@
     elements.includeUnknownDate.addEventListener('change', render);
     elements.includeUnknownStudents.addEventListener('change', render);
     elements.timelineMetric.addEventListener('change', render);
-    elements.refresh.addEventListener('click', loadDashboard);
+    elements.refresh.addEventListener('click', () => loadDashboard(true));
     elements.reset.addEventListener('click', () => {
       filters.forEach(filter => { filter.element.value = ''; });
       elements.dateBasis.value = 'scheduledDate';
@@ -1168,6 +1184,6 @@
       render();
     });
 
-    loadDashboard();
+    loadDashboard(false);
   })();
 </script>

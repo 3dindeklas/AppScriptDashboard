@@ -41,7 +41,8 @@ We starten geen volgende featurebranch voordat de voorgaande PR is gemerged. Daa
 | 6 | Kerncijfers en vergelijking | Oorspronkelijke KPI's en stichtingen naast elkaar | stap 5 |
 | 7 | Grafieken en leerjaren | Tijdlijn, verdelingen en gewogen PO/VO-leerjaren | stap 6 |
 | 8 | Financieel overzicht | Kosten, facturatie, marge en volledigheidsmelding | stap 7 |
-| 9 | Microsoft 365-bron | Microsoft Graph-adapter achter hetzelfde datacontract | stap 8 |
+| 8.1 | Snapshotcache en laadtijd | Snelle servercache, handmatig verversen en veilige terugval | stap 8 |
+| 9 | Microsoft 365-bron | Microsoft Graph-adapter achter hetzelfde datacontract | stap 8.1 |
 | 10 | Vormgeving en afronding | Animaties, toegankelijkheid, responsive polish en productiedocumentatie | stap 9 |
 
 ## Stap 1 · Datamodel en normalisatie
@@ -215,6 +216,29 @@ Acceptatie:
 - totalen volgen alle filters;
 - ontbrekende bedragen worden niet als nul geïnterpreteerd;
 - de privacy- en toegangscontrole heeft aparte regressietests.
+
+## Stap 8.1 · Snapshotcache en laadtijd
+
+Doel: de Google Sheets niet bij iedere dashboardopening volledig opnieuw uitlezen.
+
+In deze PR:
+
+- een gedeelde, gecomprimeerde Apps Script-snapshot;
+- uitsluitend browserveilige analysevelden in de snapshot;
+- financiële velden bij ieder antwoord opnieuw op accountniveau afschermen;
+- een handmatige knop die de bronnen bewust opnieuw inleest;
+- een optionele tijdtrigger voor periodieke verversing;
+- locking tegen gelijktijdige zware verversingen;
+- automatische live terugval bij een ontbrekende of beschadigde snapshot;
+- zichtbare herkomst, actualiteit en gemeten laadtijd in de interface.
+
+Acceptatie:
+
+- een tweede dashboardopening leest de Google Sheets niet opnieuw;
+- handmatig vernieuwen vervangt de snapshot;
+- een cachefout blokkeert het dashboard niet;
+- een account zonder financiële toegang ontvangt ook vanuit de snapshot geen bedragen;
+- persoonsgegevens en technische velden worden nooit gecachet.
 
 ## Stap 9 · Microsoft 365-bron
 

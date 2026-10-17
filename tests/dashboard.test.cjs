@@ -2,12 +2,60 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const zlib = require('node:zlib');
 const silentConsole = { log() {}, error() {} };
+
+function testBlob(value) {
+  const bytes = Buffer.isBuffer(value)
+    ? value
+    : Array.isArray(value)
+      ? Buffer.from(value.map(byte => byte < 0 ? byte + 256 : byte))
+      : Buffer.from(String(value));
+  return {
+    getBytes: () => Array.from(bytes, byte => byte > 127 ? byte - 256 : byte),
+    getDataAsString: () => bytes.toString('utf8')
+  };
+}
+
+function testUtilities() {
+  return {
+    formatDate: date => date.toISOString().slice(0, 10),
+    getUuid: () => '12345678-abcd-4321-abcd-1234567890ab',
+    newBlob: value => testBlob(value),
+    gzip: blob => testBlob(zlib.gzipSync(Buffer.from(blob.getBytes().map(byte => byte < 0 ? byte + 256 : byte)))),
+    ungzip: blob => testBlob(zlib.gunzipSync(Buffer.from(blob.getBytes().map(byte => byte < 0 ? byte + 256 : byte)))),
+    base64Encode: bytes => Buffer.from(bytes.map(byte => byte < 0 ? byte + 256 : byte)).toString('base64'),
+    base64Decode: value => Array.from(Buffer.from(value, 'base64'), byte => byte > 127 ? byte - 256 : byte)
+  };
+}
+
+function memoryCache() {
+  const values = new Map();
+  const cache = {
+    get: key => values.has(key) ? values.get(key) : null,
+    getAll: keys => Object.fromEntries(keys.filter(key => values.has(key)).map(key => [key, values.get(key)])),
+    put: (key, value) => values.set(key, value),
+    putAll: entries => Object.entries(entries).forEach(entry => values.set(entry[0], entry[1])),
+    remove: key => values.delete(key),
+    removeAll: keys => keys.forEach(key => values.delete(key))
+  };
+  return { values, service: { getScriptCache: () => cache } };
+}
+
+function immediateLockService() {
+  return {
+    getScriptLock: () => ({
+      tryLock: () => true,
+      releaseLock() {}
+    })
+  };
+}
 
 function session(email = 'jouw-account@voorbeeld.nl') {
   return {
     getScriptTimeZone: () => 'Europe/Amsterdam',
-    getActiveUser: () => ({ getEmail: () => email })
+    getActiveUser: () => ({ getEmail: () => email }),
+    getEffectiveUser: () => ({ getEmail: () => email })
   };
 }
 
@@ -15,15 +63,12 @@ function context(extra = {}, configTransform = source => source) {
   const ctx = vm.createContext({
     Date,
     console: silentConsole,
-    Utilities: {
-      formatDate: date => date.toISOString().slice(0, 10),
-      getUuid: () => '12345678-abcd-4321-abcd-1234567890ab'
-    },
+    Utilities: testUtilities(),
     Session: session(),
     ...extra
   });
 
-  for (const file of ['Config.gs', 'Data.gs', 'Code.gs']) {
+  for (const file of ['Config.gs', 'Data.gs', 'Cache.gs', 'Code.gs']) {
     const source = fs.readFileSync('src/' + file, 'utf8');
     vm.runInContext(file === 'Config.gs' ? configTransform(source) : source, ctx);
   }
@@ -33,12 +78,13 @@ function context(extra = {}, configTransform = source => source) {
 function liveContext(extra = {}, options = {}) {
   const ids = options.ids || ['source-a-id', 'source-b-id'];
   const maxRows = options.maxRows || 5000;
+  const finishTransform = options.configTransform || (source => source);
   return context(extra, source => {
     let sourceIndex = 0;
-    return source
+    return finishTransform(source
       .replace('demoMode: true', 'demoMode: false')
       .replace('maxRowsPerSource: 5000', 'maxRowsPerSource: ' + maxRows)
-      .replace(/spreadsheetId: ''/g, () => "spreadsheetId: '" + (ids[sourceIndex++] || '') + "'");
+      .replace(/spreadsheetId: ''/g, () => "spreadsheetId: '" + (ids[sourceIndex++] || '') + "'"));
   });
 }
 
@@ -169,6 +215,7 @@ function clientHarness(records, options = {}) {
   const timers = new Map();
   let successHandler;
   let failureHandler;
+  let requestedMethod = '';
   const runner = {
     withSuccessHandler(handler) {
       successHandler = handler;
@@ -178,7 +225,8 @@ function clientHarness(records, options = {}) {
       failureHandler = handler;
       return this;
     },
-    getDashboardData() {}
+    getDashboardData() { requestedMethod = 'getDashboardData'; },
+    refreshDashboardData() { requestedMethod = 'refreshDashboardData'; }
   };
   const window = options.deferLoad ? {} : {
     __DEMO_PAYLOAD__: {
@@ -217,6 +265,7 @@ function clientHarness(records, options = {}) {
   };
   elements.__resolveLoad = payload => successHandler(payload);
   elements.__rejectLoad = error => failureHandler(error);
+  elements.__requestedMethod = () => requestedMethod;
   return elements;
 }
 
@@ -400,6 +449,7 @@ test('demo blijft werken en de browser ontvangt alleen de veilige stap-8-velden'
 test('lang laden geeft stapsgewijze feedback en herstelt de bediening na succes', () => {
   const elements = clientHarness([], { deferLoad: true });
 
+  assert.equal(elements.__requestedMethod(), 'getDashboardData');
   assert.equal(elements.dashboard.getAttribute('aria-busy'), 'true');
   assert.equal(elements.refreshButton.disabled, true);
   assert.equal(elements.refreshButton.textContent, 'Laden…');
@@ -417,17 +467,23 @@ test('lang laden geeft stapsgewijze feedback en herstelt de bediening na succes'
     mode: 'live',
     generatedAt: '2026-10-17T00:00:00.000Z',
     complete: true,
+    snapshot: { source: 'cache', cacheEnabled: true },
     sources: [],
     records: []
   });
 
   assert.equal(elements.dashboard.getAttribute('aria-busy'), 'false');
   assert.equal(elements.refreshButton.disabled, false);
-  assert.equal(elements.refreshButton.textContent, 'Vernieuwen');
+  assert.equal(elements.refreshButton.textContent, 'Brongegevens vernieuwen');
   assert.equal(elements.message.classList.contains('loading'), false);
   assert.equal(elements.message.hidden, true);
   assert.equal(elements.modeBadge.textContent, 'Live gegevens');
+  assert.match(elements.updatedAt.textContent, /snelle snapshot/);
   assert.match(elements.updatedAt.textContent, /geladen in \d+,\d s$/);
+
+  elements.refreshButton.trigger('click');
+  assert.equal(elements.__requestedMethod(), 'refreshDashboardData');
+  assert.equal(elements.message.textContent, 'Brongegevens worden vernieuwd…');
 });
 
 test('demodata levert de gedocumenteerde stap-6-kerncijfers op', () => {
@@ -1277,6 +1333,147 @@ test('rijlimiet heeft een veilige standaard en harde bovengrens', () => {
   assert.equal(liveContext({}, { maxRows: 25000 }).sourceRowLimit_(), 10000);
   const invalidLimit = context({}, source => source.replace('maxRowsPerSource: 5000', "maxRowsPerSource: 'ongeldig'"));
   assert.equal(invalidLimit.sourceRowLimit_(), 5000);
+});
+
+test('een live snapshot voorkomt dat dezelfde Google Sheets bij iedere opening opnieuw worden gelezen', () => {
+  const stored = memoryCache();
+  const sheet = googleSheet([row({ 'Workshopnaam': 'Snapshot workshop' })]);
+  let opened = 0;
+  const ctx = liveContext({
+    CacheService: stored.service,
+    LockService: immediateLockService(),
+    SpreadsheetApp: {
+      openById: () => {
+        opened += 1;
+        return { getSheetByName: () => sheet };
+      }
+    }
+  });
+
+  const first = ctx.getDashboardData();
+  const second = ctx.getDashboardData();
+
+  assert.equal(first.snapshot.source, 'live');
+  assert.equal(second.snapshot.source, 'cache');
+  assert.equal(second.generatedAt, first.generatedAt);
+  assert.equal(second.records[0].workshop, 'Snapshot workshop');
+  assert.equal(opened, 2);
+});
+
+test('handmatig vernieuwen vervangt de snapshot met nieuwe brongegevens', () => {
+  const stored = memoryCache();
+  let workshop = 'Eerste versie';
+  let opened = 0;
+  const ctx = liveContext({
+    CacheService: stored.service,
+    LockService: immediateLockService(),
+    SpreadsheetApp: {
+      openById: () => {
+        opened += 1;
+        return { getSheetByName: () => googleSheet([row({ 'Workshopnaam': workshop })]) };
+      }
+    }
+  });
+
+  assert.equal(ctx.getDashboardData().records[0].workshop, 'Eerste versie');
+  workshop = 'Bijgewerkte versie';
+  assert.equal(ctx.getDashboardData().records[0].workshop, 'Eerste versie');
+
+  const refreshed = ctx.refreshDashboardData();
+  const cached = ctx.getDashboardData();
+
+  assert.equal(refreshed.snapshot.source, 'live');
+  assert.equal(refreshed.records[0].workshop, 'Bijgewerkte versie');
+  assert.equal(cached.snapshot.source, 'cache');
+  assert.equal(cached.records[0].workshop, 'Bijgewerkte versie');
+  assert.equal(opened, 4);
+});
+
+test('de gedeelde snapshot bevat geen persoonsgegevens en financiële velden blijven per account afgeschermd', () => {
+  const stored = memoryCache();
+  const ctx = liveContext({
+    CacheService: stored.service,
+    LockService: immediateLockService(),
+    SpreadsheetApp: { openById: () => ({ getSheetByName: () => googleSheet([row()]) }) }
+  }, { configTransform: withFinancialEmails([]) });
+
+  const response = ctx.getDashboardData();
+  const cached = ctx.readDashboardSnapshot_();
+  const cachedJson = JSON.stringify(cached);
+
+  assert.equal(response.permissions.canViewFinancials, false);
+  assert.equal(Object.prototype.hasOwnProperty.call(response.records[0], 'providerTotalCosts'), false);
+  assert.equal(cached.records[0].providerTotalCosts, 485.5);
+  for (const privateValue of ['Privé Persoon', 'private@example.test', '0612345678', 'Niet naar de browser sturen']) {
+    assert.ok(!cachedJson.includes(privateValue), privateValue);
+  }
+});
+
+test('een onvolledige snapshot valt veilig terug op de live Google Sheets', () => {
+  const stored = memoryCache();
+  let workshop = 'Voor cachefout';
+  let opened = 0;
+  const ctx = liveContext({
+    CacheService: stored.service,
+    LockService: immediateLockService(),
+    SpreadsheetApp: {
+      openById: () => {
+        opened += 1;
+        return { getSheetByName: () => googleSheet([row({ 'Workshopnaam': workshop })]) };
+      }
+    }
+  });
+
+  ctx.getDashboardData();
+  const chunkKey = [...stored.values.keys()].find(key => key.includes(':chunk:'));
+  stored.values.delete(chunkKey);
+  workshop = 'Na cachefout';
+
+  const recovered = ctx.getDashboardData();
+  assert.equal(recovered.snapshot.source, 'live');
+  assert.equal(recovered.records[0].workshop, 'Na cachefout');
+  assert.equal(opened, 4);
+});
+
+test('een tijdelijke bronfout overschrijft een bestaande complete snapshot niet', () => {
+  const stored = memoryCache();
+  let failSecondSource = false;
+  const ctx = liveContext({
+    CacheService: stored.service,
+    LockService: immediateLockService(),
+    SpreadsheetApp: {
+      openById: id => {
+        if (failSecondSource && id === 'source-b-id') throw new Error('tijdelijke providerfout');
+        return { getSheetByName: () => googleSheet([row({ 'Workshopnaam': 'Bewaarde versie' })]) };
+      }
+    }
+  });
+
+  const complete = ctx.getDashboardData();
+  failSecondSource = true;
+  const failedRefresh = ctx.refreshDashboardData();
+  const preserved = ctx.getDashboardData();
+
+  assert.equal(complete.complete, true);
+  assert.equal(failedRefresh.complete, false);
+  assert.equal(failedRefresh.snapshot.source, 'live');
+  assert.equal(preserved.complete, true);
+  assert.equal(preserved.snapshot.source, 'cache');
+  assert.equal(preserved.records.length, 2);
+});
+
+test('de geplande snapshotverversing controleert het account van de triggermaker', () => {
+  const denied = liveContext({ Session: session('niet-toegestaan@voorbeeld.nl') });
+  assert.throws(() => denied.refreshDashboardSnapshot(), /Geen toegang/);
+
+  const stored = memoryCache();
+  const allowed = liveContext({
+    CacheService: stored.service,
+    LockService: immediateLockService(),
+    SpreadsheetApp: { openById: () => ({ getSheetByName: () => googleSheet([row()]) }) }
+  });
+  assert.match(allowed.refreshDashboardSnapshot(), /^\d{4}-\d{2}-\d{2}T/);
+  assert.ok([...stored.values.keys()].some(key => key.endsWith(':manifest')));
 });
 
 test('een mislukte bron blokkeert beschikbare live gegevens niet', () => {
