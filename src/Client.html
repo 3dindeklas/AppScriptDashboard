@@ -9,7 +9,9 @@
       generatedAt: '',
       complete: true,
       dateMonths: [],
-      studentBounds: null
+      studentBounds: null,
+      loadStartedAt: 0,
+      loadingTimers: []
     };
     const numberFormat = new Intl.NumberFormat('nl-NL');
     const decimalFormat = new Intl.NumberFormat('nl-NL', {
@@ -43,6 +45,7 @@
       unknownSectors: 'Onbekende onderwijssectoren'
     };
     const elements = {
+      dashboard: document.getElementById('dashboard'),
       refresh: document.getElementById('refreshButton'),
       reset: document.getElementById('resetButton'),
       message: document.getElementById('message'),
@@ -103,7 +106,7 @@
     ].map(filter => ({ field: filter[0], element: filter[1] }));
 
     function loadDashboard() {
-      setLoading(true);
+      beginLoadingFeedback();
 
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         google.script.run
@@ -127,6 +130,8 @@
         return;
       }
 
+      const loadDuration = stopLoadingFeedback();
+
       state.records = payload.records;
       state.sources = Array.isArray(payload.sources) ? payload.sources : [];
       state.mode = payload.mode || 'live';
@@ -139,15 +144,15 @@
       configureStudentRange(true);
 
       elements.mode.textContent = state.mode === 'demo' ? 'Demogegevens' : 'Live gegevens';
-      elements.updated.textContent = 'Bijgewerkt ' + formatDateTime(state.generatedAt);
+      elements.updated.textContent = 'Bijgewerkt ' + formatDateTime(state.generatedAt) +
+        ' · geladen in ' + formatLoadDuration(loadDuration);
       renderSourceStatus();
       renderLoadMessage();
-      setLoading(false);
       render();
     }
 
     function handleError(error) {
-      setLoading(false);
+      stopLoadingFeedback();
       elements.message.hidden = false;
       elements.message.classList.remove('warning');
       elements.message.classList.add('error');
@@ -158,7 +163,7 @@
 
     function renderLoadMessage() {
       const hasWarnings = state.sources.some(source => source.warningCount > 0);
-      elements.message.classList.remove('error', 'warning');
+      elements.message.classList.remove('error', 'warning', 'loading');
 
       if (!state.complete) {
         elements.message.hidden = false;
@@ -245,6 +250,46 @@
     function setLoading(loading) {
       elements.refresh.disabled = loading;
       elements.refresh.textContent = loading ? 'Laden…' : 'Vernieuwen';
+      elements.dashboard.setAttribute('aria-busy', loading ? 'true' : 'false');
+    }
+
+    function beginLoadingFeedback() {
+      stopLoadingFeedback();
+      state.loadStartedAt = Date.now();
+      setLoading(true);
+      elements.mode.textContent = 'Laden…';
+      elements.updated.textContent = 'Brongegevens worden opgehaald';
+      elements.message.hidden = false;
+      elements.message.classList.remove('error', 'warning');
+      elements.message.classList.add('loading');
+      elements.message.textContent = 'Dashboardgegevens worden geladen…';
+
+      [
+        [1500, 'De Google Sheets worden gecontroleerd…'],
+        [5000, 'De workshopregels van beide bronnen worden samengevoegd…'],
+        [10000, 'Het laden duurt langer dan normaal. Grote Sheets en veel formules kunnen extra tijd kosten.']
+      ].forEach(step => {
+        state.loadingTimers.push(setTimeout(() => {
+          elements.message.textContent = step[1];
+        }, step[0]));
+      });
+    }
+
+    function stopLoadingFeedback() {
+      state.loadingTimers.forEach(timer => clearTimeout(timer));
+      state.loadingTimers = [];
+      const duration = state.loadStartedAt ? Date.now() - state.loadStartedAt : 0;
+      state.loadStartedAt = 0;
+      elements.message.classList.remove('loading');
+      setLoading(false);
+      return duration;
+    }
+
+    function formatLoadDuration(milliseconds) {
+      return new Intl.NumberFormat('nl-NL', {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1
+      }).format(milliseconds / 1000) + ' s';
     }
 
     function valuesOf(field) {

@@ -134,7 +134,8 @@ function readGoogleSheet_(source) {
   }
 
   const recordsToRead = Math.min(dataRowOffsets.length, sourceRowLimit_());
-  const rowsToRead = dataRowOffsets[recordsToRead - 1] + 1;
+  const includedRowOffsets = dataRowOffsets.slice(0, recordsToRead);
+  const rowsToRead = includedRowOffsets[includedRowOffsets.length - 1] + 1;
   const dataRange = sheet.getRange(
     headerRow,
     1,
@@ -142,9 +143,8 @@ function readGoogleSheet_(source) {
     lastColumn
   );
   const values = dataRange.getValues();
-  const formulas = dataRange.getFormulas();
 
-  const result = normalizeSheet_(values, source.name, formulas);
+  const result = normalizeSheet_(values, source.name, null, includedRowOffsets);
   result.warnings.rowsTruncated = dataRowOffsets.length - recordsToRead;
   return result;
 }
@@ -158,41 +158,27 @@ function dataRowOffsets_(sheet, headerRow, lastRow, header) {
   const candidateRows = lastRow - headerRow;
   if (candidateRows < 1) return [];
 
-  const columnIndexes = workshopIdentityFields_()
+  const columnIndexes = workshopAnchorFields_()
     .filter(function(name) { return Object.prototype.hasOwnProperty.call(header, name); })
     .map(function(name) { return header[name]; })
     .sort(function(a, b) { return a - b; });
-  const spans = contiguousColumnSpans_(columnIndexes);
-  const dataRows = Array(candidateRows).fill(false);
+  if (!columnIndexes.length) return [];
 
-  spans.forEach(function(span) {
-    const range = sheet.getRange(headerRow + 1, span.start + 1, candidateRows, span.width);
-    const values = range.getValues();
-    const formulas = range.getFormulas();
-
-    for (let rowIndex = 0; rowIndex < values.length; rowIndex += 1) {
-      const hasLiteralIdentity = values[rowIndex].some(function(value, columnOffset) {
-        return hasValue_(value) && !hasFormula_(formulas[rowIndex][columnOffset]);
-      });
-      if (hasLiteralIdentity) dataRows[rowIndex] = true;
-    }
+  const firstColumn = columnIndexes[0];
+  const width = columnIndexes[columnIndexes.length - 1] - firstColumn + 1;
+  const anchorOffsets = columnIndexes.map(function(columnIndex) {
+    return columnIndex - firstColumn;
   });
+  const range = sheet.getRange(headerRow + 1, firstColumn + 1, candidateRows, width);
+  const values = range.getValues();
+  const formulas = range.getFormulas();
 
-  return dataRows.reduce(function(offsets, isDataRow, rowIndex) {
-    if (isDataRow) offsets.push(rowIndex);
+  return values.reduce(function(offsets, row, rowIndex) {
+    const hasLiteralIdentity = anchorOffsets.some(function(columnOffset) {
+      return hasValue_(row[columnOffset]) && !hasFormula_(formulas[rowIndex][columnOffset]);
+    });
+    if (hasLiteralIdentity) offsets.push(rowIndex);
     return offsets;
-  }, []);
-}
-
-function contiguousColumnSpans_(columnIndexes) {
-  return columnIndexes.reduce(function(spans, columnIndex) {
-    const previous = spans[spans.length - 1];
-    if (previous && previous.start + previous.width === columnIndex) {
-      previous.width += 1;
-    } else {
-      spans.push({ start: columnIndex, width: 1 });
-    }
-    return spans;
   }, []);
 }
 
@@ -206,7 +192,7 @@ function sourceRowLimit_() {
  * Zet een volledige sheetmatrix om naar interne workshoprecords.
  * Kolomvolgorde is niet van belang; lege spacer-kolommen worden genegeerd.
  */
-function normalizeSheet_(values, sourceName, formulas) {
+function normalizeSheet_(values, sourceName, formulas, includedRowOffsets) {
   if (!Array.isArray(values) || !values.length) {
     return { records: [], warnings: emptyWarnings_() };
   }
@@ -216,8 +202,10 @@ function normalizeSheet_(values, sourceName, formulas) {
   const seenRequestIds = new Set();
   const duplicateRequestIds = new Set();
   const records = [];
+  const includedRows = Array.isArray(includedRowOffsets) ? new Set(includedRowOffsets) : null;
 
   values.slice(1).forEach(function(row, rowIndex) {
+    if (includedRows && !includedRows.has(rowIndex)) return;
     const formulaRow = Array.isArray(formulas) && Array.isArray(formulas[rowIndex + 1])
       ? formulas[rowIndex + 1]
       : [];
@@ -402,6 +390,10 @@ function workshopIdentityFields_() {
     'aanvraag id', 'datum aanvraag', 'schoolnaam', 'workshopnaam',
     'definitieve datum', 'status'
   ];
+}
+
+function workshopAnchorFields_() {
+  return ['aanvraag id', 'datum aanvraag', 'schoolnaam', 'workshopnaam'];
 }
 
 /** Een rij met uitsluitend formules is geen workshop en ook geen kwaliteitswaarschuwing. */

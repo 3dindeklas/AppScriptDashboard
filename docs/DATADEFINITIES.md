@@ -149,7 +149,7 @@ PO en VO worden afzonderlijk berekend. Eén aanvraag wordt evenredig verdeeld ov
 
 ## Datakwaliteitssignalen
 
-Voor het uitlezen bepaalt de server eerst via de identificerende kolommen `Aanvraag ID`, `Datum aanvraag`, `Schoolnaam`, `Workshopnaam`, `Definitieve datum` en `Status` welke rijen echte brongegevens bevatten. Minstens één van deze velden moet een niet-lege waarde bevatten die niet uitsluitend het resultaat van een formule is. Daardoor trekken vooraf doorgetrokken formules `getLastRow()` niet kunstmatig naar beneden. De brede tabel wordt pas daarna en alleen tot de benodigde echte gegevensrij gelezen.
+Voor het uitlezen bepaalt de server eerst via de compacte ankerscan `Aanvraag ID`, `Datum aanvraag`, `Schoolnaam` en `Workshopnaam` welke rijen echte brongegevens bevatten. Deze kolommen worden als één aaneengesloten bereik in één keer gelezen, inclusief de formule-informatie die nodig is om doorgetrokken formules te herkennen. Minstens één ankerveld moet een niet-lege bronwaarde bevatten die niet uitsluitend het resultaat van een formule is. Daardoor trekken vooraf doorgetrokken formules `getLastRow()` niet kunstmatig naar beneden. De brede tabel wordt daarna één keer en alleen tot de laatste benodigde echte gegevensrij gelezen.
 
 Een rij die uitsluitend formules bevat wordt volledig overgeslagen. Zo'n rij wordt niet als workshop, lege-rijwaarschuwing of onderdeel van `maxRowsPerSource` geteld. Een echte workshoprij mag daarnaast gewoon formulevelden bevatten; zodra bijvoorbeeld aanvraag-ID, school of workshopnaam als bronwaarde aanwezig is, blijft de rij behouden.
 
