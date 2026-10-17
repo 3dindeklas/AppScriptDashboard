@@ -1,10 +1,10 @@
-# Workshopkompas · minimale Apps Script-basis
+# Workshopkompas · Google Apps Script-dashboard
 
-Deze branch bouwt het dashboard opnieuw op vanaf een kleine, controleerbare basis. Na het invullen van één toegestaan Google-account start de app met fictieve demogegevens en kan daarna één of twee Google Sheets met dezelfde kolomstructuur uitlezen.
+Workshopkompas combineert de workshopgegevens van twee stichtingen in één afgeschermd, filterbaar dashboard. Na het invullen van één toegestaan Google-account start de app met fictieve demogegevens en kan daarna één of twee Google Sheets met dezelfde kolomstructuur uitlezen.
 
 De server normaliseert de volledige analysekolomstructuur naar één intern workshopmodel. Alleen de velden voor de huidige interface en filters worden via een vaste allowlist doorgestuurd; uitgebreidere cijfers volgen per roadmapstap.
 
-## Wat versie 1 doet
+## Wat het dashboard doet
 
 - standaard Apps Script `doGet()` met `createTemplateFromFile('Index').evaluate()`;
 - standaard publieke `include(filename)` voor `Styles.html` en `Client.html`;
@@ -27,10 +27,13 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - verdelingen voor PO/VO, regio, workshop, aanbieder en statusgroep;
 - gewogen PO- en VO-leerjaren, inclusief combinatiegroepen en onbekende waarden;
 - een toegankelijke tabelweergave onder iedere grafiek en een recente-workshoptabel;
+- visuele afstemming op de 3Dindeklas Foundation, zonder externe CSS- of JavaScript-bibliotheek;
+- responsive bediening voor telefoon, tablet en desktop, met respect voor minder beweging;
+- een afdruk- en PDF-weergave voor een compact A4-landscapeoverzicht;
 - uitsluitend centraal toegestane analysevelden naar de browser; geen namen van contactpersonen, e-mailadressen, telefoonnummers, notities of technische ID's;
 - demomodus zonder databronnen, maar nooit zonder toegangscontrole.
 
-Microsoft 365 en verschillende rollen zijn bewust nog niet opgenomen. Die voegen we pas in de bijbehorende roadmapstap toe.
+Microsoft 365 en verschillende rollen zijn bewust nog niet opgenomen. Microsoft volgt als stap 10 zodra de koppeling met een testaccount gecontroleerd kan worden.
 
 ## Bestanden
 
@@ -62,13 +65,15 @@ Open daarna `preview/index.html`. De preview bevat uitsluitend fictieve gegevens
 
 Volg [docs/INSTALLATIE.md](docs/INSTALLATIE.md). Vul eerst je Google-account in, begin met `demoMode: true` en koppel pas daarna een Google Sheet.
 
+Gebruik voor publicatie, acceptatietest, beheer en rollback de [productie- en beheerhandleiding](docs/PRODUCTIE.md).
+
 ## Stapsgewijs uitbreiden
 
 De oorspronkelijke dashboardfuncties komen terug via afzonderlijke, opeenvolgende pull requests. Zie [docs/ROADMAP.md](docs/ROADMAP.md) voor de volgorde, acceptatiecriteria en vaste controle per stap.
 
 ## Officiële basis
 
-De structuur volgt deze Google-documentatie:
+De pagina gebruikt de [3Dindeklas Foundation](https://3dindeklas.github.io/Foundation/) voor kleur, vorm, header en toegankelijkheidsafspraken. De Apps Script-structuur volgt deze Google-documentatie:
 
 - [HTML Service: Best Practices](https://developers.google.com/apps-script/guides/html/best-practices)
 - [HTML Service: Templated HTML](https://developers.google.com/apps-script/guides/html/templates)
