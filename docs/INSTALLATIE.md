@@ -53,6 +53,7 @@ Je hoort nu zonder verdere instellingen te zien:
 - de badge `Demogegevens`;
 - 10 workshops verdeeld over Stichting A en Stichting B;
 - negen werkende dropdownfilters;
+- een maandbereik en leerlingbereik met leesbare waarden;
 - drie kerncijfers;
 - twee staafdiagrammen en een tabel.
 
@@ -103,6 +104,8 @@ De app leest vanaf de ingestelde kopregel. Minimaal bruikbaar zijn deze kolommen
 Andere kolommen mogen gewoon aanwezig zijn. Persoonsgegevens worden niet naar de browser gestuurd.
 
 De dropdownfilters worden automatisch opgebouwd uit de geladen workshopregels. Je kunt stichting, schooljaar, gemeente/regio, PO/VO, aanbieder, workshop, statusgroep, school en type combineren. **Filters wissen** herstelt altijd het volledige overzicht.
+
+Onder de dropdowns kun je kiezen tussen **Definitieve datum** en **Datum aanvraag**. Stel daarna met de twee maandsliders een inclusieve periode in. `Definitieve datum` mag meerdere lesdagen bevatten, gescheiden door komma’s, puntkomma’s of nieuwe regels. Een workshop wordt opgenomen zodra minimaal één van die lesdagen binnen de gekozen periode valt; de tabel toont alle lesdagen. De leerling-sliders gebruiken automatisch het laagste en hoogste bekende aantal. De twee vinkjes bepalen expliciet of workshopregels zonder geldige datum of zonder leerlingaantal zichtbaar blijven. De sliders reageren direct, zijn met de pijltjestoetsen te bedienen en kunnen elkaar niet passeren.
 
 Onder **Bronnen & datakwaliteit** zie je per stichting of de bron geladen is, hoeveel workshopregels zijn ingelezen en welke vaste controles aandacht vragen. De standaardlimiet is 5.000 workshopregels per bron. Verhoog deze alleen bewust; de code hanteert altijd een harde bovengrens van 10.000 regels per bron.
 

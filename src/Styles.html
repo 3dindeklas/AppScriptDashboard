@@ -16,8 +16,8 @@
 
   * { box-sizing: border-box; }
   body { margin: 0; }
-  button, select { font: inherit; }
-  button, select { cursor: pointer; }
+  button, select, input { font: inherit; }
+  button, select, input { cursor: pointer; }
   h1, h2, p { margin: 0; }
   h1 { font-size: clamp(2.3rem, 5vw, 4.5rem); line-height: 1; letter-spacing: -0.055em; }
   h2 { font-size: 1.1rem; letter-spacing: -0.02em; }
@@ -25,6 +25,7 @@
 
   button:focus-visible,
   select:focus-visible,
+  input:focus-visible,
   a:focus-visible {
     outline: 3px solid #c36d1c;
     outline-offset: 3px;
@@ -108,6 +109,17 @@
   .filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
   label { color: var(--muted); font-size: 0.75rem; font-weight: 700; }
   select { width: 100%; margin-top: 0.45rem; padding: 0.75rem 2rem 0.75rem 0.75rem; border: 1px solid var(--line); border-radius: 0.6rem; background: #fafbf8; color: var(--ink); }
+  .range-filter-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1.35rem; }
+  .range-card { min-width: 0; margin: 0; padding: 1rem; border: 1px solid var(--line); border-radius: 0.75rem; background: #fafbf8; }
+  .range-card legend { padding: 0 0.35rem; color: var(--ink); font-size: 0.82rem; font-weight: 750; }
+  .control-label { display: block; margin-bottom: 1rem; }
+  .range-row + .range-row { margin-top: 0.85rem; }
+  .range-row label { display: flex; justify-content: space-between; gap: 1rem; }
+  .range-value { color: var(--ink); font-weight: 750; font-variant-numeric: tabular-nums; text-align: right; }
+  input[type="range"] { width: 100%; margin: 0.55rem 0 0; accent-color: var(--teal); }
+  input[type="range"]:disabled { cursor: not-allowed; opacity: 0.5; }
+  .check-label { display: flex; align-items: start; gap: 0.55rem; margin-top: 1rem; line-height: 1.4; }
+  .check-label input { flex: 0 0 auto; width: 1rem; height: 1rem; margin: 0.1rem 0 0; accent-color: var(--teal); }
   .result-count { margin-top: 1rem; color: var(--muted); font-size: 0.78rem; }
 
   .kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1rem; }
@@ -145,7 +157,7 @@
     .intro { align-items: start; }
     .load-meta { justify-items: start; }
     .intro, footer { flex-direction: column; }
-    .filter-grid, .kpi-grid, .content-grid, .source-grid { grid-template-columns: 1fr; }
+    .filter-grid, .range-filter-grid, .kpi-grid, .content-grid, .source-grid { grid-template-columns: 1fr; }
     .source-summary { text-align: left; }
   }
 

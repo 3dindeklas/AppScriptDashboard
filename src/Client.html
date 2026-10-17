@@ -2,7 +2,15 @@
   (() => {
     'use strict';
 
-    const state = { records: [], sources: [], mode: 'demo', generatedAt: '', complete: true };
+    const state = {
+      records: [],
+      sources: [],
+      mode: 'demo',
+      generatedAt: '',
+      complete: true,
+      dateMonths: [],
+      studentBounds: null
+    };
     const numberFormat = new Intl.NumberFormat('nl-NL');
     const sourceStatusLabels = {
       demo: 'Demo',
@@ -29,11 +37,23 @@
       updated: document.getElementById('updatedAt'),
       sourceSummary: document.getElementById('sourceSummary'),
       sourceCards: document.getElementById('sourceCards'),
+      dateBasis: document.getElementById('dateBasis'),
+      dateFrom: document.getElementById('dateFromRange'),
+      dateTo: document.getElementById('dateToRange'),
+      dateFromValue: document.getElementById('dateFromValue'),
+      dateToValue: document.getElementById('dateToValue'),
+      includeUnknownDate: document.getElementById('includeUnknownDate'),
+      studentsFrom: document.getElementById('studentsFromRange'),
+      studentsTo: document.getElementById('studentsToRange'),
+      studentsFromValue: document.getElementById('studentsFromValue'),
+      studentsToValue: document.getElementById('studentsToValue'),
+      includeUnknownStudents: document.getElementById('includeUnknownStudents'),
       resultCount: document.getElementById('resultCount'),
       kpis: document.getElementById('kpis'),
       statusChart: document.getElementById('statusChart'),
       workshopChart: document.getElementById('workshopChart'),
-      recentRows: document.getElementById('recentRows')
+      recentRows: document.getElementById('recentRows'),
+      recentDateHeading: document.getElementById('recentDateHeading')
     };
     const filters = [
       ['source', document.getElementById('sourceFilter')],
@@ -79,6 +99,8 @@
       state.complete = payload.complete !== false;
 
       filters.forEach(filter => fillFilter(filter.element, valuesOf(filter.field)));
+      configureDateRange(true);
+      configureStudentRange(true);
 
       elements.mode.textContent = state.mode === 'demo' ? 'Demogegevens' : 'Live gegevens';
       elements.updated.textContent = 'Bijgewerkt ' + formatDateTime(state.generatedAt);
@@ -210,20 +232,182 @@
       select.value = values.includes(current) ? current : '';
     }
 
+    function configureDateRange(preserveSelection) {
+      if (!['scheduledDate', 'requestedDate'].includes(elements.dateBasis.value)) {
+        elements.dateBasis.value = 'scheduledDate';
+      }
+
+      const previousFrom = state.dateMonths[Number(elements.dateFrom.value)] || '';
+      const previousTo = state.dateMonths[Number(elements.dateTo.value)] || '';
+      const validMonths = state.records
+        .reduce((dates, record) => dates.concat(recordDateValues(record)), [])
+        .map(monthValue)
+        .filter(Boolean)
+        .sort();
+      state.dateMonths = validMonths.length
+        ? monthsBetween(validMonths[0], validMonths[validMonths.length - 1])
+        : [];
+
+      const lastIndex = Math.max(0, state.dateMonths.length - 1);
+      elements.dateFrom.min = 0;
+      elements.dateFrom.max = lastIndex;
+      elements.dateTo.min = 0;
+      elements.dateTo.max = lastIndex;
+      elements.dateFrom.value = preserveSelection && state.dateMonths.includes(previousFrom)
+        ? state.dateMonths.indexOf(previousFrom)
+        : 0;
+      elements.dateTo.value = preserveSelection && state.dateMonths.includes(previousTo)
+        ? state.dateMonths.indexOf(previousTo)
+        : lastIndex;
+      elements.dateFrom.disabled = state.dateMonths.length < 2;
+      elements.dateTo.disabled = state.dateMonths.length < 2;
+      updateDateRangeLabels();
+    }
+
+    function configureStudentRange(preserveSelection) {
+      const previousBounds = state.studentBounds;
+      const previousFrom = Number(elements.studentsFrom.value);
+      const previousTo = Number(elements.studentsTo.value);
+      const values = state.records
+        .map(record => record.students)
+        .filter(value => Number.isInteger(value) && value >= 0)
+        .sort((a, b) => a - b);
+
+      state.studentBounds = values.length ? { minimum: values[0], maximum: values[values.length - 1] } : null;
+      const minimum = state.studentBounds ? state.studentBounds.minimum : 0;
+      const maximum = state.studentBounds ? state.studentBounds.maximum : 0;
+      elements.studentsFrom.min = minimum;
+      elements.studentsFrom.max = maximum;
+      elements.studentsTo.min = minimum;
+      elements.studentsTo.max = maximum;
+      elements.studentsFrom.value = preserveSelection && previousBounds
+        ? clamp(previousFrom, minimum, maximum)
+        : minimum;
+      elements.studentsTo.value = preserveSelection && previousBounds
+        ? clamp(previousTo, minimum, maximum)
+        : maximum;
+      elements.studentsFrom.disabled = !state.studentBounds || minimum === maximum;
+      elements.studentsTo.disabled = !state.studentBounds || minimum === maximum;
+      updateStudentRangeLabels();
+    }
+
+    function monthsBetween(first, last) {
+      const months = [];
+      let year = Number(first.slice(0, 4));
+      let month = Number(first.slice(5, 7));
+      const finalYear = Number(last.slice(0, 4));
+      const finalMonth = Number(last.slice(5, 7));
+
+      while (year < finalYear || (year === finalYear && month <= finalMonth)) {
+        months.push(year + '-' + String(month).padStart(2, '0'));
+        month += 1;
+        if (month === 13) {
+          month = 1;
+          year += 1;
+        }
+      }
+      return months;
+    }
+
+    function monthValue(value) {
+      return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? String(value).slice(0, 7) : '';
+    }
+
+    function recordDateValues(record) {
+      if (elements.dateBasis.value === 'requestedDate') {
+        return monthValue(record.requestedDate) ? [record.requestedDate] : [];
+      }
+      const dates = Array.isArray(record.scheduledDates)
+        ? record.scheduledDates
+        : record.scheduledDate ? [record.scheduledDate] : [];
+      return [...new Set(dates.filter(date => monthValue(date)))].sort();
+    }
+
+    function clamp(value, minimum, maximum) {
+      return Math.min(maximum, Math.max(minimum, Number(value)));
+    }
+
+    function updateDateRangeLabels() {
+      const from = state.dateMonths[Number(elements.dateFrom.value)];
+      const to = state.dateMonths[Number(elements.dateTo.value)];
+      const fromLabel = from ? formatMonth(from) : 'Geen geldige datums';
+      const toLabel = to ? formatMonth(to) : 'Geen geldige datums';
+      elements.dateFromValue.textContent = fromLabel;
+      elements.dateToValue.textContent = toLabel;
+      elements.dateFrom.setAttribute('aria-valuetext', fromLabel);
+      elements.dateTo.setAttribute('aria-valuetext', toLabel);
+    }
+
+    function updateStudentRangeLabels() {
+      if (!state.studentBounds) {
+        elements.studentsFromValue.textContent = 'Geen bekende aantallen';
+        elements.studentsToValue.textContent = 'Geen bekende aantallen';
+        elements.studentsFrom.setAttribute('aria-valuetext', 'Geen bekende aantallen');
+        elements.studentsTo.setAttribute('aria-valuetext', 'Geen bekende aantallen');
+        return;
+      }
+      const fromLabel = studentLabel(Number(elements.studentsFrom.value));
+      const toLabel = studentLabel(Number(elements.studentsTo.value));
+      elements.studentsFromValue.textContent = fromLabel;
+      elements.studentsToValue.textContent = toLabel;
+      elements.studentsFrom.setAttribute('aria-valuetext', fromLabel);
+      elements.studentsTo.setAttribute('aria-valuetext', toLabel);
+    }
+
+    function formatMonth(month) {
+      const date = new Date(month + '-01T12:00:00');
+      return new Intl.DateTimeFormat('nl-NL', { month: 'long', year: 'numeric' }).format(date);
+    }
+
+    function studentLabel(value) {
+      return numberFormat.format(value) + (value === 1 ? ' leerling' : ' leerlingen');
+    }
+
+    function constrainRange(from, to, changed, updateLabels) {
+      if (Number(from.value) > Number(to.value)) {
+        if (changed === from) to.value = from.value;
+        else from.value = to.value;
+      }
+      updateLabels();
+      render();
+    }
+
     function filteredRecords() {
       const selections = filters.reduce((active, filter) => {
         if (filter.element.value) active[filter.field] = filter.element.value;
         return active;
       }, {});
-      return state.records.filter(record => recordMatchesFilters(record, selections));
+      return state.records.filter(record =>
+        recordMatchesFilters(record, selections) && recordMatchesRanges(record)
+      );
     }
 
     function recordMatchesFilters(record, selections) {
       return Object.keys(selections).every(field => record[field] === selections[field]);
     }
 
+    function recordMatchesRanges(record) {
+      const months = recordDateValues(record).map(monthValue);
+      const dateMatches = months.length
+        ? months.some(month =>
+          month >= state.dateMonths[Number(elements.dateFrom.value)] &&
+          month <= state.dateMonths[Number(elements.dateTo.value)]
+        )
+        : elements.includeUnknownDate.checked;
+
+      const studentsKnown = Number.isInteger(record.students) && record.students >= 0;
+      const studentsMatch = studentsKnown
+        ? state.studentBounds && record.students >= Number(elements.studentsFrom.value) &&
+          record.students <= Number(elements.studentsTo.value)
+        : elements.includeUnknownStudents.checked;
+      return Boolean(dateMatches && studentsMatch);
+    }
+
     function render() {
       const records = filteredRecords();
+      elements.recentDateHeading.textContent = elements.dateBasis.value === 'requestedDate'
+        ? 'Datum aanvraag'
+        : 'Definitieve datum';
       elements.resultCount.textContent = numberFormat.format(records.length) + ' van ' +
         numberFormat.format(state.records.length) + ' workshops zichtbaar';
 
@@ -297,7 +481,7 @@
     function renderRecent(records) {
       elements.recentRows.replaceChildren();
       const recent = [...records]
-        .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+        .sort((a, b) => recentDateValue(b).localeCompare(recentDateValue(a)))
         .slice(0, 8);
 
       if (!recent.length) {
@@ -313,7 +497,7 @@
 
       recent.forEach(record => {
         const row = document.createElement('tr');
-        [formatDate(record.date), record.source, record.workshop, record.status,
+        [formatRecordDates(record), record.source, record.workshop, record.status,
           record.students === null ? '—' : numberFormat.format(record.students)]
           .forEach(value => {
             const cell = document.createElement('td');
@@ -322,6 +506,16 @@
           });
         elements.recentRows.appendChild(row);
       });
+    }
+
+    function recentDateValue(record) {
+      const dates = recordDateValues(record);
+      return dates.length ? dates[dates.length - 1] : '';
+    }
+
+    function formatRecordDates(record) {
+      const dates = recordDateValues(record);
+      return dates.length ? dates.map(formatDate).join(' · ') : 'Onbekend';
     }
 
     function sum(records, field) {
@@ -349,9 +543,32 @@
     }
 
     filters.forEach(filter => filter.element.addEventListener('change', render));
+    elements.dateBasis.addEventListener('change', () => {
+      configureDateRange(false);
+      render();
+    });
+    elements.dateFrom.addEventListener('input', () => {
+      constrainRange(elements.dateFrom, elements.dateTo, elements.dateFrom, updateDateRangeLabels);
+    });
+    elements.dateTo.addEventListener('input', () => {
+      constrainRange(elements.dateFrom, elements.dateTo, elements.dateTo, updateDateRangeLabels);
+    });
+    elements.studentsFrom.addEventListener('input', () => {
+      constrainRange(elements.studentsFrom, elements.studentsTo, elements.studentsFrom, updateStudentRangeLabels);
+    });
+    elements.studentsTo.addEventListener('input', () => {
+      constrainRange(elements.studentsFrom, elements.studentsTo, elements.studentsTo, updateStudentRangeLabels);
+    });
+    elements.includeUnknownDate.addEventListener('change', render);
+    elements.includeUnknownStudents.addEventListener('change', render);
     elements.refresh.addEventListener('click', loadDashboard);
     elements.reset.addEventListener('click', () => {
       filters.forEach(filter => { filter.element.value = ''; });
+      elements.dateBasis.value = 'scheduledDate';
+      elements.includeUnknownDate.checked = true;
+      elements.includeUnknownStudents.checked = true;
+      configureDateRange(false);
+      configureStudentRange(false);
       render();
     });
 

@@ -92,6 +92,59 @@
             <select id="typeFilter"><option value="">Alle typen</option></select>
           </label>
         </div>
+
+        <div class="range-filter-grid">
+          <fieldset class="range-card">
+            <legend>Periode</legend>
+            <label class="control-label">
+              Filter op
+              <select id="dateBasis">
+                <option value="scheduledDate">Definitieve datum</option>
+                <option value="requestedDate">Datum aanvraag</option>
+              </select>
+            </label>
+            <div class="range-row">
+              <label for="dateFromRange">
+                Van
+                <output id="dateFromValue" class="range-value" for="dateFromRange">Alle maanden</output>
+              </label>
+              <input id="dateFromRange" type="range" min="0" max="0" value="0" step="1">
+            </div>
+            <div class="range-row">
+              <label for="dateToRange">
+                Tot en met
+                <output id="dateToValue" class="range-value" for="dateToRange">Alle maanden</output>
+              </label>
+              <input id="dateToRange" type="range" min="0" max="0" value="0" step="1">
+            </div>
+            <label class="check-label">
+              <input id="includeUnknownDate" type="checkbox" checked>
+              Workshops zonder gekozen datum meenemen
+            </label>
+          </fieldset>
+
+          <fieldset class="range-card">
+            <legend>Aantal leerlingen</legend>
+            <div class="range-row">
+              <label for="studentsFromRange">
+                Minimaal
+                <output id="studentsFromValue" class="range-value" for="studentsFromRange">Alle aantallen</output>
+              </label>
+              <input id="studentsFromRange" type="range" min="0" max="0" value="0" step="1">
+            </div>
+            <div class="range-row">
+              <label for="studentsToRange">
+                Maximaal
+                <output id="studentsToValue" class="range-value" for="studentsToRange">Alle aantallen</output>
+              </label>
+              <input id="studentsToRange" type="range" min="0" max="0" value="0" step="1">
+            </div>
+            <label class="check-label">
+              <input id="includeUnknownStudents" type="checkbox" checked>
+              Workshops zonder leerlingaantal meenemen
+            </label>
+          </fieldset>
+        </div>
         <p id="resultCount" class="result-count"></p>
       </section>
 
@@ -130,7 +183,7 @@
           <table>
             <thead>
               <tr>
-                <th>Datum</th>
+                <th id="recentDateHeading">Definitieve datum</th>
                 <th>Stichting</th>
                 <th>Workshop</th>
                 <th>Status</th>
