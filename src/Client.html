@@ -15,6 +15,24 @@
       loadStartedAt: 0,
       loadingTimers: []
     };
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const donutColors = {
+      PO: '#4c325b', VO: '#258582', Onbekend: '#77717e',
+      Open: '#ad7100', Ingepland: '#4c325b', Uitgevoerd: '#258582',
+      Geannuleerd: '#a5333a', 'Volgend schooljaar': '#9b6caa', Overig: '#77717e'
+    };
+    let municipalities = [];
+    try {
+      const asset = JSON.parse(document.getElementById('municipalityData').textContent);
+      municipalities = Array.isArray(asset.municipalities) ? asset.municipalities : [];
+    } catch (error) { /* De overige grafieken blijven beschikbaar zonder kaartasset. */ }
+    const municipalityIndex = new Map();
+    municipalities.forEach(item => {
+      municipalityIndex.set(municipalityKey(item.name), item);
+      municipalityIndex.set(municipalityKey(item.code), item);
+    });
+    let mapPaths = new Map();
+    let mapCounts = new Map();
     const numberFormat = new Intl.NumberFormat('nl-NL');
     const decimalFormat = new Intl.NumberFormat('nl-NL', {
       minimumFractionDigits: 1,
@@ -98,6 +116,14 @@
       sectorTableRows: document.getElementById('sectorTableRows'),
       regionChart: document.getElementById('regionChart'),
       regionTableRows: document.getElementById('regionTableRows'),
+      map: document.getElementById('municipalityMap'),
+      mapScope: document.getElementById('mapScope'),
+      mapMunicipality: document.getElementById('mapMunicipality'),
+      mapDetail: document.getElementById('mapDetail'),
+      mapCoverage: document.getElementById('mapCoverage'),
+      mapUnmatched: document.getElementById('mapUnmatched'),
+      mapLegend: document.getElementById('mapLegend'),
+      mapTableRows: document.getElementById('mapTableRows'),
       statusChart: document.getElementById('statusChart'),
       statusTableRows: document.getElementById('statusTableRows'),
       workshopChart: document.getElementById('workshopChart'),
@@ -763,13 +789,14 @@
     function renderCharts(records) {
       renderTimeline(records);
       renderCategoryChart(
-        elements.sectorChart, elements.sectorTableRows, countBy(records, 'sector'), 8
+        elements.sectorChart, elements.sectorTableRows, countBy(records, 'sector'), 8, 'donut'
       );
+      renderMunicipalityMap(records);
       renderCategoryChart(
         elements.regionChart, elements.regionTableRows, countBy(records, 'region'), 8
       );
       renderCategoryChart(
-        elements.statusChart, elements.statusTableRows, countBy(records, 'statusGroup'), 8
+        elements.statusChart, elements.statusTableRows, countBy(records, 'statusGroup'), 8, 'donut'
       );
       renderCategoryChart(
         elements.workshopChart, elements.workshopTableRows, countBy(records, 'workshop'), 6
@@ -785,8 +812,9 @@
       );
     }
 
-    function renderCategoryChart(chart, tableRows, entries, limit) {
-      renderBars(chart, entries, limit);
+    function renderCategoryChart(chart, tableRows, entries, limit, type) {
+      if (type === 'donut') renderDonut(chart, entries);
+      else renderBars(chart, entries, limit);
       tableRows.replaceChildren();
 
       if (!entries.length) {
@@ -810,6 +838,218 @@
         row.append(label, value);
         tableRows.appendChild(row);
       });
+    }
+
+    function svgElement(tag, attributes) {
+      const element = document.createElementNS(SVG_NS, tag);
+      Object.entries(attributes || {}).forEach(entry => element.setAttribute(entry[0], entry[1]));
+      return element;
+    }
+
+    function renderDonut(container, entries) {
+      container.replaceChildren();
+      const total = entries.reduce((sum, entry) => sum + entry[1], 0);
+      if (!total) {
+        container.appendChild(emptyMessage('Geen gegevens binnen deze filters.'));
+        return;
+      }
+      const ring = svgElement('svg', {
+        viewBox: '0 0 180 180', class: 'donut-ring', role: 'img',
+        'aria-label': total + ' aanvragen. ' + entries.map(entry => entry[0] + ': ' + entry[1]).join(', ')
+      });
+      const circumference = 2 * Math.PI * 65;
+      let offset = 0;
+      entries.forEach(entry => {
+        const share = entry[1] / total * circumference;
+        const segment = svgElement('circle', {
+          cx: 90, cy: 90, r: 65, fill: 'none', 'stroke-width': 24,
+          stroke: donutColors[entry[0]] || '#77717e',
+          'stroke-dasharray': share + ' ' + (circumference - share),
+          'stroke-dashoffset': -offset, transform: 'rotate(-90 90 90)',
+          'aria-hidden': 'true'
+        });
+        offset += share;
+        ring.appendChild(segment);
+      });
+      const value = svgElement('text', { x: 90, y: 88, class: 'donut-total', 'text-anchor': 'middle' });
+      value.textContent = numberFormat.format(total);
+      const unit = svgElement('text', { x: 90, y: 108, class: 'donut-unit', 'text-anchor': 'middle' });
+      unit.textContent = 'aanvragen';
+      ring.append(value, unit);
+      const legend = document.createElement('ul');
+      legend.className = 'donut-legend';
+      entries.forEach(entry => {
+        const item = document.createElement('li');
+        const swatch = document.createElement('span');
+        swatch.className = 'legend-swatch';
+        swatch.style.backgroundColor = donutColors[entry[0]] || '#77717e';
+        swatch.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.textContent = entry[0];
+        const value = document.createElement('strong');
+        value.textContent = numberFormat.format(entry[1]) + ' · ' + percentFormat.format(entry[1] / total);
+        item.append(swatch, label, value);
+        legend.appendChild(item);
+      });
+      container.append(ring, legend);
+    }
+
+    function municipalityKey(value) {
+      return String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase('nl-NL').trim().replace(/^gemeente\s+/, '').replace(/[^a-z0-9]/g, '');
+    }
+
+    function municipalityTotals(records) {
+      const counts = new Map();
+      const unmatched = new Map();
+      records.forEach(record => {
+        const municipality = municipalityIndex.get(municipalityKey(record.region));
+        const target = municipality ? counts : unmatched;
+        const key = municipality ? municipality.code : record.region || 'Onbekend';
+        target.set(key, (target.get(key) || 0) + 1);
+      });
+      return { counts, unmatched };
+    }
+
+    function mapBounds(items) {
+      const bounds = items.reduce((box, item) => [
+        Math.min(box[0], item.bounds[0]), Math.min(box[1], item.bounds[1]),
+        Math.max(box[2], item.bounds[2]), Math.max(box[3], item.bounds[3])
+      ], [Infinity, Infinity, -Infinity, -Infinity]);
+      const width = Math.max(55, bounds[2] - bounds[0]);
+      const height = Math.max(55, bounds[3] - bounds[1]);
+      const centerX = (bounds[0] + bounds[2]) / 2;
+      const centerY = (bounds[1] + bounds[3]) / 2;
+      return [centerX - width * 0.6, centerY - height * 0.6, width * 1.2, height * 1.2];
+    }
+
+    function mapColor(count, maximum) {
+      if (!count) return '#ebe8ee';
+      const ratio = maximum <= 1 ? 1 : (count - 1) / (maximum - 1);
+      const light = [224, 204, 235];
+      const dark = [76, 50, 91];
+      return 'rgb(' + light.map((value, index) => Math.round(value + (dark[index] - value) * ratio)).join(',') + ')';
+    }
+
+    function renderMunicipalityMap(records) {
+      elements.map.replaceChildren();
+      elements.mapLegend.replaceChildren();
+      elements.mapTableRows.replaceChildren();
+      if (!municipalities.length) {
+        elements.map.appendChild(emptyMessage('Kaart niet beschikbaar. Werk Municipalities.html bij.'));
+        elements.mapCoverage.textContent = '';
+        elements.mapUnmatched.textContent = '';
+        elements.mapScope.disabled = true;
+        elements.mapMunicipality.disabled = true;
+        return;
+      }
+      const totals = municipalityTotals(records);
+      mapCounts = totals.counts;
+      const mappedCount = [...mapCounts.values()].reduce((sum, count) => sum + count, 0);
+      const allCodes = municipalityTotals(state.records).counts;
+      const activeArea = municipalities.filter(item => allCodes.has(item.code));
+      const bounds = mapBounds(elements.mapScope.value === 'netherlands' || !activeArea.length
+        ? municipalities : activeArea);
+      const visible = municipalities.filter(item => item.bounds[2] >= bounds[0] && item.bounds[0] <= bounds[0] + bounds[2] &&
+        item.bounds[3] >= bounds[1] && item.bounds[1] <= bounds[1] + bounds[3]);
+      const maximum = Math.max(0, ...mapCounts.values());
+      const map = svgElement('svg', {
+        viewBox: bounds.join(' '), class: 'municipality-svg', 'aria-labelledby': 'municipalityTitle',
+        'aria-describedby': 'mapCoverage', preserveAspectRatio: 'xMidYMid meet'
+      });
+      mapPaths = new Map();
+      visible.forEach(item => {
+        const count = mapCounts.get(item.code) || 0;
+        const path = svgElement('path', {
+          d: item.path, fill: mapColor(count, maximum), 'fill-rule': 'evenodd',
+          class: 'municipality-shape', 'vector-effect': 'non-scaling-stroke',
+          'data-code': item.code, 'aria-label': item.name + ': ' + count + ' gekoppelde aanvragen'
+        });
+        const title = svgElement('title');
+        title.textContent = item.name + ': ' + numberFormat.format(count) + ' aanvragen';
+        path.appendChild(title);
+        path.addEventListener('click', () => {
+          elements.mapMunicipality.value = item.code;
+          showMunicipalityDetail();
+        });
+        map.appendChild(path);
+        mapPaths.set(item.code, path);
+      });
+      // Labels voor de twaalf grootste aantallen; de lijst bevat alle gemeenten.
+      const labelSize = Math.max(bounds[2], bounds[3]) / 32;
+      const labels = visible.filter(item => mapCounts.has(item.code) &&
+        item.label[0] >= bounds[0] && item.label[0] <= bounds[0] + bounds[2] &&
+        item.label[1] >= bounds[1] && item.label[1] <= bounds[1] + bounds[3])
+        .sort((a, b) => mapCounts.get(b.code) - mapCounts.get(a.code) || a.name.localeCompare(b.name, 'nl')).slice(0, 12);
+      const placedLabels = [];
+      labels.forEach(item => {
+        if (placedLabels.some(point => Math.hypot(point[0] - item.label[0], point[1] - item.label[1]) < labelSize * 2)) return;
+        placedLabels.push(item.label);
+        const label = svgElement('text', {
+          x: item.label[0], y: item.label[1], class: 'map-count-label',
+          'font-size': labelSize,
+          'text-anchor': 'middle', 'dominant-baseline': 'central', 'aria-hidden': 'true'
+        });
+        label.textContent = numberFormat.format(mapCounts.get(item.code));
+        map.appendChild(label);
+      });
+      elements.map.appendChild(map);
+      const current = elements.mapMunicipality.value;
+      while (elements.mapMunicipality.options.length > 1) elements.mapMunicipality.remove(1);
+      visible.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.code;
+        option.textContent = item.name + ' (' + numberFormat.format(mapCounts.get(item.code) || 0) + ')';
+        elements.mapMunicipality.appendChild(option);
+      });
+      elements.mapMunicipality.value = visible.some(item => item.code === current) ? current : '';
+      showMunicipalityDetail();
+      elements.mapCoverage.textContent = numberFormat.format(mappedCount) + ' van ' + numberFormat.format(records.length) +
+        ' aanvragen gekoppeld aan ' + mapCounts.size + (mapCounts.size === 1 ? ' gemeente.' : ' gemeenten.');
+      elements.mapUnmatched.textContent = totals.unmatched.size ? 'Niet op de kaart: ' + [...totals.unmatched.entries()]
+        .sort((a, b) => b[1] - a[1]).slice(0, 5).map(entry => entry[0] + ' (' + entry[1] + ')').join(', ') +
+        (totals.unmatched.size > 5 ? ' en ' + (totals.unmatched.size - 5) + ' andere regio’s. Zie de tabel voor alle waarden.' : '.') : '';
+      const zero = document.createElement('span');
+      zero.className = 'map-zero';
+      zero.textContent = '0 gekoppeld';
+      const gradient = document.createElement('span');
+      gradient.className = 'map-gradient';
+      gradient.setAttribute('aria-hidden', 'true');
+      const scale = document.createElement('span');
+      scale.textContent = maximum ? '1 – ' + numberFormat.format(maximum) + ' aanvragen' : 'Geen gekoppelde aanvragen';
+      elements.mapLegend.append(zero, gradient, scale);
+      const entries = municipalities.filter(item => mapCounts.has(item.code))
+        .map(item => [item.name, 'Gemeente', mapCounts.get(item.code)])
+        .concat([...totals.unmatched.entries()].map(entry => [entry[0], 'Niet gekoppeld', entry[1]]))
+        .sort((a, b) => b[2] - a[2] || a[0].localeCompare(b[0], 'nl'));
+      entries.forEach(entry => {
+        const row = document.createElement('tr');
+        entry.forEach((value, index) => {
+          const cell = document.createElement(index === 0 ? 'th' : 'td');
+          if (index === 0) cell.setAttribute('scope', 'row');
+          cell.textContent = index === 2 ? numberFormat.format(value) : value;
+          row.appendChild(cell);
+        });
+        elements.mapTableRows.appendChild(row);
+      });
+      if (!entries.length) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 3;
+        cell.className = 'empty';
+        cell.textContent = 'Geen gegevens binnen deze filters.';
+        row.appendChild(cell);
+        elements.mapTableRows.appendChild(row);
+      }
+    }
+
+    function showMunicipalityDetail() {
+      const code = elements.mapMunicipality.value;
+      const municipality = municipalities.find(item => item.code === code);
+      mapPaths.forEach((path, key) => path.setAttribute('data-selected', key === code ? 'true' : 'false'));
+      elements.mapDetail.textContent = municipality
+        ? municipality.name + ': ' + numberFormat.format(mapCounts.get(code) || 0) + ' gekoppelde aanvragen.'
+        : 'Kies een gemeente op de kaart of in de lijst.';
     }
 
     function renderTimeline(records) {
@@ -1180,12 +1420,16 @@
     elements.includeUnknownDate.addEventListener('change', render);
     elements.includeUnknownStudents.addEventListener('change', render);
     elements.timelineMetric.addEventListener('change', render);
+    elements.mapScope.addEventListener('change', render);
+    elements.mapMunicipality.addEventListener('change', showMunicipalityDetail);
     elements.refresh.addEventListener('click', () => loadDashboard(true));
     elements.print.addEventListener('click', printDashboard);
     elements.reset.addEventListener('click', () => {
       filters.forEach(filter => { filter.element.value = ''; });
       elements.dateBasis.value = 'scheduledDate';
       elements.timelineMetric.value = 'requests';
+      elements.mapScope.value = 'workarea';
+      elements.mapMunicipality.value = '';
       elements.includeUnknownDate.checked = true;
       elements.includeUnknownStudents.checked = true;
       configureDateRange(false);

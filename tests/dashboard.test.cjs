@@ -156,12 +156,14 @@ function clientHarness(records, options = {}) {
     'sectorChart', 'sectorTableRows', 'regionChart', 'regionTableRows',
     'statusChart', 'statusTableRows', 'workshopChart', 'workshopTableRows',
     'providerChart', 'providerTableRows', 'poChart', 'poTableRows',
-    'voChart', 'voTableRows', 'recentRows', 'recentDateHeading'
+    'voChart', 'voTableRows', 'recentRows', 'recentDateHeading',
+    'municipalityData', 'municipalityMap', 'mapScope', 'mapMunicipality', 'mapDetail',
+    'mapCoverage', 'mapUnmatched', 'mapLegend', 'mapTableRows'
   ];
   const selectIds = new Set([
     'sourceFilter', 'schoolYearFilter', 'regionFilter', 'sectorFilter',
     'providerFilter', 'workshopFilter', 'statusGroupFilter', 'schoolFilter',
-    'typeFilter', 'dateBasis', 'timelineMetric'
+    'typeFilter', 'dateBasis', 'timelineMetric', 'mapScope', 'mapMunicipality'
   ]);
 
   function element(tagName = 'div', isSelect = false) {
@@ -205,9 +207,13 @@ function clientHarness(records, options = {}) {
   elements.dateBasis.value = 'scheduledDate';
   elements.includeUnknownDate.checked = true;
   elements.includeUnknownStudents.checked = true;
+  elements.mapScope.value = 'workarea';
+  elements.municipalityData.textContent = options.mapAsset === false ? '{}' : fs.readFileSync('src/Municipalities.html', 'utf8')
+    .match(/<script[^>]*>([\s\S]*)<\/script>/)[1];
   const document = {
     getElementById: id => elements[id],
-    createElement: tagName => element(tagName, tagName === 'select')
+    createElement: tagName => element(tagName, tagName === 'select'),
+    createElementNS: (namespace, tagName) => element(tagName)
   };
   const client = fs.readFileSync('src/Client.html', 'utf8')
     .replace(/^<script>\s*|\s*<\/script>\s*$/g, '');
@@ -343,6 +349,7 @@ test('serverbestanden bevatten geen browser-API\'s', () => {
 test('Index gebruikt uitsluitend de officiële include-opzet', () => {
   const index = fs.readFileSync('src/Index.html', 'utf8');
   assert.match(index, /<\?!= include\('Styles'\); \?>/);
+  assert.match(index, /<\?!= include\('Municipalities'\); \?>/);
   assert.match(index, /<\?!= include\('Client'\); \?>/);
   assert.doesNotMatch(index, /include_/);
 });
@@ -473,6 +480,100 @@ test('demo blijft werken en de browser ontvangt alleen de veilige stap-8-velden'
   assert.deepEqual(Array.from(payload.records[0].grades), [7, 8]);
   assert.equal(payload.records[0].providerTotalCosts, 450);
   assert.equal(payload.records[0].invoiceAmount, 600);
+});
+
+test('donuts tonen aantallen, percentages en vaste kleuren na filteren', () => {
+  const elements = clientHarness([
+    { source: 'A', region: 'Gorinchem', sector: 'PO', statusGroup: 'Open' },
+    { source: 'A', region: 'Gorinchem', sector: 'PO', statusGroup: 'Ingepland' },
+    { source: 'B', region: 'Altena', sector: 'VO', statusGroup: 'Uitgevoerd' }
+  ]);
+  const ring = elements.sectorChart.children[0];
+  assert.equal(ring.tagName, 'SVG');
+  assert.match(ring.getAttribute('aria-label'), /3 aanvragen/);
+  assert.deepEqual(elements.sectorChart.children[1].children.map(item => item.children[2].textContent),
+    ['2 · 66,7%', '1 · 33,3%']);
+  assert.equal(ring.children[0].getAttribute('stroke'), '#4c325b');
+  assert.equal(ring.children[1].getAttribute('stroke'), '#258582');
+  const totalShare = ring.children.filter(item => item.tagName === 'CIRCLE').reduce((sum, item) =>
+    sum + Number(item.getAttribute('stroke-dasharray').split(' ')[0]), 0);
+  assert.ok(Math.abs(totalShare - 2 * Math.PI * 65) < 0.000001);
+  elements.sourceFilter.value = 'B';
+  elements.sourceFilter.trigger('change');
+  assert.equal(elements.sectorChart.children[0].children[0].getAttribute('stroke'), '#258582');
+  assert.match(elements.sectorChart.children[1].children[0].children[2].textContent, /100,0%/);
+  assert.deepEqual(elements.statusTableRows.children[0].children.map(cell => cell.textContent), ['Uitgevoerd', '1']);
+});
+
+test('gemeentekaart telt aanvragen eenmaal en meldt niet-herkende regio’s afzonderlijk', () => {
+  const elements = clientHarness([
+    { source: 'A', region: 'Gorinchem', scheduledDates: ['2026-09-01', '2026-09-15'] },
+    { source: 'A', region: ' gemeente GORINCHEM ' },
+    { source: 'B', region: 'GM0512' },
+    { source: 'B', region: 'Hardinxveld Giessendam' },
+    { source: 'B', region: 'Ameide' },
+    { source: 'B', region: 'Onbekend' }
+  ]);
+  assert.equal(elements.mapCoverage.textContent, '4 van 6 aanvragen gekoppeld aan 2 gemeenten.');
+  assert.match(elements.mapUnmatched.textContent, /Ameide \(1\)/);
+  assert.match(elements.mapUnmatched.textContent, /Onbekend \(1\)/);
+  const rows = elements.mapTableRows.children.map(row => row.children.map(cell => cell.textContent));
+  assert.deepEqual(rows.find(row => row[0] === 'Gorinchem'), ['Gorinchem', 'Gemeente', '3']);
+  assert.equal(rows.reduce((sum, row) => sum + Number(row[2]), 0), 6);
+});
+
+test('kaartkleuren, aantallen en detailselectie volgen dezelfde filters en behouden het werkgebied', () => {
+  const elements = clientHarness([
+    { source: 'A', region: 'Gorinchem' },
+    { source: 'A', region: 'Gorinchem' },
+    { source: 'B', region: 'Molenlanden' }
+  ]);
+  const originalView = elements.municipalityMap.children[0].getAttribute('viewBox');
+  let paths = elements.municipalityMap.children[0].children.filter(child => child.tagName === 'PATH');
+  const gorinchem = paths.find(path => path.getAttribute('data-code') === 'GM0512');
+  const molenlanden = paths.find(path => path.getAttribute('data-code') === 'GM1978');
+  assert.notEqual(gorinchem.getAttribute('fill'), molenlanden.getAttribute('fill'));
+  gorinchem.trigger('click');
+  assert.equal(elements.mapMunicipality.value, 'GM0512');
+  assert.equal(elements.mapDetail.textContent, 'Gorinchem: 2 gekoppelde aanvragen.');
+  assert.equal(gorinchem.getAttribute('data-selected'), 'true');
+  elements.sourceFilter.value = 'B';
+  elements.sourceFilter.trigger('change');
+  assert.equal(elements.mapCoverage.textContent, '1 van 1 aanvragen gekoppeld aan 1 gemeente.');
+  assert.equal(elements.municipalityMap.children[0].getAttribute('viewBox'), originalView);
+  assert.equal(elements.mapDetail.textContent, 'Gorinchem: 0 gekoppelde aanvragen.');
+  paths = elements.municipalityMap.children[0].children.filter(child => child.tagName === 'PATH');
+  assert.equal(paths.find(path => path.getAttribute('data-code') === 'GM0512').getAttribute('fill'), '#ebe8ee');
+  elements.mapScope.value = 'netherlands';
+  elements.mapScope.trigger('change');
+  assert.notEqual(elements.municipalityMap.children[0].getAttribute('viewBox'), originalView);
+  elements.resetButton.trigger('click');
+  assert.equal(elements.mapScope.value, 'workarea');
+  assert.equal(elements.mapMunicipality.value, '');
+});
+
+test('ontbrekende kaartasset blokkeert donuts, kerncijfers en gegevens niet', () => {
+  const elements = clientHarness([{ source: 'A', sector: 'PO', region: 'Gorinchem' }], { mapAsset: false });
+  assert.match(elements.municipalityMap.children[0].textContent, /Kaart niet beschikbaar/);
+  assert.equal(elements.mapScope.disabled, true);
+  assert.equal(elements.sectorChart.children[0].tagName, 'SVG');
+  assert.equal(elements.kpis.children[0].children[1].textContent, '1');
+});
+
+test('kaartasset bevat uitsluitend volledige openbare gemeentegeometrie en bronvermelding', () => {
+  const html = fs.readFileSync('src/Municipalities.html', 'utf8');
+  const data = JSON.parse(html.match(/<script[^>]*>([\s\S]*)<\/script>/)[1]);
+  assert.equal(data.municipalities.length, 342);
+  assert.equal(new Set(data.municipalities.map(item => item.code)).size, 342);
+  assert.match(data.url, /^https:\/\/api\.pdok\.nl\//);
+  assert.equal(data.license, 'CC BY 4.0');
+  data.municipalities.forEach(item => {
+    assert.match(item.code, /^GM\d{4}$/);
+    assert.ok(item.path.startsWith('M') && item.path.endsWith('Z'));
+    assert.ok(item.bounds.every(Number.isFinite));
+    assert.ok(item.label.every(Number.isFinite));
+    assert.ok(item.bounds[0] < item.bounds[2] && item.bounds[1] < item.bounds[3]);
+  });
 });
 
 test('lang laden geeft stapsgewijze feedback en herstelt de bediening na succes', () => {
@@ -1624,6 +1725,7 @@ test('doGet en include volgen rechtstreeks de HtmlService-methoden', () => {
   assert.equal(ctx.doGet().title, 'Workshopkompas');
   assert.equal(ctx.doGet().viewport, 'viewport:width=device-width, initial-scale=1');
   assert.equal(ctx.include('Styles'), '<Styles>');
+  assert.equal(ctx.include('Municipalities'), '<Municipalities>');
   assert.throws(() => ctx.include('Onbekend'), /Bestand niet beschikbaar/);
 });
 

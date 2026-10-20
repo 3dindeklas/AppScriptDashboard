@@ -255,10 +255,47 @@
           </details>
         </article>
 
+        <article class="panel municipality-panel" aria-labelledby="municipalityTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">GEOGRAFISCH BEREIK</p>
+              <h3 id="municipalityTitle">Aanvragen per gemeente</h3>
+              <p class="chart-subtitle">Donkerder betekent meer aanvragen binnen de actieve filters. Klik of tik op een gemeente voor het aantal.</p>
+            </div>
+            <label class="metric-select">Kaartgebied
+              <select id="mapScope"><option value="workarea">Werkgebied</option><option value="netherlands">Heel Nederland</option></select>
+            </label>
+          </div>
+          <div class="municipality-layout">
+            <div>
+              <div id="municipalityMap" class="municipality-map"></div>
+              <div id="mapLegend" class="map-legend"></div>
+            </div>
+            <div class="map-sidebar">
+              <label>Gemeente bekijken
+                <select id="mapMunicipality"><option value="">Kies een gemeente</option></select>
+              </label>
+              <p id="mapDetail" class="map-detail" aria-live="polite">Kies een gemeente op de kaart of in de lijst.</p>
+              <p id="mapCoverage" class="chart-subtitle"></p>
+              <p id="mapUnmatched" class="map-unmatched"></p>
+              <p class="chart-subtitle">Werkgebied gebruikt de gemeenten uit alle geladen gegevens. Grijs betekent 0 gekoppelde aanvragen in de huidige selectie.</p>
+            </div>
+          </div>
+          <details class="map-data chart-data">
+            <summary>Bekijk alle gemeenteaantallen als tabel</summary>
+            <div class="table-wrap"><table class="chart-table">
+              <caption class="visually-hidden">Aanvragen per herkende gemeente en niet-gekoppelde regio</caption>
+              <thead><tr><th scope="col">Gemeente / regio</th><th scope="col">Koppeling</th><th scope="col">Aanvragen</th></tr></thead>
+              <tbody id="mapTableRows"></tbody>
+            </table></div>
+          </details>
+          <p class="map-attribution">Grenzen: <a href="https://api.pdok.nl/kadaster/brk-bestuurlijke-gebieden/ogc/v1/collections/gemeentegebied" target="_blank" rel="noopener noreferrer">Kadaster / PDOK, Bestuurlijke Gebieden</a> · <a href="https://creativecommons.org/licenses/by/4.0/deed.nl" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> · vereenvoudigde kaart, opgehaald op 20 oktober 2026.</p>
+        </article>
+
         <div class="chart-grid">
           <article class="panel chart-card">
             <div class="panel-heading"><div><p class="eyebrow">ONDERWIJS</p><h3>PO / VO-verdeling</h3></div></div>
-            <div id="sectorChart" class="bar-chart"></div>
+            <div id="sectorChart" class="donut-chart"></div>
             <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Aanvragen per onderwijssector</caption><thead><tr><th scope="col">Onderwijs</th><th scope="col">Aanvragen</th></tr></thead><tbody id="sectorTableRows"></tbody></table></div></details>
           </article>
 
@@ -270,7 +307,7 @@
 
           <article class="panel chart-card">
             <div class="panel-heading"><div><p class="eyebrow">STATUS</p><h3>Aanvragen per statusgroep</h3></div></div>
-            <div id="statusChart" class="bar-chart"></div>
+            <div id="statusChart" class="donut-chart"></div>
             <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Aanvragen per statusgroep</caption><thead><tr><th scope="col">Statusgroep</th><th scope="col">Aanvragen</th></tr></thead><tbody id="statusTableRows"></tbody></table></div></details>
           </article>
 
@@ -330,6 +367,7 @@
       </footer>
     </main>
 
+    <?!= include('Municipalities'); ?>
     <?!= include('Client'); ?>
   </body>
 </html>

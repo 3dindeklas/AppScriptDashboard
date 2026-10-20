@@ -88,6 +88,16 @@ Het leerlingbereik gebruikt uitsluitend gehele, niet-negatieve aantallen. De min
 
 Een lege of ongeldige datum en een leeg of ongeldig leerlingaantal blijven onbekend. Zulke regels worden alleen meegenomen wanneer de bijbehorende keuze **zonder datum meenemen** of **zonder leerlingaantal meenemen** aanstaat. Beide keuzes staan standaard aan, zodat het eerste overzicht en **Filters wissen** alle workshopregels tonen.
 
+## Donuts en gemeentekaart
+
+De donuts voor PO/VO en statusgroepen tellen iedere zichtbare workshopregel eenmaal. Het getal in het midden is het aantal aanvragen in de actieve selectie. Een percentage is het categorieaantal gedeeld door dat totaal; afronding op één decimaal kan samen 99,9% of 100,1% opleveren. Onbekende sectoren en overige statusgroepen blijven zichtbaar. De onderliggende tabellen behouden de exacte aantallen.
+
+De kaart gebruikt dezelfde gefilterde regels. Een aanvraag met meerdere lesdagen telt op de kaart één keer mee, niet eenmaal per lesdag. Gemeenten worden gekoppeld op officiële naam of op `GM`-gemeentecode. Hoofdletters, diakritische tekens, leestekens en een voorvoegsel `Gemeente ` worden bij het vergelijken genegeerd. Het oorspronkelijke `region`-veld en de bestaande exacte dropdownfilters veranderen niet.
+
+Plaatsnamen, afkortingen en samengestelde regio’s worden niet automatisch geraden. Zulke regels blijven in het dashboard en in de gemeente-/regiostaafgrafiek staan, maar krijgen in de kaarttabel de status **Niet gekoppeld**. Het totaal van gekoppelde en niet-gekoppelde kaartregels blijft gelijk aan het aantal gefilterde aanvragen.
+
+Kleurintensiteit geeft het absolute aantal aanvragen aan, van lichtpaars (1) tot donkerpaars (het grootste aantal in de huidige selectie). Grijs betekent nul gekoppelde aanvragen binnen die selectie, niet dat de gemeente in werkelijkheid geen workshops heeft. De kleur is geen percentage van bevolking, scholen of oppervlakte. De aantallen en schaal worden opnieuw berekend na filteren. **Werkgebied** houdt dezelfde uitsnede voor alle geladen gegevens; daardoor verschuift de kaart niet bij iedere filterwijziging. Details bekijken verandert geen dashboardfilter.
+
 ## Getallen en bedragen
 
 - Werkelijke numerieke nul blijft `0`.

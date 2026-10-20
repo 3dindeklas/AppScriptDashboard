@@ -226,6 +226,31 @@
   .chart-table th:not(:first-child), .chart-table td:not(:first-child) { text-align: right; }
   .chart-note { margin: 0.25rem 0 1.5rem; color: var(--muted); font-size: 0.76rem; }
 
+  .donut-chart { display: grid; justify-items: center; gap: 1rem; }
+  .donut-ring { display: block; width: min(12rem, 100%); overflow: visible; }
+  .donut-total { fill: var(--purple-dark); font-size: 1.8rem; font-weight: 800; }
+  .donut-unit { fill: var(--muted); font-size: 0.7rem; }
+  .donut-legend { display: grid; gap: 0.6rem; width: 100%; margin: 0; padding: 0; list-style: none; }
+  .donut-legend li { display: grid; grid-template-columns: 0.65rem minmax(0, 1fr) auto; align-items: center; gap: 0.5rem; font-size: 0.76rem; }
+  .donut-legend strong { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .municipality-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(12rem, 1fr); gap: 1.5rem; }
+  .municipality-map { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--button-radius); background: #f1f8fa; }
+  .municipality-svg { display: block; width: 100%; height: 30rem; overflow: hidden; }
+  .municipality-shape { stroke: #fff; stroke-width: 0.8px; cursor: pointer; transition: fill 180ms ease; }
+  .municipality-shape:hover { stroke: var(--purple-dark); stroke-width: 1.5px; }
+  .municipality-shape[data-selected="true"] { stroke: var(--purple-dark); stroke-width: 2.5px; }
+  .map-count-label { fill: var(--purple-dark); paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; font-weight: 800; pointer-events: none; }
+  .map-sidebar { min-width: 0; }
+  .map-detail { margin-top: 1rem; padding: 1rem; border-radius: var(--button-radius); background: var(--teal-pale); font-size: 0.95rem; font-weight: 700; }
+  .map-sidebar .chart-subtitle, .map-unmatched { margin-top: 1rem; }
+  .map-unmatched { color: var(--warning); overflow-wrap: anywhere; font-size: 0.78rem; }
+  .map-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.8rem; font-size: 0.75rem; }
+  .map-zero { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .map-zero::before { content: ""; width: 0.9rem; height: 0.9rem; border: 1px solid #d3ced8; background: #ebe8ee; }
+  .map-gradient { width: 5rem; height: 0.8rem; background: linear-gradient(90deg, #e0cceb, #4c325b); }
+  .map-attribution { margin-top: 1rem; color: var(--muted); font-size: 0.7rem; }
+  .map-attribution a { color: var(--purple); }
+
   .table-wrap { overflow-x: auto; scrollbar-color: #b7aebd transparent; }
   table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
   th, td { padding: 0.85rem 0.75rem; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
@@ -269,6 +294,8 @@
     .analytics-heading > p, .source-summary, .comparison-summary { text-align: left; }
     .metric-select { width: 100%; }
     .metric-select select { min-width: 0; }
+    .municipality-layout { grid-template-columns: 1fr; }
+    .municipality-svg { height: 25rem; }
   }
 
   @media (max-width: 480px) {
@@ -312,6 +339,12 @@
     th, td { padding: 2mm; white-space: normal; }
     details:not([open]) > *:not(summary) { display: block !important; }
     .financial-toggle, .financial-panel > summary::after { display: none; }
+    .municipality-layout { grid-template-columns: minmax(0, 2fr) minmax(12rem, 1fr); }
+    .municipality-svg { height: 90mm; }
+    .map-sidebar > label { display: none; }
+    .municipality-shape { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    .donut-ring { width: 32mm; }
+    .donut-legend li { font-size: 8pt; }
   }
 
   @media (prefers-reduced-motion: reduce) {

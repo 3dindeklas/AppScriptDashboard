@@ -2,7 +2,7 @@
 
 Gebruik bij voorkeur een **nieuw leeg Apps Script-project**. Zo blijven oude `.gs`-bestanden, foutcodes en verkeerd aangemaakte HTML-bestanden niet onzichtbaar meedraaien.
 
-## Stap 1 · Maak exact zeven bestanden
+## Stap 1 · Maak exact acht bestanden
 
 Maak in Apps Script vier scriptbestanden via **+ → Script**:
 
@@ -11,18 +11,19 @@ Maak in Apps Script vier scriptbestanden via **+ → Script**:
 3. `Data`
 4. `Cache`
 
-Maak daarna drie HTML-bestanden via **+ → HTML**:
+Maak daarna vier HTML-bestanden via **+ → HTML**:
 
 1. `Index`
 2. `Styles`
-3. `Client`
+3. `Municipalities`
+4. `Client`
 
 Kopieer de inhoud uit de gelijknamige bestanden in `src/`.
 
 Controleer de bestandstypen goed:
 
 - `Config`, `Code`, `Data` en `Cache` krijgen in Apps Script de extensie `.gs`;
-- `Index`, `Styles` en `Client` krijgen de extensie `.html`;
+- `Index`, `Styles`, `Municipalities` en `Client` krijgen de extensie `.html`;
 - `document` en `window` mogen nergens in een `.gs`-bestand staan.
 
 ## Stap 2 · Sta je Google-account toe
@@ -70,10 +71,14 @@ Je hoort nu zonder verdere instellingen te zien:
 - een maandgrafiek met metriekkeuze;
 - verdelingen voor onderwijs, regio, statusgroep, workshop en aanbieder;
 - gewogen PO- en VO-leerjaren;
+- donuts voor PO/VO en statusgroepen, inclusief aantallen en percentages;
+- een gemeentekaart die 10 demoaanvragen aan 7 gemeenten koppelt;
 - een leesbare tabelweergave onder iedere grafiek en de recente-workshoptabel;
 - de paarse 3Dindeklas-header en een werkende knop **Afdrukken / PDF**.
 
-Werkt dit niet, koppel dan nog geen echte data. Controleer eerst of alle zeven bestanden het juiste type en exact dezelfde naam hebben.
+Werkt dit niet, koppel dan nog geen echte data. Controleer eerst of alle acht bestanden het juiste type en exact dezelfde naam hebben.
+
+Bij het bijwerken van een bestaand project: voeg **Municipalities** via **+ → HTML** toe en werk ook `Code.gs`, `Index.html`, `Styles.html` en `Client.html` samen bij. De gemeentekaart heeft geen API-sleutel of extra instelling nodig. Zie [Gemeentekaart](GEMEENTEKAART.md) voor uitleg over de koppeling van regio’s.
 
 ## Stap 4 · Koppel één Google Sheet
 

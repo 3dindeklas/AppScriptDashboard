@@ -29,11 +29,11 @@ function doGet() {
 
 /**
  * Voegt een HTML-partial toe aan Index.html.
- * Styles.html bevat zelf <style> en Client.html bevat zelf <script>.
+ * Styles bevat CSS, Municipalities openbare JSON en Client browsercode.
  */
 function include(filename) {
   requireAccess_();
-  if (['Styles', 'Client'].indexOf(filename) === -1) {
+  if (['Styles', 'Municipalities', 'Client'].indexOf(filename) === -1) {
     throw new Error('Bestand niet beschikbaar.');
   }
   try {

@@ -26,6 +26,8 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - een maandgrafiek voor aanvragen, leerlingdeelnames en lesmomenten per stichting;
 - verdelingen voor PO/VO, regio, workshop, aanbieder en statusgroep;
 - gewogen PO- en VO-leerjaren, inclusief combinatiegroepen en onbekende waarden;
+- donuts met aantallen en percentages voor PO/VO en statusgroepen;
+- een gemeentekaart met kleurintensiteit, aantallen, lokale gemeentegrenzen en een landelijke weergave;
 - een toegankelijke tabelweergave onder iedere grafiek en een recente-workshoptabel;
 - visuele afstemming op de 3Dindeklas Foundation, zonder externe CSS- of JavaScript-bibliotheek;
 - responsive bediening voor telefoon, tablet en desktop, met respect voor minder beweging;
@@ -45,6 +47,7 @@ Microsoft 365 en verschillende rollen zijn bewust nog niet opgenomen. Microsoft 
 | `Cache.gs` | server | privacyveilige snapshots, compressie, locking en herstel bij een cache-miss |
 | `Index.html` | browser | paginastructuur |
 | `Styles.html` | browser | CSS binnen een `<style>`-tag |
+| `Municipalities.html` | browser | openbare, vereenvoudigde gemeentegrenzen als JSON; bevat geen workshopgegevens |
 | `Client.html` | browser | browser-JavaScript binnen een `<script>`-tag |
 
 Browserobjecten zoals `document` en `window` mogen alleen in de HTML-bestanden staan.
@@ -66,6 +69,8 @@ Open daarna `preview/index.html`. De preview bevat uitsluitend fictieve gegevens
 Volg [docs/INSTALLATIE.md](docs/INSTALLATIE.md). Vul eerst je Google-account in, begin met `demoMode: true` en koppel pas daarna een Google Sheet.
 
 Gebruik voor publicatie, acceptatietest, beheer en rollback de [productie- en beheerhandleiding](docs/PRODUCTIE.md).
+
+De [kaarthandleiding](docs/GEMEENTEKAART.md) beschrijft gemeentekoppeling, bronvermelding en het bijwerken van de openbare kaartasset. Kaart en donuts volgen dezelfde actieve filters als de rest van het dashboard.
 
 ## Stapsgewijs uitbreiden
 

@@ -43,7 +43,8 @@ We starten geen volgende featurebranch voordat de voorgaande PR is gemerged. Daa
 | 8 | Financieel overzicht | Kosten, facturatie, marge en volledigheidsmelding | stap 7 |
 | 8.1 | Snapshotcache en laadtijd | Snelle servercache, handmatig verversen en veilige terugval | stap 8 |
 | 9 | Vormgeving en productieafronding | Foundation-stijl, toegankelijkheid, responsive/print en productiedocumentatie | stap 8.1 |
-| 10 | Microsoft 365-bron | Microsoft Graph-adapter achter hetzelfde datacontract | stap 9 |
+| 9.1 | Donuts en gemeentekaart | Delen van het totaal en geografisch bereik inzichtelijk maken | stap 9 |
+| 10 | Microsoft 365-bron | Microsoft Graph-adapter achter hetzelfde datacontract | stap 9.1 |
 
 ## Stap 1 · Datamodel en normalisatie
 
@@ -259,6 +260,19 @@ Acceptatie:
 - geen functionele wijzigingen aan tellingen of databronnen;
 - alle geautomatiseerde controles blijven groen;
 - `/dev` en een nieuwe `/exec`-implementatie zijn handmatig gecontroleerd.
+
+## Stap 9.1 · Donuts en gemeentekaart
+
+Doel: grafiekvormen laten aansluiten bij de vraag die ze beantwoorden.
+
+- donuts met aantallen en percentages voor PO/VO en statusgroepen;
+- behoud van staven voor ranglijsten en leerjaren;
+- een gemeentekaart op basis van openbare PDOK-grenzen, zonder externe dataverzoeken;
+- een vaste werkgebieduitsnede en een landelijke weergave;
+- inzicht in niet-gekoppelde regio’s en exacte aantallen in een tabel;
+- behoud van dezelfde filters, snapshot en gegevensdefinities.
+
+Acceptatie: categorieaantallen blijven gelijk aan de tabellen, meerdere lesdagen verdubbelen geen kaartaanvraag en onbekende regio’s verdwijnen niet uit de telling.
 
 ## Stap 10 · Microsoft 365-bron
 
