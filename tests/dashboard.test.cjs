@@ -160,10 +160,9 @@ function clientHarness(records, options = {}) {
     'municipalityData', 'municipalityMap', 'mapScope', 'mapMunicipality', 'mapDetail',
     'mapCoverage', 'mapUnmatched', 'mapLegend', 'mapTableRows',
     'dataUpdatedAt', 'dataOrigin', 'dataDuration', 'dashboardLayout', 'filterSidebar',
-    'filterToggle', 'closeFilters', 'activeFilterCount', 'filterSummary',
+    'filterToggle', 'closeFilters', 'activeFilterCount', 'filterSummary', 'schoolYearSwitch',
     'dataMenu', 'dataMenuButton', 'displayMenu', 'displayMenuButton', 'emptyView',
-    'financialVisibilityOption', 'analyticsSection', 'geographyView', 'geographyMap',
-    'geographyRanking', 'mapScopeControl', 'showAllPanels', 'closeDataMenu', 'closeDisplayMenu',
+    'financialVisibilityOption', 'analyticsSection', 'showAllPanels', 'closeDataMenu', 'closeDisplayMenu',
     'viewKpis', 'viewTimeline', 'viewGeography', 'viewSector', 'viewStatus', 'viewWorkshops',
     'viewProviders', 'viewGrades', 'viewRecent', 'viewComparison', 'viewFinancial',
     'metricsPanel', 'timelinePanel', 'geographyPanel', 'sectorPanel', 'statusPanel',
@@ -219,7 +218,6 @@ function clientHarness(records, options = {}) {
   elements.includeUnknownDate.checked = true;
   elements.includeUnknownStudents.checked = true;
   elements.mapScope.value = 'workarea';
-  elements.geographyView.value = 'map';
   ids.filter(id => id.startsWith('view')).forEach(id => { elements[id].checked = true; });
   const documentListeners = {};
   elements.municipalityData.textContent = options.mapAsset === false ? '{}' : fs.readFileSync('src/Municipalities.html', 'utf8')
@@ -528,21 +526,58 @@ test('alles tonen verleent geen financiële toegang en een lege weergave is hers
   assert.equal(elements.financialKpis.children.length, 0);
 });
 
-test('kaart en ranglijst delen één weergavekeuze zonder de filterselectie te wijzigen', () => {
-  const elements = clientHarness([{ source: 'A', region: 'Gorinchem' }]);
+test('kaart en gemeentestaven volgen samen de filters en kaartgebied verandert geen telling', () => {
+  const elements = clientHarness([{ source: 'A', region: 'Gorinchem' }, { source: 'B', region: 'Altena' }]);
   elements.sourceFilter.value = 'A';
   elements.sourceFilter.trigger('change');
   const total = elements.resultCount.textContent;
-  elements.geographyView.value = 'ranking';
-  elements.geographyView.trigger('change');
-  assert.equal(elements.geographyMap.hidden, true);
-  assert.equal(elements.geographyRanking.hidden, false);
-  assert.equal(elements.mapScopeControl.hidden, true);
+  elements.mapScope.value = 'netherlands';
+  elements.mapScope.trigger('change');
+  assert.equal(elements.mapCoverage.textContent, '1 van 1 aanvragen gekoppeld aan 1 gemeente.');
+  assert.deepEqual(elements.regionTableRows.children[0].children.map(cell => cell.textContent), ['Gorinchem', '1']);
   assert.equal(elements.resultCount.textContent, total);
-  elements.geographyView.value = 'map';
-  elements.geographyView.trigger('change');
-  assert.equal(elements.geographyMap.hidden, false);
-  assert.equal(elements.geographyRanking.hidden, true);
+});
+
+test('snelle schooljaarwissel synchroniseert met de zijbalk, behoudt overige filters en herstelt na wissen', () => {
+  const elements = clientHarness([
+    { source: 'A', schoolYear: '2026–2027' },
+    { source: 'A', schoolYear: '2025–2026' },
+    { source: 'B', schoolYear: '2026–2027' }
+  ]);
+  const buttons = elements.schoolYearSwitch.children;
+  assert.deepEqual(buttons.map(button => button.textContent), ['Alle schooljaren', '2026–2027', '2025–2026']);
+  elements.sourceFilter.value = 'A';
+  elements.sourceFilter.trigger('change');
+  buttons[1].trigger('click');
+  assert.equal(elements.schoolYearFilter.value, '2026–2027');
+  assert.equal(elements.sourceFilter.value, 'A');
+  assert.equal(elements.resultCount.textContent, '1 van 3 workshops zichtbaar');
+  assert.equal(buttons[1].getAttribute('aria-pressed'), 'true');
+  assert.match(elements.filterSummary.textContent, /2026–2027/);
+  elements.schoolYearFilter.value = '2025–2026';
+  elements.schoolYearFilter.trigger('change');
+  assert.equal(buttons[1].getAttribute('aria-pressed'), 'false');
+  assert.equal(buttons[2].getAttribute('aria-pressed'), 'true');
+  elements.resetButton.trigger('click');
+  assert.equal(buttons[0].getAttribute('aria-pressed'), 'true');
+  assert.equal(elements.resultCount.textContent, '3 van 3 workshops zichtbaar');
+});
+
+test('schooljaarwissel bouwt bij vernieuwen de actuele schooljaren op en behoudt geldige selectie', () => {
+  const elements = clientHarness([], { deferLoad: true });
+  const payload = { records: [{ schoolYear: '2026–2027' }], sources: [] };
+  elements.__resolveLoad(payload);
+  elements.schoolYearSwitch.children[1].trigger('click');
+  elements.refreshButton.trigger('click');
+  elements.__resolveLoad({ ...payload, records: [...payload.records, { schoolYear: '2027–2028' }] });
+  assert.equal(elements.schoolYearFilter.value, '2026–2027');
+  assert.deepEqual(elements.schoolYearSwitch.children.map(button => button.value), ['', '2027–2028', '2026–2027']);
+  assert.equal(elements.schoolYearSwitch.children[2].getAttribute('aria-pressed'), 'true');
+  elements.refreshButton.trigger('click');
+  elements.__resolveLoad({ ...payload, records: [] });
+  assert.equal(elements.schoolYearFilter.value, '');
+  assert.equal(elements.schoolYearSwitch.children.length, 1);
+  assert.equal(elements.schoolYearSwitch.children[0].getAttribute('aria-pressed'), 'true');
 });
 
 test('actieve filterteller herkent leerlingbereiken en herstelt na Filters wissen', () => {
@@ -924,6 +959,23 @@ test('onbekende leerjaren blijven apart en combinatiegroepen behouden samen éé
   assert.deepEqual(rows('voTableRows'), [
     ['Leerjaar 1', '0,5'], ['Leerjaar 2', '0,5']
   ]);
+  const pie = elements.poChart.children[0];
+  assert.equal(pie.tagName, 'SVG');
+  assert.match(pie.getAttribute('aria-label'), /3 gewogen aanvragen/);
+  assert.equal(pie.children.length, 4);
+  assert.match(pie.children[0].getAttribute('d'), /^M90,90L.*A77,77/);
+  assert.deepEqual(elements.poChart.children[1].children.map(item => item.children[2].textContent),
+    ['0,33 · 11,1%', '0,33 · 11,1%', '0,33 · 11,1%', '2 · 66,7%']);
+  assert.equal(pie.children[3].getAttribute('fill'), '#94a3b8');
+  const color = pie.children[0].getAttribute('fill');
+  elements.workshopFilter.value = 'A';
+  elements.workshopFilter.trigger('change');
+  assert.equal(elements.poChart.children[0].children[0].getAttribute('fill'), color);
+  elements.workshopFilter.value = 'B';
+  elements.workshopFilter.trigger('change');
+  assert.match(elements.poChart.children[0].children[0].getAttribute('d'), /A77,77.*A77,77/);
+  assert.equal(elements.poChart.children[1].children[0].children[2].textContent, '1 · 100,0%');
+  assert.equal(elements.voChart.children[0].textContent, 'Geen gegevens binnen deze filters.');
 });
 
 test('een lege selectie geeft nette lege grafiek- en tabelstaten', () => {

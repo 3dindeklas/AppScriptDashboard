@@ -28,8 +28,10 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - een maandgrafiek voor aanvragen, leerlingdeelnames en lesmomenten per tech-hub;
 - verdelingen voor PO/VO, regio, workshop, aanbieder en statusgroep;
 - gewogen PO- en VO-leerjaren, inclusief combinatiegroepen en onbekende waarden;
+- twee leerjaartaarten met gewogen aantallen en percentages, in één PO/VO-blok;
 - donuts met aantallen en percentages voor PO/VO en statusgroepen;
 - een gemeentekaart met kleurintensiteit, aantallen, lokale gemeentegrenzen en een landelijke weergave;
+- de gemeentelijke staafgrafiek gelijktijdig naast de kaart en een introductieblok met actieve filters en snelle schooljaarknoppen;
 - een toegankelijke tabelweergave onder iedere grafiek en een recente-workshoptabel;
 - visuele afstemming op de 3Dindeklas Foundation, zonder externe CSS- of JavaScript-bibliotheek;
 - responsive bediening voor telefoon, tablet en desktop, met respect voor minder beweging;

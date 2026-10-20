@@ -21,6 +21,7 @@
       Open: '#f59e0b', Ingepland: '#3b82f6', Uitgevoerd: '#10b981',
       Geannuleerd: '#f43f5e', 'Volgend schooljaar': '#a855f7', Overig: '#94a3b8'
     };
+    const gradeColors = ['#6366f1', '#06b6d4', '#f59e0b', '#10b981', '#f43f5e', '#a855f7', '#f97316', '#0d9488'];
     let municipalities = [];
     try {
       const asset = JSON.parse(document.getElementById('municipalityData').textContent);
@@ -92,6 +93,8 @@
       closeFilters: document.getElementById('closeFilters'),
       activeFilterCount: document.getElementById('activeFilterCount'),
       filterSummary: document.getElementById('filterSummary'),
+      schoolYear: document.getElementById('schoolYearFilter'),
+      schoolYearSwitch: document.getElementById('schoolYearSwitch'),
       dataMenu: document.getElementById('dataMenu'),
       displayMenu: document.getElementById('displayMenu'),
       emptyView: document.getElementById('emptyView'),
@@ -138,10 +141,6 @@
       mapUnmatched: document.getElementById('mapUnmatched'),
       mapLegend: document.getElementById('mapLegend'),
       mapTableRows: document.getElementById('mapTableRows'),
-      geographyView: document.getElementById('geographyView'),
-      geographyMap: document.getElementById('geographyMap'),
-      geographyRanking: document.getElementById('geographyRanking'),
-      mapScopeControl: document.getElementById('mapScopeControl'),
       statusChart: document.getElementById('statusChart'),
       statusTableRows: document.getElementById('statusTableRows'),
       workshopChart: document.getElementById('workshopChart'),
@@ -220,6 +219,7 @@
       if (!timelineMetrics[elements.timelineMetric.value]) elements.timelineMetric.value = 'requests';
 
       filters.forEach(filter => fillFilter(filter.element, valuesOf(filter.field)));
+      buildSchoolYearSwitch();
       configureDateRange(true);
       configureStudentRange(true);
 
@@ -410,16 +410,27 @@
       elements.emptyView.hidden = viewPanels.some(item => !item.panel.hidden);
     }
 
-    function applyGeographyView() {
-      const ranking = elements.geographyView.value === 'ranking';
-      elements.geographyMap.hidden = ranking;
-      elements.geographyRanking.hidden = !ranking;
-      elements.mapScopeControl.hidden = ranking;
+    function buildSchoolYearSwitch() {
+      elements.schoolYearSwitch.replaceChildren();
+      ['', ...valuesOf('schoolYear')].forEach(year => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.value = year;
+        button.textContent = year || 'Alle schooljaren';
+        button.addEventListener('click', () => {
+          elements.schoolYear.value = year;
+          render();
+        });
+        elements.schoolYearSwitch.appendChild(button);
+      });
     }
 
     function renderFilterSummary() {
       const selections = filters.filter(filter => Boolean(filter.element.value));
-      const summary = selections.map(filter => filter.element.value);
+      const summary = [filters[0].element.value || 'Alle tech-hubs',
+        elements.schoolYear.value || 'Alle schooljaren',
+        ...selections.filter(filter => !['source', 'schoolYear'].includes(filter.field))
+          .map(filter => filter.element.value)];
       let active = selections.length;
       const from = state.dateMonths[Number(elements.dateFrom.value)];
       const to = state.dateMonths[Number(elements.dateTo.value)];
@@ -436,9 +447,12 @@
       if (studentsFiltered || !elements.includeUnknownStudents.checked) active += 1;
       if (!elements.includeUnknownDate.checked) summary.push('Zonder onbekende datums');
       if (!elements.includeUnknownStudents.checked) summary.push('Zonder onbekende leerlingaantallen');
-      elements.filterSummary.textContent = summary.join(' · ') || 'Alle tech-hubs · Alle gegevens';
+      elements.filterSummary.textContent = summary.join(' · ');
       elements.activeFilterCount.textContent = String(active);
       elements.activeFilterCount.hidden = active === 0;
+      Array.from(elements.schoolYearSwitch.children).forEach(button => {
+        button.setAttribute('aria-pressed', String(button.value === elements.schoolYear.value));
+      });
     }
 
     function valuesOf(field) {
@@ -654,7 +668,6 @@
       renderRecent(records);
       renderFilterSummary();
       applyPanelVisibility();
-      applyGeographyView();
     }
 
     function renderKpis(records) {
@@ -886,15 +899,15 @@
         elements.providerChart, elements.providerTableRows, countBy(records, 'provider'), 8
       );
       renderCategoryChart(
-        elements.poChart, elements.poTableRows, weightedGrades(records, 'PO'), 9
+        elements.poChart, elements.poTableRows, weightedGrades(records, 'PO'), 9, 'pie'
       );
       renderCategoryChart(
-        elements.voChart, elements.voTableRows, weightedGrades(records, 'VO'), 7
+        elements.voChart, elements.voTableRows, weightedGrades(records, 'VO'), 7, 'pie'
       );
     }
 
     function renderCategoryChart(chart, tableRows, entries, limit, type) {
-      if (type === 'donut') renderDonut(chart, entries);
+      if (type === 'donut' || type === 'pie') renderCircularChart(chart, entries, type === 'pie');
       else renderBars(chart, entries, limit);
       tableRows.replaceChildren();
 
@@ -927,50 +940,73 @@
       return element;
     }
 
-    function renderDonut(container, entries) {
+    function renderCircularChart(container, entries, pie) {
       container.replaceChildren();
       const total = entries.reduce((sum, entry) => sum + entry[1], 0);
       if (!total) {
         container.appendChild(emptyMessage('Geen gegevens binnen deze filters.'));
         return;
       }
+      const unitLabel = pie ? 'gewogen aanvragen' : 'aanvragen';
+      const colorOf = label => {
+        const grade = /^(?:Groep|Leerjaar) (\d)$/.exec(label);
+        return pie && grade ? gradeColors[Number(grade[1]) - 1] : donutColors[label] || '#94a3b8';
+      };
       const ring = svgElement('svg', {
-        viewBox: '0 0 180 180', class: 'donut-ring', role: 'img',
-        'aria-label': total + ' aanvragen. ' + entries.map(entry => entry[0] + ': ' + entry[1]).join(', ')
+        viewBox: '0 0 180 180', class: pie ? 'pie-disc' : 'donut-ring', role: 'img',
+        'aria-label': formatChartNumber(total) + ' ' + unitLabel + '. ' +
+          entries.map(entry => entry[0] + ': ' + formatChartNumber(entry[1])).join(', ')
       });
       let offset = 0;
       entries.forEach(entry => {
         const share = entry[1] / total * Math.PI * 2;
         const segment = svgElement('path', {
-          d: donutSegmentPath(offset, share),
-          fill: donutColors[entry[0]] || '#94a3b8',
+          d: pie ? pieSegmentPath(offset, share) : donutSegmentPath(offset, share),
+          fill: colorOf(entry[0]),
           stroke: '#ffffff', 'stroke-width': Math.min(1.5, share * 53 * 0.15), 'stroke-linejoin': 'round',
           'aria-hidden': 'true'
         });
+        const title = svgElement('title');
+        title.textContent = entry[0] + ': ' + formatChartNumber(entry[1]) + ' ' + unitLabel +
+          ' (' + percentFormat.format(entry[1] / total) + ')';
+        segment.appendChild(title);
         offset += share;
         ring.appendChild(segment);
       });
-      const value = svgElement('text', { x: 90, y: 88, class: 'donut-total', 'text-anchor': 'middle' });
-      value.textContent = numberFormat.format(total);
-      const unit = svgElement('text', { x: 90, y: 108, class: 'donut-unit', 'text-anchor': 'middle' });
-      unit.textContent = 'aanvragen';
-      ring.append(value, unit);
+      if (!pie) {
+        const value = svgElement('text', { x: 90, y: 88, class: 'donut-total', 'text-anchor': 'middle' });
+        value.textContent = numberFormat.format(total);
+        const unit = svgElement('text', { x: 90, y: 108, class: 'donut-unit', 'text-anchor': 'middle' });
+        unit.textContent = 'aanvragen';
+        ring.append(value, unit);
+      }
       const legend = document.createElement('ul');
       legend.className = 'donut-legend';
       entries.forEach(entry => {
         const item = document.createElement('li');
         const swatch = document.createElement('span');
         swatch.className = 'legend-swatch';
-        swatch.style.backgroundColor = donutColors[entry[0]] || '#94a3b8';
+        swatch.style.backgroundColor = colorOf(entry[0]);
         swatch.setAttribute('aria-hidden', 'true');
         const label = document.createElement('span');
         label.textContent = entry[0];
         const value = document.createElement('strong');
-        value.textContent = numberFormat.format(entry[1]) + ' · ' + percentFormat.format(entry[1] / total);
+        value.textContent = formatChartNumber(entry[1]) + ' · ' + percentFormat.format(entry[1] / total);
         item.append(swatch, label, value);
         legend.appendChild(item);
       });
       container.append(ring, legend);
+    }
+
+    function pieSegmentPath(start, angle) {
+      if (angle >= Math.PI * 2 - 0.000001) {
+        return 'M90,13A77,77 0 1,1 90,167A77,77 0 1,1 90,13Z';
+      }
+      const point = radians => [90 + 77 * Math.cos(radians), 90 + 77 * Math.sin(radians)]
+        .map(value => value.toFixed(3)).join(',');
+      const first = start - Math.PI / 2;
+      return 'M90,90L' + point(first) + 'A77,77 0 ' + (angle > Math.PI ? 1 : 0) + ',1 ' +
+        point(first + angle) + 'Z';
     }
 
     function donutSegmentPath(start, angle) {
@@ -1516,7 +1552,6 @@
     elements.timelineMetric.addEventListener('change', render);
     elements.mapScope.addEventListener('change', render);
     elements.mapMunicipality.addEventListener('change', showMunicipalityDetail);
-    elements.geographyView.addEventListener('change', applyGeographyView);
     elements.filterToggle.addEventListener('click', () => {
       elements.dataMenu.open = false;
       elements.displayMenu.open = false;
@@ -1579,7 +1614,6 @@
 
     setFilterSidebar(false);
     applyPanelVisibility();
-    applyGeographyView();
     loadDashboard(false);
   })();
 </script>
