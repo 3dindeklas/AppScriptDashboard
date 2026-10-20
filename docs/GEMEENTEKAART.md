@@ -4,6 +4,7 @@ De gemeentekaart laat zien waar de aanvragen in de huidige filterselectie vandaa
 
 ## Gebruik
 
+- **Weergave → Kaart/Ranglijst** binnen het gemeentevak wisselt tussen de kaart en de regionale staafgrafiek. Er staat geen tweede gemeenteblok op de pagina.
 - **Werkgebied** zoomt in op de gemeenten die in alle geladen gegevens herkend worden. De uitsnede blijft gelijk wanneer je filters aanpast.
 - **Heel Nederland** toont de volledige gemeentekaart.
 - Lichtpaars staat voor weinig aanvragen; donkerpaars voor het hoogste aantal in de huidige selectie. De legenda benoemt het actuele maximum.
@@ -12,7 +13,7 @@ De gemeentekaart laat zien waar de aanvragen in de huidige filterselectie vandaa
 - Klik of tik op een gemeente, of gebruik **Gemeente bekijken**, om het exacte aantal te zien. Dit bekijkt alleen details en verandert geen filter.
 - Open **Bekijk alle gemeenteaantallen als tabel** voor alle gekoppelde én niet-gekoppelde waarden.
 
-De kaart is een overzicht met absolute aantallen, geen ranglijst gecorrigeerd voor inwoneraantal of aantal scholen. Een geografisch grote gemeente kan daardoor visueel veel ruimte innemen zonder het hoogste aantal te hebben. Gebruik de bestaande staafgrafiek voor een precieze vergelijking.
+De kaart is een overzicht met absolute aantallen, geen ranglijst gecorrigeerd voor inwoneraantal of aantal scholen. Een geografisch grote gemeente kan daardoor visueel veel ruimte innemen zonder het hoogste aantal te hebben. Kies **Ranglijst** in hetzelfde blok voor een precieze vergelijking. Bronvermelding en licentie staan onder **Data → Kaartbronnen en licentie**.
 
 ## Gemeentekoppeling
 
@@ -56,7 +57,7 @@ Controleer gemeentecodes, datum, gewijzigde namen, kaartuitsnede en labels. Pas 
 1. Open de demo: 10 aanvragen horen aan 7 gemeenten gekoppeld te zijn.
 2. Controleer de PO/VO-donut: PO 8 / 80,0%, VO 2 / 20,0%.
 3. Controleer de statusdonut: Ingepland 4 / 40,0%, Uitgevoerd 4 / 40,0%, Open 2 / 20,0%.
-4. Filter op een stichting of periode: donuts, kaart en bestaande cijfers moeten dezelfde selectie tonen.
+4. Filter op een tech-hub of periode: donuts, kaart en bestaande cijfers moeten dezelfde selectie tonen.
 5. Bekijk een gemeente via klik/tik en via de keuzelijst. Beide moeten hetzelfde aantal tonen.
 6. Wissel tussen werkgebied en landelijke weergave; wis vervolgens de filters.
 7. Test een onbekende regio: de aanvraag blijft meetellen en verschijnt als niet gekoppeld.

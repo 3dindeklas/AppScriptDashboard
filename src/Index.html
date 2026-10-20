@@ -8,41 +8,27 @@
   </head>
   <body class="threediklas">
     <a class="skip-link" href="#dashboard">Ga naar het dashboard</a>
-
     <header class="site-header">
       <div class="header-inner">
         <a class="brand-logo" href="https://www.3dindeklas.nl/" target="_blank" rel="noopener noreferrer" aria-label="Naar 3dindeklas.nl">
           <img src="https://3dindeklas.github.io/Foundation/assets/logo-3dindeklas.png" width="58" height="70" alt="3dindeklas">
         </a>
-        <div class="header-title">
-          <span>LEREN DOOR CREËREN</span>
-          <strong>Workshopkompas</strong>
-        </div>
-        <div class="header-actions">
-          <a class="header-link" href="https://www.3dindeklas.nl/" target="_blank" rel="noopener noreferrer">3dindeklas.nl <span aria-hidden="true">↗</span></a>
-          <button id="refreshButton" class="button button-header" type="button">Brongegevens vernieuwen</button>
-        </div>
-      </div>
-    </header>
-
-    <main id="dashboard" class="page">
-      <section class="intro" aria-labelledby="pageTitle">
-        <div>
-          <p class="eyebrow">WORKSHOPS IN BEELD</p>
-          <h1 id="pageTitle">Grip op bereik, planning en impact.</h1>
-          <p>De workshopgegevens van beide stichtingen in één veilig en filterbaar overzicht.</p>
-        </div>
-        <div class="load-meta">
-          <span id="modeBadge" class="badge">Laden…</span>
-          <span id="updatedAt">Even geduld</span>
-        </div>
-      </section>
-
-      <div id="message" class="message" role="status" aria-live="polite" aria-atomic="true">
-        Dashboardgegevens worden geladen.
-      </div>
-
-      <section class="panel source-health" aria-labelledby="sourceHealthTitle">
+        <div class="header-title"><span>LEREN DOOR CREËREN</span><strong>Workshopkompas</strong></div>
+        <nav class="dashboard-nav" aria-label="Dashboardbediening">
+          <button id="filterToggle" class="nav-button" type="button" aria-expanded="false" aria-controls="filterSidebar">Filters <span id="activeFilterCount" class="nav-count" hidden>0</span></button>
+          <details id="dataMenu" class="nav-menu">
+            <summary id="dataMenuButton">Data</summary>
+            <div class="nav-dropdown data-dropdown">
+              <div class="data-toolbar">
+                <dl class="data-meta">
+                  <div><dt>Bijgewerkt</dt><dd id="dataUpdatedAt">Nog niet geladen</dd></div>
+                  <div><dt>Herkomst</dt><dd id="dataOrigin">—</dd></div>
+                  <div><dt>Laadtijd</dt><dd id="dataDuration">—</dd></div>
+                </dl>
+                <button id="refreshButton" class="button" type="button">Brongegevens vernieuwen</button>
+                <button id="closeDataMenu" class="text-button" type="button">Sluiten</button>
+              </div>
+      <section class="source-health" aria-labelledby="sourceHealthTitle">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">BRONNEN &amp; DATAKWALITEIT</p>
@@ -52,23 +38,52 @@
         </div>
         <div id="sourceCards" class="source-grid" aria-live="polite"></div>
       </section>
-
-      <section class="panel filters" aria-labelledby="filtersTitle">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">FILTERS</p>
-            <h2 id="filtersTitle">Verfijn het overzicht</h2>
-          </div>
-          <div class="panel-actions">
-            <button id="printButton" class="text-button" type="button">Afdrukken / PDF</button>
-            <button id="resetButton" class="text-button" type="button">Filters wissen</button>
-          </div>
-        </div>
-
+              <details class="map-credits">
+                <summary>Kaartbronnen en licentie</summary>
+                <p>Gemeentegrenzen: <a href="https://api.pdok.nl/kadaster/brk-bestuurlijke-gebieden/ogc/v1/collections/gemeentegebied" target="_blank" rel="noopener noreferrer">Kadaster / PDOK, Bestuurlijke Gebieden</a> · <a href="https://creativecommons.org/licenses/by/4.0/deed.nl" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Contouren vereenvoudigd; opgehaald op 20 oktober 2026.</p>
+              </details>
+            </div>
+          </details>
+          <details id="displayMenu" class="nav-menu">
+            <summary id="displayMenuButton">Weergave</summary>
+            <div class="nav-dropdown display-dropdown">
+              <div class="panel-heading"><div><p class="eyebrow">JOUW OVERZICHT</p><h2>Onderdelen in beeld</h2></div><button id="closeDisplayMenu" class="text-button" type="button">Sluiten</button></div>
+              <p class="view-help">Kies wat je wilt laten zien voor je screenshot of afdruk.</p>
+              <fieldset class="view-options"><legend class="visually-hidden">Zichtbare dashboardonderdelen</legend>
+                  <label><input id="viewKpis" type="checkbox" checked> Kerncijfers</label>
+                  <label><input id="viewTimeline" type="checkbox" checked> Bereik per maand</label>
+                  <label><input id="viewGeography" type="checkbox" checked> Gemeenten en regio’s</label>
+                  <label><input id="viewSector" type="checkbox" checked> PO / VO-verdeling</label>
+                  <label><input id="viewStatus" type="checkbox" checked> Statusgroepen</label>
+                  <label><input id="viewWorkshops" type="checkbox" checked> Workshops</label>
+                  <label><input id="viewProviders" type="checkbox" checked> Aanbieders</label>
+                  <label><input id="viewGrades" type="checkbox" checked> PO- en VO-leerjaren</label>
+                  <label><input id="viewRecent" type="checkbox" checked> Recente workshops</label>
+                  <label><input id="viewComparison" type="checkbox" checked> Tech-hubs vergelijken</label>
+                  <label id="financialVisibilityOption" hidden><input id="viewFinancial" type="checkbox" checked> Financieel overzicht</label>
+              </fieldset>
+              <button id="showAllPanels" class="text-button" type="button">Alles tonen</button>
+            </div>
+          </details>
+          <button id="printButton" class="nav-button" type="button" aria-label="Afdrukken of opslaan als PDF"><span class="print-label">Afdrukken / PDF</span><span class="print-label-short" aria-hidden="true">PDF</span></button>
+        </nav>
+      </div>
+    </header>
+    <main id="dashboard" class="page">
+      <section class="intro" aria-labelledby="pageTitle">
+        <div><p class="eyebrow">WORKSHOPS IN BEELD</p><h1 id="pageTitle">Bereik, planning en impact.</h1><p>De workshopgegevens van alle tech-hubs in één overzicht.</p></div>
+        <div class="load-meta"><span id="modeBadge" class="badge">Laden…</span><span id="updatedAt">Even geduld</span></div>
+      </section>
+      <div id="message" class="message" role="status" aria-live="polite" aria-atomic="true">Dashboardgegevens worden geladen.</div>
+      <div id="dashboardLayout" class="dashboard-layout">
+        <aside id="filterSidebar" class="filter-sidebar" aria-labelledby="filtersTitle" hidden>
+          <section class="panel filters">
+            <div class="panel-heading"><div><p class="eyebrow">FILTERS</p><h2 id="filtersTitle">Verfijn je overzicht</h2></div><button id="closeFilters" class="text-button" type="button">Sluiten</button></div>
+            <button id="resetButton" class="text-button reset-filters" type="button">Filters wissen</button>
         <div class="filter-grid">
           <label>
-            Stichting
-            <select id="sourceFilter"><option value="">Alle stichtingen</option></select>
+            Tech-hub
+            <select id="sourceFilter"><option value="">Alle tech-hubs</option></select>
           </label>
           <label>
             Schooljaar
@@ -156,47 +171,16 @@
             </label>
           </fieldset>
         </div>
-        <p id="resultCount" class="result-count"></p>
-      </section>
 
-      <section class="metrics-section" aria-labelledby="kpisTitle">
-        <div class="metrics-heading">
-          <p class="eyebrow">KERNCIJFERS</p>
-          <h2 id="kpisTitle">Wat laten de huidige filters zien?</h2>
-        </div>
-        <div id="kpis" class="kpi-grid"></div>
-        <p id="kpiQualityNote" class="kpi-quality" aria-live="polite"></p>
-      </section>
-
-      <section class="panel comparison" aria-labelledby="comparisonTitle">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">VERGELIJKING</p>
-            <h2 id="comparisonTitle">Stichtingen naast elkaar</h2>
-          </div>
-          <p id="comparisonSummary" class="comparison-summary"></p>
-        </div>
-        <div class="table-wrap">
-          <table class="comparison-table">
-            <caption class="visually-hidden">Vergelijking van de actieve kerncijfers per stichting</caption>
-            <thead>
-              <tr>
-                <th scope="col">Stichting</th>
-                <th scope="col">Aanvragen</th>
-                <th scope="col">Leerlingdeelnames</th>
-                <th scope="col">Scholen</th>
-                <th scope="col">Lesmomenten</th>
-                <th scope="col">Uitgevoerd</th>
-                <th scope="col">Gem. leerlingen</th>
-                <th scope="col">Aanvragen / school</th>
-                <th scope="col">Zonder leerlingaantal</th>
-              </tr>
-            </thead>
-            <tbody id="comparisonRows"></tbody>
-          </table>
-        </div>
-      </section>
-
+          </section>
+        </aside>
+        <div class="dashboard-content">
+          <div class="dashboard-summary"><p id="filterSummary">Alle tech-hubs</p><p id="resultCount" class="result-count" aria-live="polite"></p></div>
+          <p id="emptyView" class="message" hidden>Er zijn geen onderdelen geselecteerd. Open Weergave om onderdelen te tonen.</p>
+          <section id="metricsPanel" class="metrics-section" aria-labelledby="kpisTitle">
+            <h2 id="kpisTitle" class="visually-hidden">Kerncijfers voor de huidige selectie</h2>
+            <div id="kpis" class="kpi-grid"></div><p id="kpiQualityNote" class="kpi-quality" aria-live="polite"></p>
+          </section>
       <details id="financialOverview" class="panel financial-panel" hidden>
         <summary>
           <span>
@@ -215,21 +199,12 @@
           <p id="financialNote" class="financial-note" aria-live="polite"></p>
         </div>
       </details>
-
-      <section class="analytics-section" aria-labelledby="chartsTitle">
-        <div class="analytics-heading">
-          <div>
-            <p class="eyebrow">VERDELINGEN</p>
-            <h2 id="chartsTitle">Waar en wanneer ontstaat het bereik?</h2>
-          </div>
-          <p>Alle grafieken volgen dezelfde actieve filters.</p>
-        </div>
-
-        <article class="panel timeline-panel" aria-labelledby="timelineTitle">
+          <section id="analyticsSection" class="analytics-section" aria-label="Grafieken">
+        <article id="timelinePanel" class="panel timeline-panel" aria-labelledby="timelineTitle">
           <div class="panel-heading">
             <div>
               <p class="eyebrow">ONTWIKKELING</p>
-              <h3 id="timelineTitle">Bereik per maand en stichting</h3>
+              <h3 id="timelineTitle">Bereik per maand en tech-hub</h3>
               <p id="timelineSubtitle" class="chart-subtitle"></p>
             </div>
             <label class="metric-select">
@@ -247,26 +222,26 @@
             <summary>Bekijk maandcijfers als tabel</summary>
             <div class="table-wrap">
               <table class="chart-table">
-                <caption id="timelineCaption" class="visually-hidden">Maandcijfers per stichting</caption>
+                <caption id="timelineCaption" class="visually-hidden">Maandcijfers per tech-hub</caption>
                 <thead><tr id="timelineTableHead"></tr></thead>
                 <tbody id="timelineTableRows"></tbody>
               </table>
             </div>
           </details>
         </article>
-
-        <article class="panel municipality-panel" aria-labelledby="municipalityTitle">
+        <article id="geographyPanel" class="panel municipality-panel" aria-labelledby="municipalityTitle">
           <div class="panel-heading">
             <div>
               <p class="eyebrow">GEOGRAFISCH BEREIK</p>
-              <h3 id="municipalityTitle">Aanvragen per gemeente</h3>
-              <p class="chart-subtitle">Donkerder betekent meer aanvragen binnen de actieve filters. Klik of tik op een gemeente voor het aantal.</p>
+              <h3 id="municipalityTitle">Gemeenten en regio’s</h3>
+
             </div>
-            <label class="metric-select">Kaartgebied
+            <label class="metric-select">Weergave<select id="geographyView"><option value="map">Kaart</option><option value="ranking">Ranglijst</option></select></label>
+            <label id="mapScopeControl" class="metric-select">Kaartgebied
               <select id="mapScope"><option value="workarea">Werkgebied</option><option value="netherlands">Heel Nederland</option></select>
             </label>
           </div>
-          <div class="municipality-layout">
+          <div id="geographyMap" class="municipality-layout">
             <div>
               <div id="municipalityMap" class="municipality-map"></div>
               <div id="mapLegend" class="map-legend"></div>
@@ -281,6 +256,10 @@
               <p class="chart-subtitle">Werkgebied gebruikt de gemeenten uit alle geladen gegevens. Grijs betekent 0 gekoppelde aanvragen in de huidige selectie.</p>
             </div>
           </div>
+          <div id="geographyRanking" hidden>
+<div id="regionChart" class="bar-chart"></div>
+            <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Aanvragen per gemeente of regio</caption><thead><tr><th scope="col">Gemeente / regio</th><th scope="col">Aanvragen</th></tr></thead><tbody id="regionTableRows"></tbody></table></div></details>
+</div>
           <details class="map-data chart-data">
             <summary>Bekijk alle gemeenteaantallen als tabel</summary>
             <div class="table-wrap"><table class="chart-table">
@@ -289,56 +268,43 @@
               <tbody id="mapTableRows"></tbody>
             </table></div>
           </details>
-          <p class="map-attribution">Grenzen: <a href="https://api.pdok.nl/kadaster/brk-bestuurlijke-gebieden/ogc/v1/collections/gemeentegebied" target="_blank" rel="noopener noreferrer">Kadaster / PDOK, Bestuurlijke Gebieden</a> · <a href="https://creativecommons.org/licenses/by/4.0/deed.nl" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> · vereenvoudigde kaart, opgehaald op 20 oktober 2026.</p>
         </article>
-
-        <div class="chart-grid">
-          <article class="panel chart-card">
+            <div class="chart-grid">
+          <article id="sectorPanel" class="panel chart-card">
             <div class="panel-heading"><div><p class="eyebrow">ONDERWIJS</p><h3>PO / VO-verdeling</h3></div></div>
             <div id="sectorChart" class="donut-chart"></div>
             <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Aanvragen per onderwijssector</caption><thead><tr><th scope="col">Onderwijs</th><th scope="col">Aanvragen</th></tr></thead><tbody id="sectorTableRows"></tbody></table></div></details>
           </article>
-
-          <article class="panel chart-card">
-            <div class="panel-heading"><div><p class="eyebrow">REGIO</p><h3>Gemeenten en regio’s</h3></div></div>
-            <div id="regionChart" class="bar-chart"></div>
-            <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Aanvragen per gemeente of regio</caption><thead><tr><th scope="col">Gemeente / regio</th><th scope="col">Aanvragen</th></tr></thead><tbody id="regionTableRows"></tbody></table></div></details>
-          </article>
-
-          <article class="panel chart-card">
+          <article id="statusPanel" class="panel chart-card">
             <div class="panel-heading"><div><p class="eyebrow">STATUS</p><h3>Aanvragen per statusgroep</h3></div></div>
             <div id="statusChart" class="donut-chart"></div>
             <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Aanvragen per statusgroep</caption><thead><tr><th scope="col">Statusgroep</th><th scope="col">Aanvragen</th></tr></thead><tbody id="statusTableRows"></tbody></table></div></details>
           </article>
-
-          <article class="panel chart-card">
+          <article id="workshopsPanel" class="panel chart-card">
             <div class="panel-heading"><div><p class="eyebrow">WORKSHOPS</p><h3>Meest aangevraagd</h3></div></div>
             <div id="workshopChart" class="bar-chart"></div>
             <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Aanvragen per workshop</caption><thead><tr><th scope="col">Workshop</th><th scope="col">Aanvragen</th></tr></thead><tbody id="workshopTableRows"></tbody></table></div></details>
           </article>
-
-          <article class="panel chart-card">
+          <article id="providersPanel" class="panel chart-card">
             <div class="panel-heading"><div><p class="eyebrow">AANBIEDERS</p><h3>Aanvragen per aanbieder</h3></div></div>
             <div id="providerChart" class="bar-chart"></div>
             <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Aanvragen per aanbieder</caption><thead><tr><th scope="col">Aanbieder</th><th scope="col">Aanvragen</th></tr></thead><tbody id="providerTableRows"></tbody></table></div></details>
           </article>
-
-          <article class="panel chart-card">
-            <div class="panel-heading"><div><p class="eyebrow">PO-LEERJAREN</p><h3>Primair onderwijs</h3></div></div>
+<article id="gradesPanel" class="panel grades-panel">
+ <div class="panel-heading"><div><p class="eyebrow">LEERJAREN</p><h2>Bereik in PO en VO</h2></div></div>
+ <div class="grades-grid">
+  <section aria-labelledby="poTitle"><h3 id="poTitle">Primair onderwijs</h3>
             <div id="poChart" class="bar-chart"></div>
-            <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Gewogen aanvragen per PO-groep</caption><thead><tr><th scope="col">Groep</th><th scope="col">Gewogen aanvragen</th></tr></thead><tbody id="poTableRows"></tbody></table></div></details>
-          </article>
-
-          <article class="panel chart-card">
-            <div class="panel-heading"><div><p class="eyebrow">VO-LEERJAREN</p><h3>Voortgezet onderwijs</h3></div></div>
+            <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Gewogen aanvragen per PO-groep</caption><thead><tr><th scope="col">Groep</th><th scope="col">Gewogen aanvragen</th></tr></thead><tbody id="poTableRows"></tbody></table></div></details></section>
+  <section aria-labelledby="voTitle"><h3 id="voTitle">Voortgezet onderwijs</h3>
             <div id="voChart" class="bar-chart"></div>
-            <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Gewogen aanvragen per VO-leerjaar</caption><thead><tr><th scope="col">Leerjaar</th><th scope="col">Gewogen aanvragen</th></tr></thead><tbody id="voTableRows"></tbody></table></div></details>
-          </article>
-        </div>
-        <p class="chart-note">Combinatiegroepen worden evenredig verdeeld over de herkende leerjaren. Onbekende leerjaren blijven apart zichtbaar.</p>
-      </section>
-
-      <section class="panel recent-panel" aria-labelledby="recentTitle">
+            <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Gewogen aanvragen per VO-leerjaar</caption><thead><tr><th scope="col">Leerjaar</th><th scope="col">Gewogen aanvragen</th></tr></thead><tbody id="voTableRows"></tbody></table></div></details></section>
+ </div>
+ <p class="chart-note">Combinatiegroepen worden evenredig verdeeld over de herkende leerjaren. Onbekende leerjaren blijven apart zichtbaar.</p>
+</article>
+            </div>
+          </section>
+      <section id="recentPanel" class="panel recent-panel" aria-labelledby="recentTitle">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">LAATSTE DATA</p>
@@ -350,7 +316,7 @@
             <thead>
               <tr>
                 <th id="recentDateHeading">Definitieve datum</th>
-                <th>Stichting</th>
+                <th>Tech-hub</th>
                 <th>Workshop</th>
                 <th>Status</th>
                 <th>Leerlingen</th>
@@ -360,13 +326,38 @@
           </table>
         </div>
       </section>
-
-      <footer>
-        <span><strong>Workshopkompas</strong> · 3Dindeklas</span>
-        <span>Geen contactgegevens of notities in dit dashboard</span>
-      </footer>
+      <section id="comparisonPanel" class="panel comparison" aria-labelledby="comparisonTitle">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">VERGELIJKING</p>
+            <h2 id="comparisonTitle">Tech-hubs naast elkaar</h2>
+          </div>
+          <p id="comparisonSummary" class="comparison-summary"></p>
+        </div>
+        <div class="table-wrap">
+          <table class="comparison-table">
+            <caption class="visually-hidden">Vergelijking van de actieve kerncijfers per tech-hub</caption>
+            <thead>
+              <tr>
+                <th scope="col">Tech-hub</th>
+                <th scope="col">Aanvragen</th>
+                <th scope="col">Leerlingdeelnames</th>
+                <th scope="col">Scholen</th>
+                <th scope="col">Lesmomenten</th>
+                <th scope="col">Uitgevoerd</th>
+                <th scope="col">Gem. leerlingen</th>
+                <th scope="col">Aanvragen / school</th>
+                <th scope="col">Zonder leerlingaantal</th>
+              </tr>
+            </thead>
+            <tbody id="comparisonRows"></tbody>
+          </table>
+        </div>
+      </section>
+        </div>
+      </div>
+      <footer><span><strong>Workshopkompas</strong> · 3Dindeklas</span></footer>
     </main>
-
     <?!= include('Municipalities'); ?>
     <?!= include('Client'); ?>
   </body>

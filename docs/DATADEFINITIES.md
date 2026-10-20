@@ -6,7 +6,7 @@ Alle Google Sheets-rijen worden eerst server-side omgezet naar één intern work
 
 | Intern veld | Sheetkolom | Definitie |
 | --- | --- | --- |
-| `source` | configuratie | naam van de stichting/bron |
+| `source` | configuratie | naam van de tech-hub/bron |
 | `requestId` | `Aanvraag ID` | intern gebruikt voor datakwaliteitscontrole |
 | `requestedDate` | `Datum aanvraag` | geldige datum als `YYYY-MM-DD`, anders `null` |
 | `scheduledDate` | `Definitieve datum` | eerste geldige lesdag als `YYYY-MM-DD`, anders `null` |
@@ -172,7 +172,7 @@ De staafweergave toont bij lange lijsten de grootste categorieën en voegt de re
 
 ### Maandgrafiek
 
-De maandgrafiek kan wisselen tussen aanvragen/workshops, leerlingdeelnames en lesmomenten. De waarden worden per stichting getoond. Bij **Datum aanvraag** hoort een workshop bij de ene maand van `requestedDate`.
+De maandgrafiek kan wisselen tussen aanvragen/workshops, leerlingdeelnames en lesmomenten. De waarden worden per tech-hub getoond. Bij **Datum aanvraag** hoort een workshop bij de ene maand van `requestedDate`.
 
 Bij **Definitieve datum** worden alle geldige lesdagen binnen het zichtbare maandbereik gebruikt. Heeft één workshop meerdere zichtbare lesdagen, dan wordt zijn waarde evenredig over die lesdagen verdeeld en daarna per maand opgeteld. Twee lesdagen in september en één in oktober leveren dus 2/3 in september en 1/3 in oktober op. Hierdoor telt één workshop binnen de zichtbare periode samen nog steeds als één aanvraag; het leerlingaantal en het aantal lesmomenten worden op dezelfde manier verdeeld en niet automatisch vermenigvuldigd. Wanneer de periode wordt verkleind, wordt de verdeling opnieuw bepaald over de lesdagen die binnen die zichtbare periode vallen.
 
@@ -225,15 +225,15 @@ Alle onderstaande cijfers worden berekend over exact dezelfde workshopregels die
 | --- | --- |
 | Aanvragen / workshops | aantal zichtbare workshopregels |
 | Leerlingdeelnames | som van alle bekende waarden in `students`; geen telling van unieke leerlingen |
-| Scholen | unieke combinatie van stichting, regio en genormaliseerde schoolnaam |
+| Scholen | unieke combinatie van tech-hub, regio en genormaliseerde schoolnaam |
 | Lesmomenten | som van alle bekende waarden in `sessions` |
 | Uitgevoerd | aantal regels met `statusGroup` gelijk aan `Uitgevoerd` |
 | Gem. leerlingen / aanvraag | leerlingdeelnames gedeeld door het aantal regels met een bekend leerlingaantal |
 | Aanvragen / school | aantal regels met een bekende school gedeeld door het aantal unieke bekende scholen |
 | Zonder leerlingaantal | aantal zichtbare regels waarvoor `students` onbekend is |
 
-Bij het eenduidig tellen van scholen worden hoofdletters, accenten en overtollige spaties genegeerd. De stichting en regio blijven onderdeel van de sleutel: dezelfde schoolnaam in een andere regio of stichting telt daarom als een andere school. Een lege school of `Onbekende school` telt niet mee als school en ook niet in de teller van **Aanvragen / school**.
+Bij het eenduidig tellen van scholen worden hoofdletters, accenten en overtollige spaties genegeerd. De tech-hub en regio blijven onderdeel van de sleutel: dezelfde schoolnaam in een andere regio of tech-hub telt daarom als een andere school. Een lege school of `Onbekende school` telt niet mee als school en ook niet in de teller van **Aanvragen / school**.
 
-Een leerlingaantal van nul is een bekende waarde en telt mee in som en gemiddelde. Ontbrekende leerlingaantallen blijven onbekend, worden nooit als nul geïnterpreteerd en worden onder de KPI’s en per stichting apart gemeld. Gemiddelden worden met één decimaal getoond; als er geen geldige deler is, verschijnt `—`.
+Een leerlingaantal van nul is een bekende waarde en telt mee in som en gemiddelde. Ontbrekende leerlingaantallen blijven onbekend, worden nooit als nul geïnterpreteerd en worden onder de KPI’s en per tech-hub apart gemeld. Gemiddelden worden met één decimaal getoond; als er geen geldige deler is, verschijnt `—`.
 
-De stichtingvergelijking herhaalt dezelfde definities per bron. Ook wanneer het stichtingfilter actief is blijven beide stichtingen als rij zichtbaar; een door het filter uitgesloten stichting toont dan nulwaarden. Zo is direct zichtbaar dat de tabel dezelfde filters volgt.
+De tech-hubvergelijking herhaalt dezelfde definities per bron. Ook wanneer het tech-hubfilter actief is blijven beide tech-hubs als rij zichtbaar; een door het filter uitgesloten tech-hub toont dan nulwaarden. Zo is direct zichtbaar dat de tabel dezelfde filters volgt.

@@ -27,13 +27,13 @@ const APP_CONFIG = Object.freeze({
   ],
   sources: [
     {
-      name: 'Stichting A',
+      name: 'Tech-hub A',
       spreadsheetId: '',
       sheetName: 'Workshops',
       headerRow: 8
     },
     {
-      name: 'Stichting B',
+      name: 'Tech-hub B',
       spreadsheetId: '',
       sheetName: 'Workshops',
       headerRow: 8

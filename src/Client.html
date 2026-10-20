@@ -17,9 +17,9 @@
     };
     const SVG_NS = 'http://www.w3.org/2000/svg';
     const donutColors = {
-      PO: '#4c325b', VO: '#258582', Onbekend: '#77717e',
-      Open: '#ad7100', Ingepland: '#4c325b', Uitgevoerd: '#258582',
-      Geannuleerd: '#a5333a', 'Volgend schooljaar': '#9b6caa', Overig: '#77717e'
+      PO: '#6366f1', VO: '#06b6d4', Onbekend: '#94a3b8',
+      Open: '#f59e0b', Ingepland: '#3b82f6', Uitgevoerd: '#10b981',
+      Geannuleerd: '#f43f5e', 'Volgend schooljaar': '#a855f7', Overig: '#94a3b8'
     };
     let municipalities = [];
     try {
@@ -83,6 +83,20 @@
       message: document.getElementById('message'),
       mode: document.getElementById('modeBadge'),
       updated: document.getElementById('updatedAt'),
+      dataUpdated: document.getElementById('dataUpdatedAt'),
+      dataOrigin: document.getElementById('dataOrigin'),
+      dataDuration: document.getElementById('dataDuration'),
+      layout: document.getElementById('dashboardLayout'),
+      sidebar: document.getElementById('filterSidebar'),
+      filterToggle: document.getElementById('filterToggle'),
+      closeFilters: document.getElementById('closeFilters'),
+      activeFilterCount: document.getElementById('activeFilterCount'),
+      filterSummary: document.getElementById('filterSummary'),
+      dataMenu: document.getElementById('dataMenu'),
+      displayMenu: document.getElementById('displayMenu'),
+      emptyView: document.getElementById('emptyView'),
+      financialVisibilityOption: document.getElementById('financialVisibilityOption'),
+      analyticsSection: document.getElementById('analyticsSection'),
       sourceSummary: document.getElementById('sourceSummary'),
       sourceCards: document.getElementById('sourceCards'),
       dateBasis: document.getElementById('dateBasis'),
@@ -124,6 +138,10 @@
       mapUnmatched: document.getElementById('mapUnmatched'),
       mapLegend: document.getElementById('mapLegend'),
       mapTableRows: document.getElementById('mapTableRows'),
+      geographyView: document.getElementById('geographyView'),
+      geographyMap: document.getElementById('geographyMap'),
+      geographyRanking: document.getElementById('geographyRanking'),
+      mapScopeControl: document.getElementById('mapScopeControl'),
       statusChart: document.getElementById('statusChart'),
       statusTableRows: document.getElementById('statusTableRows'),
       workshopChart: document.getElementById('workshopChart'),
@@ -148,6 +166,15 @@
       ['school', document.getElementById('schoolFilter')],
       ['type', document.getElementById('typeFilter')]
     ].map(filter => ({ field: filter[0], element: filter[1] }));
+    const viewPanels = [
+      ['viewKpis', 'metricsPanel'], ['viewTimeline', 'timelinePanel'],
+      ['viewGeography', 'geographyPanel'], ['viewSector', 'sectorPanel'],
+      ['viewStatus', 'statusPanel'], ['viewWorkshops', 'workshopsPanel'],
+      ['viewProviders', 'providersPanel'], ['viewGrades', 'gradesPanel'],
+      ['viewRecent', 'recentPanel'], ['viewComparison', 'comparisonPanel'],
+      ['viewFinancial', 'financialOverview']
+    ].map(pair => ({ control: document.getElementById(pair[0]), panel: document.getElementById(pair[1]),
+      financial: pair[1] === 'financialOverview' }));
 
     function loadDashboard(forceRefresh) {
       beginLoadingFeedback(forceRefresh === true);
@@ -197,9 +224,10 @@
       configureStudentRange(true);
 
       elements.mode.textContent = state.mode === 'demo' ? 'Demogegevens' : 'Live gegevens';
-      elements.updated.textContent = 'Gegevens bijgewerkt ' + formatDateTime(state.generatedAt) +
-        ' · ' + snapshotSourceLabel(state.snapshotSource) +
-        ' · geladen in ' + formatLoadDuration(loadDuration);
+      elements.updated.textContent = 'Bijgewerkt ' + formatDateTime(state.generatedAt);
+      elements.dataUpdated.textContent = formatDateTime(state.generatedAt);
+      elements.dataOrigin.textContent = snapshotSourceLabel(state.snapshotSource);
+      elements.dataDuration.textContent = formatLoadDuration(loadDuration);
       renderSourceStatus();
       renderLoadMessage();
       render();
@@ -213,6 +241,7 @@
       const detail = error && error.message ? error.message.replace(/^Error:\s*/, '') : 'Onbekende fout.';
       elements.message.textContent = 'Dashboard kon niet laden. ' + detail;
       elements.mode.textContent = 'Niet geladen';
+      elements.dataDuration.textContent = 'Laden mislukt';
     }
 
     function renderLoadMessage() {
@@ -224,7 +253,7 @@
         elements.message.classList.add('warning');
         elements.message.textContent = state.records.length
           ? 'Het overzicht is onvolledig. De beschikbare bronnen worden wel getoond.'
-          : 'Er zijn geen live gegevens geladen. Controleer de bronstatus hieronder.';
+          : 'Er zijn geen live gegevens geladen. Controleer de bronstatus onder Data.';
         return;
       }
 
@@ -324,7 +353,7 @@
 
       [
         [1500, 'De Google Sheets worden gecontroleerd…'],
-        [5000, 'De workshopregels van beide bronnen worden samengevoegd…'],
+        [5000, 'De workshopregels van alle tech-hubs worden samengevoegd…'],
         [10000, 'Het laden duurt langer dan normaal. Grote Sheets en veel formules kunnen extra tijd kosten.']
       ].forEach(step => {
         state.loadingTimers.push(setTimeout(() => {
@@ -351,9 +380,9 @@
     }
 
     function snapshotSourceLabel(source) {
-      if (source === 'cache') return 'snelle snapshot';
-      if (source === 'live') return 'rechtstreeks uit Google Sheets';
-      return 'demogegevens';
+      if (source === 'cache') return 'Snapshot';
+      if (source === 'live') return 'Google Sheets';
+      return 'Demo';
     }
 
     function printDashboard() {
@@ -361,6 +390,55 @@
       if (!elements.financialOverview.hidden) elements.financialOverview.open = true;
       window.print();
       if (!financialWasOpen) elements.financialOverview.open = false;
+    }
+
+    function setFilterSidebar(open) {
+      elements.sidebar.hidden = !open;
+      if (open) elements.layout.classList.add('has-filters');
+      else elements.layout.classList.remove('has-filters');
+      elements.filterToggle.setAttribute('aria-expanded', String(open));
+    }
+
+    function applyPanelVisibility() {
+      elements.financialVisibilityOption.hidden = !state.canViewFinancials;
+      viewPanels.forEach(item => {
+        item.panel.hidden = !item.control.checked || (item.financial && !state.canViewFinancials);
+      });
+      const chartIds = ['timelinePanel', 'geographyPanel', 'sectorPanel', 'statusPanel',
+        'workshopsPanel', 'providersPanel', 'gradesPanel'];
+      elements.analyticsSection.hidden = chartIds.every(id => document.getElementById(id).hidden);
+      elements.emptyView.hidden = viewPanels.some(item => !item.panel.hidden);
+    }
+
+    function applyGeographyView() {
+      const ranking = elements.geographyView.value === 'ranking';
+      elements.geographyMap.hidden = ranking;
+      elements.geographyRanking.hidden = !ranking;
+      elements.mapScopeControl.hidden = ranking;
+    }
+
+    function renderFilterSummary() {
+      const selections = filters.filter(filter => Boolean(filter.element.value));
+      const summary = selections.map(filter => filter.element.value);
+      let active = selections.length;
+      const from = state.dateMonths[Number(elements.dateFrom.value)];
+      const to = state.dateMonths[Number(elements.dateTo.value)];
+      if (from && to) {
+        summary.push((elements.dateBasis.value === 'requestedDate' ? 'Aanvraag' : 'Lesdatum') + ': ' +
+          formatMonthShort(from) + ' – ' + formatMonthShort(to));
+      }
+      if (Number(elements.dateFrom.value) > 0 || Number(elements.dateTo.value) < state.dateMonths.length - 1 ||
+          !elements.includeUnknownDate.checked || elements.dateBasis.value !== 'scheduledDate') active += 1;
+      const studentsFiltered = state.studentBounds &&
+        (Number(elements.studentsFrom.value) > state.studentBounds.minimum ||
+         Number(elements.studentsTo.value) < state.studentBounds.maximum);
+      if (studentsFiltered) summary.push(elements.studentsFrom.value + ' – ' + elements.studentsTo.value + ' leerlingen');
+      if (studentsFiltered || !elements.includeUnknownStudents.checked) active += 1;
+      if (!elements.includeUnknownDate.checked) summary.push('Zonder onbekende datums');
+      if (!elements.includeUnknownStudents.checked) summary.push('Zonder onbekende leerlingaantallen');
+      elements.filterSummary.textContent = summary.join(' · ') || 'Alle tech-hubs · Alle gegevens';
+      elements.activeFilterCount.textContent = String(active);
+      elements.activeFilterCount.hidden = active === 0;
     }
 
     function valuesOf(field) {
@@ -574,6 +652,9 @@
       else clearFinancial();
       renderCharts(records);
       renderRecent(records);
+      renderFilterSummary();
+      applyPanelVisibility();
+      applyGeographyView();
     }
 
     function renderKpis(records) {
@@ -664,7 +745,7 @@
         const cell = document.createElement('td');
         cell.colSpan = 9;
         cell.className = 'empty';
-        cell.textContent = 'Geen stichtingen beschikbaar binnen deze gegevens.';
+        cell.textContent = 'Geen tech-hubs beschikbaar binnen deze gegevens.';
         row.appendChild(cell);
         elements.comparisonRows.appendChild(row);
         return;
@@ -857,15 +938,13 @@
         viewBox: '0 0 180 180', class: 'donut-ring', role: 'img',
         'aria-label': total + ' aanvragen. ' + entries.map(entry => entry[0] + ': ' + entry[1]).join(', ')
       });
-      const circumference = 2 * Math.PI * 65;
       let offset = 0;
       entries.forEach(entry => {
-        const share = entry[1] / total * circumference;
-        const segment = svgElement('circle', {
-          cx: 90, cy: 90, r: 65, fill: 'none', 'stroke-width': 24,
-          stroke: donutColors[entry[0]] || '#77717e',
-          'stroke-dasharray': share + ' ' + (circumference - share),
-          'stroke-dashoffset': -offset, transform: 'rotate(-90 90 90)',
+        const share = entry[1] / total * Math.PI * 2;
+        const segment = svgElement('path', {
+          d: donutSegmentPath(offset, share),
+          fill: donutColors[entry[0]] || '#94a3b8',
+          stroke: '#ffffff', 'stroke-width': Math.min(1.5, share * 53 * 0.15), 'stroke-linejoin': 'round',
           'aria-hidden': 'true'
         });
         offset += share;
@@ -882,7 +961,7 @@
         const item = document.createElement('li');
         const swatch = document.createElement('span');
         swatch.className = 'legend-swatch';
-        swatch.style.backgroundColor = donutColors[entry[0]] || '#77717e';
+        swatch.style.backgroundColor = donutColors[entry[0]] || '#94a3b8';
         swatch.setAttribute('aria-hidden', 'true');
         const label = document.createElement('span');
         label.textContent = entry[0];
@@ -892,6 +971,21 @@
         legend.appendChild(item);
       });
       container.append(ring, legend);
+    }
+
+    function donutSegmentPath(start, angle) {
+      if (angle >= Math.PI * 2 - 0.000001) {
+        return 'M90,13A77,77 0 1,1 90,167A77,77 0 1,1 90,13Z' +
+          'M90,37A53,53 0 1,0 90,143A53,53 0 1,0 90,37Z';
+      }
+      const gap = Math.min(0.035, angle * 0.15);
+      const first = start - Math.PI / 2 + gap / 2;
+      const last = start + angle - Math.PI / 2 - gap / 2;
+      const point = (radius, radians) => [90 + radius * Math.cos(radians), 90 + radius * Math.sin(radians)]
+        .map(value => value.toFixed(3)).join(',');
+      const large = last - first > Math.PI ? 1 : 0;
+      return 'M' + point(77, first) + 'A77,77 0 ' + large + ',1 ' + point(77, last) +
+        'L' + point(53, last) + 'A53,53 0 ' + large + ',0 ' + point(53, first) + 'Z';
     }
 
     function municipalityKey(value) {
@@ -1185,7 +1279,7 @@
     }
 
     function renderTimelineTable(months, sources, values, metricLabel) {
-      elements.timelineCaption.textContent = metricLabel + ' per maand en stichting';
+      elements.timelineCaption.textContent = metricLabel + ' per maand en tech-hub';
       elements.timelineTableHead.replaceChildren();
       elements.timelineTableRows.replaceChildren();
 
@@ -1422,6 +1516,52 @@
     elements.timelineMetric.addEventListener('change', render);
     elements.mapScope.addEventListener('change', render);
     elements.mapMunicipality.addEventListener('change', showMunicipalityDetail);
+    elements.geographyView.addEventListener('change', applyGeographyView);
+    elements.filterToggle.addEventListener('click', () => {
+      elements.dataMenu.open = false;
+      elements.displayMenu.open = false;
+      setFilterSidebar(elements.sidebar.hidden);
+    });
+    elements.closeFilters.addEventListener('click', () => {
+      setFilterSidebar(false);
+      elements.filterToggle.focus();
+    });
+    viewPanels.forEach(item => item.control.addEventListener('change', applyPanelVisibility));
+    document.getElementById('showAllPanels').addEventListener('click', () => {
+      viewPanels.forEach(item => { item.control.checked = true; });
+      applyPanelVisibility();
+    });
+    document.getElementById('closeDataMenu').addEventListener('click', () => {
+      elements.dataMenu.open = false;
+      document.getElementById('dataMenuButton').focus();
+    });
+    document.getElementById('closeDisplayMenu').addEventListener('click', () => {
+      elements.displayMenu.open = false;
+      document.getElementById('displayMenuButton').focus();
+    });
+    elements.dataMenu.addEventListener('toggle', () => {
+      if (elements.dataMenu.open) elements.displayMenu.open = false;
+    });
+    elements.displayMenu.addEventListener('toggle', () => {
+      if (elements.displayMenu.open) elements.dataMenu.open = false;
+    });
+    document.addEventListener('click', event => {
+      if (event.target.closest('.nav-menu')) return;
+      elements.dataMenu.open = false;
+      elements.displayMenu.open = false;
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+      const dataWasOpen = elements.dataMenu.open;
+      const displayWasOpen = elements.displayMenu.open;
+      const filtersWereOpen = !elements.sidebar.hidden;
+      elements.dataMenu.open = false;
+      elements.displayMenu.open = false;
+      setFilterSidebar(false);
+      if (dataWasOpen) document.getElementById('dataMenuButton').focus();
+      else if (displayWasOpen) document.getElementById('displayMenuButton').focus();
+      else if (filtersWereOpen) elements.filterToggle.focus();
+    });
     elements.refresh.addEventListener('click', () => loadDashboard(true));
     elements.print.addEventListener('click', printDashboard);
     elements.reset.addEventListener('click', () => {
@@ -1437,6 +1577,9 @@
       render();
     });
 
+    setFilterSidebar(false);
+    applyPanelVisibility();
+    applyGeographyView();
     loadDashboard(false);
   })();
 </script>
