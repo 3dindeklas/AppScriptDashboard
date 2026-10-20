@@ -36,14 +36,15 @@ We starten geen volgende featurebranch voordat de voorgaande PR is gemerged. Daa
 | 1 | Datamodel en normalisatie | Eén betrouwbaar intern recordformaat voor alle gewenste kolommen | stap 0 |
 | 2 | Toegang en privacy | Expliciete toegangscontrole en vaste browser-allowlist voor velden | stap 1 |
 | 3 | Bronstatus en datakwaliteit | Twee Google-bronnen, gedeeltelijke uitval en duidelijke bronmeldingen | stap 2 |
-| 4 | Volledige dropdownfilters | Stichting, schooljaar, regio, PO/VO, aanbieder, workshop, status, school en type | stap 3 |
+| 4 | Volledige dropdownfilters | Tech-hub, schooljaar, regio, PO/VO, aanbieder, workshop, status, school en type | stap 3 |
 | 5 | Datum- en bereikfilters | Datumkeuze, maandperiode en leerlingaantal met sliders | stap 4 |
-| 6 | Kerncijfers en vergelijking | Oorspronkelijke KPI's en stichtingen naast elkaar | stap 5 |
+| 6 | Kerncijfers en vergelijking | Oorspronkelijke KPI's en tech-hubs naast elkaar | stap 5 |
 | 7 | Grafieken en leerjaren | Tijdlijn, verdelingen en gewogen PO/VO-leerjaren | stap 6 |
 | 8 | Financieel overzicht | Kosten, facturatie, marge en volledigheidsmelding | stap 7 |
 | 8.1 | Snapshotcache en laadtijd | Snelle servercache, handmatig verversen en veilige terugval | stap 8 |
 | 9 | Vormgeving en productieafronding | Foundation-stijl, toegankelijkheid, responsive/print en productiedocumentatie | stap 8.1 |
-| 10 | Microsoft 365-bron | Microsoft Graph-adapter achter hetzelfde datacontract | stap 9 |
+| 9.1 | Donuts en gemeentekaart | Delen van het totaal en geografisch bereik inzichtelijk maken | stap 9 |
+| 10 | Microsoft 365-bron | Microsoft Graph-adapter achter hetzelfde datacontract | stap 9.1 |
 
 ## Stap 1 · Datamodel en normalisatie
 
@@ -83,7 +84,7 @@ In deze PR:
 - veilige, korte foutmeldingen zonder bron-ID's of providerdetails;
 - tests voor toegestane, geweigerde en ontbrekende accounts.
 
-Nog niet in deze PR: rollen, verschillende dashboards per stichting of financiële rechten.
+Nog niet in deze PR: rollen, verschillende dashboards per tech-hub of financiële rechten.
 
 Acceptatie:
 
@@ -116,7 +117,7 @@ Doel: de belangrijkste selecties uit het oorspronkelijke ontwerp terugbrengen.
 
 Filters:
 
-- stichting;
+- tech-hub;
 - schooljaar;
 - gemeente/regio;
 - PO/VO;
@@ -167,12 +168,12 @@ Kerncijfers:
 - gemiddeld aantal leerlingen per aanvraag;
 - aanvragen per school.
 
-Daarnaast komt de vergelijking tussen de twee stichtingen terug.
+Daarnaast komt de vergelijking tussen de twee tech-hubs terug.
 
 Acceptatie:
 
 - definities staan in `DATADEFINITIES.md`;
-- scholen worden binnen stichting en regio eenduidig geteld;
+- scholen worden binnen tech-hub en regio eenduidig geteld;
 - onbekende leerlingaantallen worden apart gemeld;
 - alle cijfers volgen dezelfde actieve filters.
 
@@ -182,7 +183,7 @@ Doel: het visuele overzicht uit de eerste variant terugbrengen zonder externe gr
 
 Grafieken:
 
-- workshops/leerlingen/lesmomenten per maand en stichting;
+- workshops/leerlingen/lesmomenten per maand en tech-hub;
 - PO/VO-verdeling;
 - gemeenten/regio's;
 - workshops;
@@ -259,6 +260,21 @@ Acceptatie:
 - geen functionele wijzigingen aan tellingen of databronnen;
 - alle geautomatiseerde controles blijven groen;
 - `/dev` en een nieuwe `/exec`-implementatie zijn handmatig gecontroleerd.
+
+## Stap 9.1 · Donuts en gemeentekaart
+
+Doel: grafiekvormen laten aansluiten bij de vraag die ze beantwoorden.
+
+- donuts met aantallen en percentages voor PO/VO en statusgroepen;
+- behoud van staven voor ranglijsten en leerjaren;
+- een gemeentekaart op basis van openbare PDOK-grenzen, zonder externe dataverzoeken;
+- een vaste werkgebieduitsnede en een landelijke weergave;
+- inzicht in niet-gekoppelde regio’s en exacte aantallen in een tabel;
+- behoud van dezelfde filters, snapshot en gegevensdefinities.
+
+Dezelfde stap bevat de compacte indeling: filters als inklapbare zijbalk, bronstatus en laadgegevens onder **Data**, een **Weergave**-menu voor screenshots/afdrukken, één gemeentevak met Kaart/Ranglijst en één gezamenlijk PO/VO-leerjaarblok. De tech-hubvergelijking staat onderaan. Donutsegmenten hebben heldere kleuren en witte scheidingen.
+
+Acceptatie: categorieaantallen blijven gelijk aan de tabellen, meerdere lesdagen verdubbelen geen kaartaanvraag en onbekende regio’s verdwijnen niet uit de telling.
 
 ## Stap 10 · Microsoft 365-bron
 

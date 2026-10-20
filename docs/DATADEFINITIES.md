@@ -6,7 +6,7 @@ Alle Google Sheets-rijen worden eerst server-side omgezet naar één intern work
 
 | Intern veld | Sheetkolom | Definitie |
 | --- | --- | --- |
-| `source` | configuratie | naam van de stichting/bron |
+| `source` | configuratie | naam van de tech-hub/bron |
 | `requestId` | `Aanvraag ID` | intern gebruikt voor datakwaliteitscontrole |
 | `requestedDate` | `Datum aanvraag` | geldige datum als `YYYY-MM-DD`, anders `null` |
 | `scheduledDate` | `Definitieve datum` | eerste geldige lesdag als `YYYY-MM-DD`, anders `null` |
@@ -88,6 +88,16 @@ Het leerlingbereik gebruikt uitsluitend gehele, niet-negatieve aantallen. De min
 
 Een lege of ongeldige datum en een leeg of ongeldig leerlingaantal blijven onbekend. Zulke regels worden alleen meegenomen wanneer de bijbehorende keuze **zonder datum meenemen** of **zonder leerlingaantal meenemen** aanstaat. Beide keuzes staan standaard aan, zodat het eerste overzicht en **Filters wissen** alle workshopregels tonen.
 
+## Donuts en gemeentekaart
+
+De donuts voor PO/VO en statusgroepen tellen iedere zichtbare workshopregel eenmaal. Het getal in het midden is het aantal aanvragen in de actieve selectie. Een percentage is het categorieaantal gedeeld door dat totaal; afronding op één decimaal kan samen 99,9% of 100,1% opleveren. Onbekende sectoren en overige statusgroepen blijven zichtbaar. De onderliggende tabellen behouden de exacte aantallen.
+
+De kaart gebruikt dezelfde gefilterde regels. Een aanvraag met meerdere lesdagen telt op de kaart één keer mee, niet eenmaal per lesdag. Gemeenten worden gekoppeld op officiële naam of op `GM`-gemeentecode. Hoofdletters, diakritische tekens, leestekens en een voorvoegsel `Gemeente ` worden bij het vergelijken genegeerd. Het oorspronkelijke `region`-veld en de bestaande exacte dropdownfilters veranderen niet.
+
+Plaatsnamen, afkortingen en samengestelde regio’s worden niet automatisch geraden. Zulke regels blijven in het dashboard en in de gemeente-/regiostaafgrafiek staan, maar krijgen in de kaarttabel de status **Niet gekoppeld**. Het totaal van gekoppelde en niet-gekoppelde kaartregels blijft gelijk aan het aantal gefilterde aanvragen.
+
+Kleurintensiteit geeft het absolute aantal aanvragen aan, van lichtpaars (1) tot donkerpaars (het grootste aantal in de huidige selectie). Grijs betekent nul gekoppelde aanvragen binnen die selectie, niet dat de gemeente in werkelijkheid geen workshops heeft. De kleur is geen percentage van bevolking, scholen of oppervlakte. De aantallen en schaal worden opnieuw berekend na filteren. **Werkgebied** houdt dezelfde uitsnede voor alle geladen gegevens; daardoor verschuift de kaart niet bij iedere filterwijziging. Details bekijken verandert geen dashboardfilter.
+
 ## Getallen en bedragen
 
 - Werkelijke numerieke nul blijft `0`.
@@ -162,7 +172,7 @@ De staafweergave toont bij lange lijsten de grootste categorieën en voegt de re
 
 ### Maandgrafiek
 
-De maandgrafiek kan wisselen tussen aanvragen/workshops, leerlingdeelnames en lesmomenten. De waarden worden per stichting getoond. Bij **Datum aanvraag** hoort een workshop bij de ene maand van `requestedDate`.
+De maandgrafiek kan wisselen tussen aanvragen/workshops, leerlingdeelnames en lesmomenten. De waarden worden per tech-hub getoond. Bij **Datum aanvraag** hoort een workshop bij de ene maand van `requestedDate`.
 
 Bij **Definitieve datum** worden alle geldige lesdagen binnen het zichtbare maandbereik gebruikt. Heeft één workshop meerdere zichtbare lesdagen, dan wordt zijn waarde evenredig over die lesdagen verdeeld en daarna per maand opgeteld. Twee lesdagen in september en één in oktober leveren dus 2/3 in september en 1/3 in oktober op. Hierdoor telt één workshop binnen de zichtbare periode samen nog steeds als één aanvraag; het leerlingaantal en het aantal lesmomenten worden op dezelfde manier verdeeld en niet automatisch vermenigvuldigd. Wanneer de periode wordt verkleind, wordt de verdeling opnieuw bepaald over de lesdagen die binnen die zichtbare periode vallen.
 
@@ -215,15 +225,15 @@ Alle onderstaande cijfers worden berekend over exact dezelfde workshopregels die
 | --- | --- |
 | Aanvragen / workshops | aantal zichtbare workshopregels |
 | Leerlingdeelnames | som van alle bekende waarden in `students`; geen telling van unieke leerlingen |
-| Scholen | unieke combinatie van stichting, regio en genormaliseerde schoolnaam |
+| Scholen | unieke combinatie van tech-hub, regio en genormaliseerde schoolnaam |
 | Lesmomenten | som van alle bekende waarden in `sessions` |
 | Uitgevoerd | aantal regels met `statusGroup` gelijk aan `Uitgevoerd` |
 | Gem. leerlingen / aanvraag | leerlingdeelnames gedeeld door het aantal regels met een bekend leerlingaantal |
 | Aanvragen / school | aantal regels met een bekende school gedeeld door het aantal unieke bekende scholen |
 | Zonder leerlingaantal | aantal zichtbare regels waarvoor `students` onbekend is |
 
-Bij het eenduidig tellen van scholen worden hoofdletters, accenten en overtollige spaties genegeerd. De stichting en regio blijven onderdeel van de sleutel: dezelfde schoolnaam in een andere regio of stichting telt daarom als een andere school. Een lege school of `Onbekende school` telt niet mee als school en ook niet in de teller van **Aanvragen / school**.
+Bij het eenduidig tellen van scholen worden hoofdletters, accenten en overtollige spaties genegeerd. De tech-hub en regio blijven onderdeel van de sleutel: dezelfde schoolnaam in een andere regio of tech-hub telt daarom als een andere school. Een lege school of `Onbekende school` telt niet mee als school en ook niet in de teller van **Aanvragen / school**.
 
-Een leerlingaantal van nul is een bekende waarde en telt mee in som en gemiddelde. Ontbrekende leerlingaantallen blijven onbekend, worden nooit als nul geïnterpreteerd en worden onder de KPI’s en per stichting apart gemeld. Gemiddelden worden met één decimaal getoond; als er geen geldige deler is, verschijnt `—`.
+Een leerlingaantal van nul is een bekende waarde en telt mee in som en gemiddelde. Ontbrekende leerlingaantallen blijven onbekend, worden nooit als nul geïnterpreteerd en worden onder de KPI’s en per tech-hub apart gemeld. Gemiddelden worden met één decimaal getoond; als er geen geldige deler is, verschijnt `—`.
 
-De stichtingvergelijking herhaalt dezelfde definities per bron. Ook wanneer het stichtingfilter actief is blijven beide stichtingen als rij zichtbaar; een door het filter uitgesloten stichting toont dan nulwaarden. Zo is direct zichtbaar dat de tabel dezelfde filters volgt.
+De tech-hubvergelijking herhaalt dezelfde definities per bron. Ook wanneer het tech-hubfilter actief is blijven beide tech-hubs als rij zichtbaar; een door het filter uitgesloten tech-hub toont dan nulwaarden. Zo is direct zichtbaar dat de tabel dezelfde filters volgt.

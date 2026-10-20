@@ -2,7 +2,7 @@
 
 Gebruik bij voorkeur een **nieuw leeg Apps Script-project**. Zo blijven oude `.gs`-bestanden, foutcodes en verkeerd aangemaakte HTML-bestanden niet onzichtbaar meedraaien.
 
-## Stap 1 · Maak exact zeven bestanden
+## Stap 1 · Maak exact acht bestanden
 
 Maak in Apps Script vier scriptbestanden via **+ → Script**:
 
@@ -11,18 +11,19 @@ Maak in Apps Script vier scriptbestanden via **+ → Script**:
 3. `Data`
 4. `Cache`
 
-Maak daarna drie HTML-bestanden via **+ → HTML**:
+Maak daarna vier HTML-bestanden via **+ → HTML**:
 
 1. `Index`
 2. `Styles`
-3. `Client`
+3. `Municipalities`
+4. `Client`
 
 Kopieer de inhoud uit de gelijknamige bestanden in `src/`.
 
 Controleer de bestandstypen goed:
 
 - `Config`, `Code`, `Data` en `Cache` krijgen in Apps Script de extensie `.gs`;
-- `Index`, `Styles` en `Client` krijgen de extensie `.html`;
+- `Index`, `Styles`, `Municipalities` en `Client` krijgen de extensie `.html`;
 - `document` en `window` mogen nergens in een `.gs`-bestand staan.
 
 ## Stap 2 · Sta je Google-account toe
@@ -62,22 +63,26 @@ Sla alle bestanden op. Kies daarna **Implementeren → Implementaties testen →
 Je hoort nu zonder verdere instellingen te zien:
 
 - de badge `Demogegevens`;
-- 10 workshops verdeeld over Stichting A en Stichting B;
+- 10 workshops verdeeld over Tech-hub A en Tech-hub B;
 - negen werkende dropdownfilters;
 - een maandbereik en leerlingbereik met leesbare waarden;
-- zeven kerncijfers en een vergelijking tussen beide stichtingen;
+- zeven kerncijfers en een vergelijking tussen beide tech-hubs;
 - een standaard ingeklapt financieel overzicht;
 - een maandgrafiek met metriekkeuze;
 - verdelingen voor onderwijs, regio, statusgroep, workshop en aanbieder;
 - gewogen PO- en VO-leerjaren;
+- donuts voor PO/VO en statusgroepen, inclusief aantallen en percentages;
+- een gemeentekaart die 10 demoaanvragen aan 7 gemeenten koppelt;
 - een leesbare tabelweergave onder iedere grafiek en de recente-workshoptabel;
 - de paarse 3Dindeklas-header en een werkende knop **Afdrukken / PDF**.
 
-Werkt dit niet, koppel dan nog geen echte data. Controleer eerst of alle zeven bestanden het juiste type en exact dezelfde naam hebben.
+Werkt dit niet, koppel dan nog geen echte data. Controleer eerst of alle acht bestanden het juiste type en exact dezelfde naam hebben.
+
+Bij het bijwerken van een bestaand project: voeg **Municipalities** via **+ → HTML** toe en werk ook `Code.gs`, `Index.html`, `Styles.html` en `Client.html` samen bij. De gemeentekaart heeft geen API-sleutel of extra instelling nodig. Zie [Gemeentekaart](GEMEENTEKAART.md) voor uitleg over de koppeling van regio’s.
 
 ## Stap 4 · Koppel één Google Sheet
 
-Vul eerst alleen Stichting A in:
+Vul eerst alleen Tech-hub A in:
 
 ```javascript
 const APP_CONFIG = Object.freeze({
@@ -96,13 +101,13 @@ const APP_CONFIG = Object.freeze({
   ],
   sources: [
     {
-      name: 'Stichting A',
+      name: 'Tech-hub A',
       spreadsheetId: 'PLAK_HIER_HET_SPREADSHEET_ID',
       sheetName: 'Workshops',
       headerRow: 8
     },
     {
-      name: 'Stichting B',
+      name: 'Tech-hub B',
       spreadsheetId: '',
       sheetName: 'Workshops',
       headerRow: 8
@@ -133,25 +138,27 @@ Voor het financiële overzicht gebruikt de app deze twee kolommen:
 
 Deze kolommen zijn optioneel voor het laden van een workshopregel. Ontbreekt één van beide bedragen, dan blijft de regel zichtbaar maar wordt hij financieel onvolledig genoemd. De bestaande sheetkolommen `Marge (€)` en `Marge (%)` worden niet gebruikt voor de dashboardberekening.
 
-De dropdownfilters worden automatisch opgebouwd uit de geladen workshopregels. Je kunt stichting, schooljaar, gemeente/regio, PO/VO, aanbieder, workshop, statusgroep, school en type combineren. **Filters wissen** herstelt altijd het volledige overzicht.
+Open **Filters** in de navigatie om de standaard ingeklapte zijbalk te tonen. De dropdownfilters worden automatisch opgebouwd uit de geladen workshopregels. Je kunt tech-hub, schooljaar, gemeente/regio, PO/VO, aanbieder, workshop, statusgroep, school en type combineren. **Filters wissen** herstelt de volledige gegevensselectie; de weergavekeuze blijft behouden.
 
 Onder de dropdowns kun je kiezen tussen **Definitieve datum** en **Datum aanvraag**. Stel daarna met de twee maandsliders een inclusieve periode in. `Definitieve datum` mag meerdere lesdagen bevatten, gescheiden door komma’s, puntkomma’s of nieuwe regels. Een workshop wordt opgenomen zodra minimaal één van die lesdagen binnen de gekozen periode valt; de tabel toont alle lesdagen. De leerling-sliders gebruiken automatisch het laagste en hoogste bekende aantal. De twee vinkjes bepalen expliciet of workshopregels zonder geldige datum of zonder leerlingaantal zichtbaar blijven. De sliders reageren direct, zijn met de pijltjestoetsen te bedienen en kunnen elkaar niet passeren.
 
-Met de volledige demoselectie tonen de kerncijfers 10 aanvragen/workshops, 204 leerlingdeelnames, 10 scholen, 22 lesmomenten en 4 uitgevoerde aanvragen. Het gemiddelde is 22,7 bekende leerlingen per aanvraag en er is één regel zonder leerlingaantal. De vergelijking toont dezelfde definities afzonderlijk voor Stichting A en Stichting B. Kies een stichting, regio of ander filter en controleer dat zowel de KPI’s als de vergelijkingstabel direct meeveranderen.
+Met de volledige demoselectie tonen de kerncijfers 10 aanvragen/workshops, 204 leerlingdeelnames, 10 scholen, 22 lesmomenten en 4 uitgevoerde aanvragen. Het gemiddelde is 22,7 bekende leerlingen per aanvraag en er is één regel zonder leerlingaantal. De vergelijking toont dezelfde definities afzonderlijk voor Tech-hub A en Tech-hub B. Kies een tech-hub, regio of ander filter en controleer dat zowel de KPI’s als de vergelijkingstabel direct meeveranderen.
 
 Controleer daarna de grafieken. In de demodata zijn 8 aanvragen voor PO en 2 voor VO. De PO-leerjaarverdeling toont onder andere 3,5 gewogen aanvragen voor groep 6; de VO-verdeling toont 1 aanvraag voor leerjaar 1 en 1 voor leerjaar 2. Wissel in de maandgrafiek tussen aanvragen/workshops, leerlingdeelnames en lesmomenten. De aanvraag met twee definitieve lesdagen wordt evenredig over september en oktober verdeeld. Open bij iedere grafiek **Bekijk cijfers als tabel** en controleer dat dezelfde waarden ook zonder de visuele staven leesbaar zijn.
 
-Open daarna als account uit `financialAllowedEmails` **Kosten, facturatie en marge**. Dit blok hoort bij het laden standaard dicht te staan. Met alle demogegevens zichtbaar zijn de verwachte waarden € 4.750,00 kosten, € 6.700,00 te factureren, € 1.450,00 marge, 25,0% gewogen marge, 8 complete regels en 2 onvolledige regels. Kies daarna één stichting of workshop en controleer dat alle financiële waarden direct dezelfde filters volgen. Test ook met een account dat alleen in `allowedEmails` staat: het financiële blok hoort dan volledig te ontbreken.
+Open daarna als account uit `financialAllowedEmails` **Kosten, facturatie en marge**. Dit blok hoort bij het laden standaard dicht te staan. Met alle demogegevens zichtbaar zijn de verwachte waarden € 4.750,00 kosten, € 6.700,00 te factureren, € 1.450,00 marge, 25,0% gewogen marge, 8 complete regels en 2 onvolledige regels. Kies daarna één tech-hub of workshop en controleer dat alle financiële waarden direct dezelfde filters volgen. Test ook met een account dat alleen in `allowedEmails` staat: het financiële blok hoort dan volledig te ontbreken.
 
 De kosten- en facturatietotalen tellen ieder hun bekende bedragen. Marge wordt alleen berekend voor regels waarop beide bedragen aanwezig zijn. Controleer dit ook met één lege kostencel en één lege factuurcel: de lege cel mag niet als € 0,00 worden behandeld en de betreffende regel moet als onvolledig worden geteld.
 
-Kies vervolgens één stichting en verklein het maand- en leerlingbereik. Alle grafieken en tabellen moeten direct dezelfde selectie volgen. Maak ook bewust een lege combinatie van filters; ieder onderdeel hoort dan een duidelijke lege melding te tonen in plaats van een JavaScript-fout.
+Kies vervolgens één tech-hub en verklein het maand- en leerlingbereik. Alle grafieken en tabellen moeten direct dezelfde selectie volgen. Maak ook bewust een lege combinatie van filters; ieder onderdeel hoort dan een duidelijke lege melding te tonen in plaats van een JavaScript-fout.
 
-Onder **Bronnen & datakwaliteit** zie je per stichting of de bron geladen is, hoeveel workshopregels zijn ingelezen en welke vaste controles aandacht vragen. De standaardlimiet is 5.000 workshopregels per bron. Verhoog deze alleen bewust; de code hanteert altijd een harde bovengrens van 10.000 regels per bron.
+Open **Data → Bronnen & datakwaliteit** om per tech-hub te zien of de bron geladen is, hoeveel workshopregels zijn ingelezen en welke vaste controles aandacht vragen. De standaardlimiet is 5.000 workshopregels per bron. Verhoog deze alleen bewust; de code hanteert altijd een harde bovengrens van 10.000 regels per bron.
 
 Formules mogen onder de echte gegevens alvast zijn doorgetrokken. Rijen die uitsluitend formules bevatten worden niet geladen, tellen niet als workshop en verbruiken de rijlimiet niet. Test dit desgewenst door een formule enkele honderden rijen naar beneden door te trekken: het getoonde aantal workshops hoort gelijk te blijven. Een echte workshoprij met daarnaast berekende formulevelden blijft wel gewoon zichtbaar.
 
-Tijdens het ophalen blijft bovenaan een laadmelding met spinner zichtbaar. Na 1,5, 5 en 10 seconden verandert de tekst, zodat zichtbaar blijft dat de pagina nog op Apps Script en de Sheets wacht. Dit is geen geschat percentage. Na een succesvolle laadactie toont **Gegevens bijgewerkt** ook de werkelijk gemeten laadtijd en of de data uit een snelle snapshot of rechtstreeks uit Google Sheets kwam. De knop **Brongegevens vernieuwen** is tijdens het laden uitgeschakeld om dubbele aanvragen te voorkomen.
+Tijdens het ophalen blijft bovenaan een laadmelding met spinner zichtbaar. Na 1,5, 5 en 10 seconden verandert de tekst, zodat zichtbaar blijft dat de pagina nog op Apps Script en de Sheets wacht. Dit is geen geschat percentage. Na een succesvolle laadactie toont de pagina een korte **Bijgewerkt**-regel. Onder **Data** staan het volledige bijwerktijdstip, de herkomst (**Google Sheets**, **Snapshot** of **Demo**) en de gemeten laadtijd afzonderlijk. De knop **Brongegevens vernieuwen** staat ook onder Data en is tijdens het laden uitgeschakeld.
+
+Met **Weergave** zet je onderdelen afzonderlijk aan of uit voor een screenshot of afdruk. Gemeenten zijn één blok met de keuze **Kaart/Ranglijst** en PO- en VO-leerjaren staan in één gezamenlijk blok. De tech-hubvergelijking staat onderaan. Zie [Compact dashboard en screenshots](WEERGAVE.md).
 
 De bronimport leest per Sheet eerst de kopregel, daarna één compact ankerbereik en ten slotte één keer de benodigde brede tabel. Test bij voorkeur ook met de grootste echte Sheet en met ver doorgetrokken formules. Blijft de melding langer dan 10 seconden staan, controleer dan in Apps Script onder **Uitvoeringen** of het wachten in de bronimport zit en noteer de getoonde laadtijd na afloop.
 
@@ -172,8 +179,8 @@ snapshotCache: Object.freeze({
 
 De knop **Brongegevens vernieuwen** omzeilt de bestaande snapshot, leest beide Sheets opnieuw en vervangt de snapshot. Een gewone herlaadactie gebruikt juist de bestaande snapshot. Test dit als volgt:
 
-1. open de live app en wacht op `rechtstreeks uit Google Sheets`;
-2. herlaad de pagina en controleer dat `snelle snapshot` wordt getoond;
+1. open de live app en controleer onder **Data** de herkomst `Google Sheets`;
+2. herlaad de pagina en controleer dat de herkomst `Snapshot` wordt getoond;
 3. wijzig een herkenbare testwaarde in een bronblad;
 4. herlaad normaal en controleer dat de snapshot nog wordt gebruikt;
 5. kies **Brongegevens vernieuwen** en controleer dat de nieuwe waarde verschijnt;
@@ -197,7 +204,7 @@ De trigger draait met het Google-account van de maker. Dit account moet in `allo
 
 ## Stap 5 · Koppel de tweede Google Sheet
 
-Vul pas wanneer Stichting A werkt ook het `spreadsheetId` van Stichting B in. Beide sheets gebruiken dezelfde kopteksten en dezelfde kopregelinstelling.
+Vul pas wanneer Tech-hub A werkt ook het `spreadsheetId` van Tech-hub B in. Beide sheets gebruiken dezelfde kopteksten en dezelfde kopregelinstelling.
 
 Als één bron niet bereikbaar is, blijven de gegevens van de andere bron zichtbaar. Het dashboard meldt dan dat het overzicht onvolledig is. Er wordt in live-modus nooit automatisch teruggevallen op demogegevens.
 

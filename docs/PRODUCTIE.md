@@ -38,7 +38,7 @@ Leg buiten GitHub vast wie deze rollen heeft. Sla geen accounts, spreadsheet-ID'
 Test met een toegestaan account:
 
 - de pagina toont de paarse 3Dindeklas-header en laadt zonder consolefout;
-- een eerste live laadactie benoemt Google Sheets; een volgende laadactie benoemt de snelle snapshot;
+- onder **Data** staat na een eerste live laadactie **Google Sheets** en na een volgende laadactie **Snapshot**;
 - **Brongegevens vernieuwen** leest de bron opnieuw en herstelt daarna de knop;
 - beide bronnen tonen een begrijpelijke status en het verwachte aantal regels;
 - filters, datumsliders, leerlingensliders en **Filters wissen** werken samen;
@@ -48,7 +48,16 @@ Test met een toegestaan account:
 - het financiële blok is alleen zichtbaar voor een financieel toegestaan account;
 - **Afdrukken / PDF** geeft een rustige A4-landscapeweergave zonder filters en knoppen;
 - toetsenbordfocus is zichtbaar en alle bediening is zonder muis bereikbaar;
-- de pagina blijft bruikbaar rond 375 px, 768 px en 1280 px breed.
+- de pagina blijft bruikbaar rond 375 px, 768 px en 1280 px breed;
+- PO/VO en statusgroepen tonen donuts waarvan de aantallen gelijk zijn aan de tabel;
+- de gemeentekaart volgt de filters, dekt herkenbare gemeenten en meldt niet-gekoppelde regio’s;
+- kaartdetails zijn zowel via tikken als via de gemeentekeuzelijst bereikbaar;
+- wisselen tussen **Werkgebied** en **Heel Nederland** werkt;
+- **Filters** opent en sluit de zijbalk zonder de selectie te wissen;
+- **Weergave** verbergt en herstelt onderdelen; de keuze blijft behouden na filteren en vernieuwen;
+- **Alles tonen** toont geen financiële optie of bedragen voor een account zonder financieel recht;
+- **Kaart/Ranglijst** wisselt binnen één gemeentevak;
+- de PO- en VO-leerjaren delen één blok met de toelichting en de tech-hubvergelijking staat onderaan.
 
 Herhaal de toegangscontrole met:
 
@@ -86,7 +95,7 @@ De knop **Brongegevens vernieuwen** is de juiste handmatige actie na een wijzigi
 1. Noteer tijdstip, zichtbare foutcode, foutreferentie en gebruikte `/dev`- of `/exec`-URL.
 2. Open Apps Script **Uitvoeringen** en zoek dezelfde uitvoering.
 3. Controleer eerst accounttoegang, Sheet-deelrechten, tabbladnaam en kopregel.
-4. Controleer daarna of alle zeven Apps Script-bestanden uit dezelfde commit komen.
+4. Controleer daarna of alle acht Apps Script-bestanden uit dezelfde commit komen.
 5. Deel geen volledige logregels wanneer die broninformatie of IDs bevatten.
 
 Een fout in één bron hoort de andere bron niet te blokkeren. Een cacheprobleem hoort automatisch terug te vallen op live Sheet-data.

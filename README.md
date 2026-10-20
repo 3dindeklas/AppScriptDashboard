@@ -1,6 +1,6 @@
 # Workshopkompas · Google Apps Script-dashboard
 
-Workshopkompas combineert de workshopgegevens van twee stichtingen in één afgeschermd, filterbaar dashboard. Na het invullen van één toegestaan Google-account start de app met fictieve demogegevens en kan daarna één of twee Google Sheets met dezelfde kolomstructuur uitlezen.
+Workshopkompas combineert de workshopgegevens van alle tech-hubs in één afgeschermd, filterbaar dashboard. Na het invullen van één toegestaan Google-account start de app met fictieve demogegevens en kan daarna Google Sheets met dezelfde kolomstructuur uitlezen.
 
 De server normaliseert de volledige analysekolomstructuur naar één intern workshopmodel. Alleen de velden voor de huidige interface en filters worden via een vaste allowlist doorgestuurd; uitgebreidere cijfers volgen per roadmapstap.
 
@@ -18,14 +18,18 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - handmatig vernieuwen en een optionele tijdtrigger vervangen de snapshot bewust;
 - gegevens asynchroon ophalen met `google.script.run`;
 - zichtbare laadstatus met spinner, stapsgewijze feedback en de werkelijk gemeten laadtijd;
-- negen combineerbare filters: stichting, schooljaar, regio, PO/VO, aanbieder, workshop, statusgroep, school en type;
+- negen combineerbare filters: tech-hub, schooljaar, regio, PO/VO, aanbieder, workshop, statusgroep, school en type;
+- een inklapbare filterzijbalk, broninformatie onder **Data** en een korte actualiteitsmelding;
+- afzonderlijk aan- en uitzetten van dashboardonderdelen via **Weergave**, ook voor screenshots en afdrukken;
 - inclusief maandbereik op aanvraagdatum of één van de definitieve lesdagen en een bereik voor leerlingaantallen;
 - expliciete keuzes om regels zonder datum of leerlingaantal wel of niet mee te nemen;
-- zeven gefilterde kerncijfers en een vergelijking tussen de stichtingen;
+- zeven gefilterde kerncijfers en een vergelijking tussen de tech-hubs;
 - een standaard ingeklapt financieel overzicht met kosten, facturatie, marge en volledigheid, uitsluitend voor apart toegestane accounts;
-- een maandgrafiek voor aanvragen, leerlingdeelnames en lesmomenten per stichting;
+- een maandgrafiek voor aanvragen, leerlingdeelnames en lesmomenten per tech-hub;
 - verdelingen voor PO/VO, regio, workshop, aanbieder en statusgroep;
 - gewogen PO- en VO-leerjaren, inclusief combinatiegroepen en onbekende waarden;
+- donuts met aantallen en percentages voor PO/VO en statusgroepen;
+- een gemeentekaart met kleurintensiteit, aantallen, lokale gemeentegrenzen en een landelijke weergave;
 - een toegankelijke tabelweergave onder iedere grafiek en een recente-workshoptabel;
 - visuele afstemming op de 3Dindeklas Foundation, zonder externe CSS- of JavaScript-bibliotheek;
 - responsive bediening voor telefoon, tablet en desktop, met respect voor minder beweging;
@@ -45,6 +49,7 @@ Microsoft 365 en verschillende rollen zijn bewust nog niet opgenomen. Microsoft 
 | `Cache.gs` | server | privacyveilige snapshots, compressie, locking en herstel bij een cache-miss |
 | `Index.html` | browser | paginastructuur |
 | `Styles.html` | browser | CSS binnen een `<style>`-tag |
+| `Municipalities.html` | browser | openbare, vereenvoudigde gemeentegrenzen als JSON; bevat geen workshopgegevens |
 | `Client.html` | browser | browser-JavaScript binnen een `<script>`-tag |
 
 Browserobjecten zoals `document` en `window` mogen alleen in de HTML-bestanden staan.
@@ -66,6 +71,10 @@ Open daarna `preview/index.html`. De preview bevat uitsluitend fictieve gegevens
 Volg [docs/INSTALLATIE.md](docs/INSTALLATIE.md). Vul eerst je Google-account in, begin met `demoMode: true` en koppel pas daarna een Google Sheet.
 
 Gebruik voor publicatie, acceptatietest, beheer en rollback de [productie- en beheerhandleiding](docs/PRODUCTIE.md).
+
+De [kaarthandleiding](docs/GEMEENTEKAART.md) beschrijft gemeentekoppeling, bronvermelding en het bijwerken van de openbare kaartasset. Kaart en donuts volgen dezelfde actieve filters als de rest van het dashboard.
+
+Zie [Compact dashboard en screenshots](docs/WEERGAVE.md) voor de navigatie, zijbalk en weergavekeuze.
 
 ## Stapsgewijs uitbreiden
 

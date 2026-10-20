@@ -621,16 +621,16 @@ function demoDashboardData_() {
 /** Fictieve interne records waarmee de web-app direct blijft werken. */
 function demoRecords_() {
   return [
-    ['demo-a-1', 'Stichting A', '2026-09-03', 'Voorbeeldschool De Horizon', '3D-sleutelhanger', '3Dindeklas', 'Vijfheerenlanden', 'PO', 'groep 7/8', 'Uitgevoerd', 2, 24, 450, 600],
-    ['demo-a-2', 'Stichting A', '2026-09-10', 'Voorbeeldschool Het Kompas', 'Paper Circuits', '3Dindeklas', 'Molenlanden', 'PO', 'groep 5/6', 'Uitgevoerd', 1, 15, 300, 450],
-    ['demo-a-3', 'Stichting A', '2026-09-18', 'Voorbeeldschool De Brug', 'Codeer een robot met kleuren', '3Dindeklas', 'Gorinchem', 'PO', 'groep 3/4', 'Bevestiging', 2, 28, 500, 700],
-    ['demo-a-4', 'Stichting A', '2026-10-02', 'Voorbeeldcollege Noord', 'Micro:bit Magic', '3Dindeklas', 'Vijfheerenlanden', 'VO', 'leerjaar 1', 'Open', 4, 20, 800, 1000],
-    ['demo-a-5', 'Stichting A', '2026-10-12', 'Voorbeeldschool De Regenboog', 'Duurzaam huis met licht', 'MakerLab', 'Altena', 'PO', 'groep 6', 'Akkoord', 2, 18, 400, null],
-    ['demo-b-1', 'Stichting B', '2026-09-05', 'Voorbeeldschool De Uitvinder', 'Bouw een Spin Art-machine', '3Dindeklas', 'Sliedrecht', 'PO', 'groep 5/6', 'Uitgevoerd', 3, 27, 650, 850],
-    ['demo-b-2', 'Stichting B', '2026-09-16', 'Voorbeeldschool De Pionier', 'Programmeer een alarm', '3Dindeklas', 'Molenlanden', 'PO', 'groep 7/8', 'Uitgevoerd', 2, 22, 500, 650],
-    ['demo-b-3', 'Stichting B', '2026-09-25', 'Voorbeeldschool De Ruimte', '3D-sleutelhanger', '3Dindeklas', 'Nieuwegein', 'PO', 'groep 6', 'Ingepland', 2, 26, 450, 600],
-    ['demo-b-4', 'Stichting B', '2026-10-06', 'Voorbeeldcollege Zuid', 'Parachute-uitdaging', 'Techniekteam', 'IJsselstein', 'VO', 'leerjaar 2', 'Optie', 2, 30, null, 900],
-    ['demo-b-5', 'Stichting B', '2026-10-15', 'Voorbeeldschool Het Atelier', 'Greenscreen stop-motion', '3Dindeklas', 'Gorinchem', 'PO', 'groep 6/7', 'Bevestiging', 2, 24, 700, 950]
+    ['demo-a-1', 'Tech-hub A', '2026-09-03', 'Voorbeeldschool De Horizon', '3D-sleutelhanger', '3Dindeklas', 'Vijfheerenlanden', 'PO', 'groep 7/8', 'Uitgevoerd', 2, 24, 450, 600],
+    ['demo-a-2', 'Tech-hub A', '2026-09-10', 'Voorbeeldschool Het Kompas', 'Paper Circuits', '3Dindeklas', 'Molenlanden', 'PO', 'groep 5/6', 'Uitgevoerd', 1, 15, 300, 450],
+    ['demo-a-3', 'Tech-hub A', '2026-09-18', 'Voorbeeldschool De Brug', 'Codeer een robot met kleuren', '3Dindeklas', 'Gorinchem', 'PO', 'groep 3/4', 'Bevestiging', 2, 28, 500, 700],
+    ['demo-a-4', 'Tech-hub A', '2026-10-02', 'Voorbeeldcollege Noord', 'Micro:bit Magic', '3Dindeklas', 'Vijfheerenlanden', 'VO', 'leerjaar 1', 'Open', 4, 20, 800, 1000],
+    ['demo-a-5', 'Tech-hub A', '2026-10-12', 'Voorbeeldschool De Regenboog', 'Duurzaam huis met licht', 'MakerLab', 'Altena', 'PO', 'groep 6', 'Akkoord', 2, 18, 400, null],
+    ['demo-b-1', 'Tech-hub B', '2026-09-05', 'Voorbeeldschool De Uitvinder', 'Bouw een Spin Art-machine', '3Dindeklas', 'Sliedrecht', 'PO', 'groep 5/6', 'Uitgevoerd', 3, 27, 650, 850],
+    ['demo-b-2', 'Tech-hub B', '2026-09-16', 'Voorbeeldschool De Pionier', 'Programmeer een alarm', '3Dindeklas', 'Molenlanden', 'PO', 'groep 7/8', 'Uitgevoerd', 2, 22, 500, 650],
+    ['demo-b-3', 'Tech-hub B', '2026-09-25', 'Voorbeeldschool De Ruimte', '3D-sleutelhanger', '3Dindeklas', 'Nieuwegein', 'PO', 'groep 6', 'Ingepland', 2, 26, 450, 600],
+    ['demo-b-4', 'Tech-hub B', '2026-10-06', 'Voorbeeldcollege Zuid', 'Parachute-uitdaging', 'Techniekteam', 'IJsselstein', 'VO', 'leerjaar 2', 'Optie', 2, 30, null, 900],
+    ['demo-b-5', 'Tech-hub B', '2026-10-15', 'Voorbeeldschool Het Atelier', 'Greenscreen stop-motion', '3Dindeklas', 'Gorinchem', 'PO', 'groep 6/7', 'Bevestiging', 2, 24, 700, 950]
   ].map(function(row) {
     const scheduledDates = row[0] === 'demo-a-4'
       ? []

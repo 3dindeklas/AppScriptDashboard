@@ -156,12 +156,23 @@ function clientHarness(records, options = {}) {
     'sectorChart', 'sectorTableRows', 'regionChart', 'regionTableRows',
     'statusChart', 'statusTableRows', 'workshopChart', 'workshopTableRows',
     'providerChart', 'providerTableRows', 'poChart', 'poTableRows',
-    'voChart', 'voTableRows', 'recentRows', 'recentDateHeading'
+    'voChart', 'voTableRows', 'recentRows', 'recentDateHeading',
+    'municipalityData', 'municipalityMap', 'mapScope', 'mapMunicipality', 'mapDetail',
+    'mapCoverage', 'mapUnmatched', 'mapLegend', 'mapTableRows',
+    'dataUpdatedAt', 'dataOrigin', 'dataDuration', 'dashboardLayout', 'filterSidebar',
+    'filterToggle', 'closeFilters', 'activeFilterCount', 'filterSummary',
+    'dataMenu', 'dataMenuButton', 'displayMenu', 'displayMenuButton', 'emptyView',
+    'financialVisibilityOption', 'analyticsSection', 'geographyView', 'geographyMap',
+    'geographyRanking', 'mapScopeControl', 'showAllPanels', 'closeDataMenu', 'closeDisplayMenu',
+    'viewKpis', 'viewTimeline', 'viewGeography', 'viewSector', 'viewStatus', 'viewWorkshops',
+    'viewProviders', 'viewGrades', 'viewRecent', 'viewComparison', 'viewFinancial',
+    'metricsPanel', 'timelinePanel', 'geographyPanel', 'sectorPanel', 'statusPanel',
+    'workshopsPanel', 'providersPanel', 'gradesPanel', 'recentPanel', 'comparisonPanel'
   ];
   const selectIds = new Set([
     'sourceFilter', 'schoolYearFilter', 'regionFilter', 'sectorFilter',
     'providerFilter', 'workshopFilter', 'statusGroupFilter', 'schoolFilter',
-    'typeFilter', 'dateBasis', 'timelineMetric'
+    'typeFilter', 'dateBasis', 'timelineMetric', 'mapScope', 'mapMunicipality'
   ]);
 
   function element(tagName = 'div', isSelect = false) {
@@ -178,6 +189,7 @@ function clientHarness(records, options = {}) {
       className: '',
       hidden: false,
       disabled: false,
+      open: false,
       style: {},
       children: [],
       options: isSelect ? [{ value: '', textContent: '' }] : [],
@@ -189,7 +201,8 @@ function clientHarness(records, options = {}) {
       setAttribute(name, value) { attributes[name] = String(value); },
       getAttribute(name) { return attributes[name]; },
       addEventListener(type, handler) { listeners[type] = handler; },
-      trigger(type) { if (listeners[type]) listeners[type](); },
+      trigger(type, event = {}) { if (listeners[type]) listeners[type](event); },
+      focus() { this.focused = true; },
       appendChild(child) {
         this.children.push(child);
         if (isSelect && child.tagName === 'OPTION') this.options.push(child);
@@ -205,9 +218,17 @@ function clientHarness(records, options = {}) {
   elements.dateBasis.value = 'scheduledDate';
   elements.includeUnknownDate.checked = true;
   elements.includeUnknownStudents.checked = true;
+  elements.mapScope.value = 'workarea';
+  elements.geographyView.value = 'map';
+  ids.filter(id => id.startsWith('view')).forEach(id => { elements[id].checked = true; });
+  const documentListeners = {};
+  elements.municipalityData.textContent = options.mapAsset === false ? '{}' : fs.readFileSync('src/Municipalities.html', 'utf8')
+    .match(/<script[^>]*>([\s\S]*)<\/script>/)[1];
   const document = {
     getElementById: id => elements[id],
-    createElement: tagName => element(tagName, tagName === 'select')
+    createElement: tagName => element(tagName, tagName === 'select'),
+    createElementNS: (namespace, tagName) => element(tagName),
+    addEventListener: (type, handler) => { documentListeners[type] = handler; }
   };
   const client = fs.readFileSync('src/Client.html', 'utf8')
     .replace(/^<script>\s*|\s*<\/script>\s*$/g, '');
@@ -266,6 +287,7 @@ function clientHarness(records, options = {}) {
       });
   };
   elements.__printCount = () => printCount;
+  elements.__keyDown = key => documentListeners.keydown({ key });
   elements.__resolveLoad = payload => successHandler(payload);
   elements.__rejectLoad = error => failureHandler(error);
   elements.__requestedMethod = () => requestedMethod;
@@ -330,7 +352,7 @@ function row(overrides = {}) {
 }
 
 function normalize(matrix = [headers, row()]) {
-  return context().normalizeSheet_(matrix, 'Stichting A');
+  return context().normalizeSheet_(matrix, 'Tech-hub A');
 }
 
 test('serverbestanden bevatten geen browser-API\'s', () => {
@@ -343,6 +365,7 @@ test('serverbestanden bevatten geen browser-API\'s', () => {
 test('Index gebruikt uitsluitend de officiële include-opzet', () => {
   const index = fs.readFileSync('src/Index.html', 'utf8');
   assert.match(index, /<\?!= include\('Styles'\); \?>/);
+  assert.match(index, /<\?!= include\('Municipalities'\); \?>/);
   assert.match(index, /<\?!= include\('Client'\); \?>/);
   assert.doesNotMatch(index, /include_/);
 });
@@ -376,14 +399,14 @@ test('bereikfilters gebruiken gelabelde native invoervelden en leesbare outputs'
   assert.match(index, /<legend>Aantal leerlingen<\/legend>/);
 });
 
-test('stichtingsvergelijking gebruikt een toegankelijke tabel met alle stap-6-cijfers', () => {
+test('tech-hubsvergelijking gebruikt een toegankelijke tabel met alle stap-6-cijfers', () => {
   const index = fs.readFileSync('src/Index.html', 'utf8');
   assert.match(index, /id="kpisTitle"/);
   assert.match(index, /id="kpiQualityNote"[^>]+aria-live="polite"/);
   assert.match(index, /<table class="comparison-table">/);
-  assert.match(index, /<caption class="visually-hidden">Vergelijking van de actieve kerncijfers per stichting<\/caption>/);
+  assert.match(index, /<caption class="visually-hidden">Vergelijking van de actieve kerncijfers per tech-hub<\/caption>/);
   for (const heading of [
-    'Stichting', 'Aanvragen', 'Leerlingdeelnames', 'Scholen', 'Lesmomenten',
+    'Tech-hub', 'Aanvragen', 'Leerlingdeelnames', 'Scholen', 'Lesmomenten',
     'Uitgevoerd', 'Gem. leerlingen', 'Aanvragen / school', 'Zonder leerlingaantal'
   ]) {
     assert.match(index, new RegExp('<th scope="col">' + heading.replace('/', '\\/') + '<\\/th>'));
@@ -449,16 +472,103 @@ test('afdrukknop opent de browserafdrukweergave', () => {
   assert.equal(elements.__printCount(), 1);
 });
 
+test('filterzijbalk klapt in zonder selecties te verliezen en Escape herstelt de focus', () => {
+  const elements = clientHarness([{ source: 'Hub A', workshop: 'Workshop' }]);
+  assert.equal(elements.filterSidebar.hidden, true);
+  assert.equal(elements.filterToggle.getAttribute('aria-expanded'), 'false');
+  elements.filterToggle.trigger('click');
+  assert.equal(elements.filterSidebar.hidden, false);
+  assert.equal(elements.dashboardLayout.classList.contains('has-filters'), true);
+  elements.sourceFilter.value = 'Hub A';
+  elements.sourceFilter.trigger('change');
+  elements.__keyDown('Escape');
+  assert.equal(elements.filterSidebar.hidden, true);
+  assert.equal(elements.filterToggle.focused, true);
+  assert.equal(elements.sourceFilter.value, 'Hub A');
+  assert.equal(elements.activeFilterCount.textContent, '1');
+  assert.match(elements.filterSummary.textContent, /Hub A/);
+});
+
+test('weergavekeuze bewaart verborgen grafieken na filteren en vernieuwen', () => {
+  const elements = clientHarness([{ source: 'A', sector: 'PO' }], { deferLoad: true });
+  const payload = { mode: 'live', sources: [], records: [{ source: 'A', sector: 'PO' }],
+    permissions: { canViewFinancials: true } };
+  elements.__resolveLoad(payload);
+  elements.viewTimeline.checked = false;
+  elements.viewTimeline.trigger('change');
+  elements.viewFinancial.checked = false;
+  elements.viewFinancial.trigger('change');
+  elements.sourceFilter.value = 'A';
+  elements.sourceFilter.trigger('change');
+  assert.equal(elements.timelinePanel.hidden, true);
+  assert.equal(elements.financialOverview.hidden, true);
+  assert.equal(elements.sectorPanel.hidden, false);
+  elements.refreshButton.trigger('click');
+  elements.__resolveLoad(payload);
+  assert.equal(elements.timelinePanel.hidden, true);
+  assert.equal(elements.financialOverview.hidden, true);
+  elements.resetButton.trigger('click');
+  assert.equal(elements.timelinePanel.hidden, true);
+  assert.equal(elements.viewTimeline.checked, false);
+});
+
+test('alles tonen verleent geen financiële toegang en een lege weergave is herstelbaar', () => {
+  const elements = clientHarness([{ source: 'A' }], { canViewFinancials: false });
+  const controlIds = ['viewKpis', 'viewTimeline', 'viewGeography', 'viewSector', 'viewStatus',
+    'viewWorkshops', 'viewProviders', 'viewGrades', 'viewRecent', 'viewComparison', 'viewFinancial'];
+  controlIds.forEach(id => { elements[id].checked = false; elements[id].trigger('change'); });
+  assert.equal(elements.analyticsSection.hidden, true);
+  assert.equal(elements.emptyView.hidden, false);
+  elements.showAllPanels.trigger('click');
+  assert.equal(elements.emptyView.hidden, true);
+  assert.equal(elements.analyticsSection.hidden, false);
+  assert.equal(elements.sectorPanel.hidden, false);
+  assert.equal(elements.financialVisibilityOption.hidden, true);
+  assert.equal(elements.financialOverview.hidden, true);
+  assert.equal(elements.financialKpis.children.length, 0);
+});
+
+test('kaart en ranglijst delen één weergavekeuze zonder de filterselectie te wijzigen', () => {
+  const elements = clientHarness([{ source: 'A', region: 'Gorinchem' }]);
+  elements.sourceFilter.value = 'A';
+  elements.sourceFilter.trigger('change');
+  const total = elements.resultCount.textContent;
+  elements.geographyView.value = 'ranking';
+  elements.geographyView.trigger('change');
+  assert.equal(elements.geographyMap.hidden, true);
+  assert.equal(elements.geographyRanking.hidden, false);
+  assert.equal(elements.mapScopeControl.hidden, true);
+  assert.equal(elements.resultCount.textContent, total);
+  elements.geographyView.value = 'map';
+  elements.geographyView.trigger('change');
+  assert.equal(elements.geographyMap.hidden, false);
+  assert.equal(elements.geographyRanking.hidden, true);
+});
+
+test('actieve filterteller herkent leerlingbereiken en herstelt na Filters wissen', () => {
+  const elements = clientHarness([
+    { source: 'A', scheduledDate: '2026-09-01', students: 20 },
+    { source: 'B', scheduledDate: '2026-10-01', students: 30 }
+  ]);
+  assert.equal(elements.activeFilterCount.hidden, true);
+  elements.studentsFromRange.value = 21;
+  elements.studentsFromRange.trigger('input');
+  assert.equal(elements.activeFilterCount.textContent, '1');
+  assert.match(elements.filterSummary.textContent, /21 – 30 leerlingen/);
+  elements.resetButton.trigger('click');
+  assert.equal(elements.activeFilterCount.hidden, true);
+});
+
 test('demo blijft werken en de browser ontvangt alleen de veilige stap-8-velden', () => {
   const payload = context().getDashboardData();
   assert.equal(payload.mode, 'demo');
   assert.equal(payload.complete, true);
   assert.equal(payload.records.length, 10);
   assert.deepEqual(JSON.parse(JSON.stringify(payload.sources.map(source => [source.name, source.status, source.recordCount]))), [
-    ['Stichting A', 'demo', 5],
-    ['Stichting B', 'demo', 5]
+    ['Tech-hub A', 'demo', 5],
+    ['Tech-hub B', 'demo', 5]
   ]);
-  assert.deepEqual([...new Set(payload.records.map(record => record.source))].sort(), ['Stichting A', 'Stichting B']);
+  assert.deepEqual([...new Set(payload.records.map(record => record.source))].sort(), ['Tech-hub A', 'Tech-hub B']);
   assert.equal(payload.records.filter(record => !record.scheduledDate).length, 1);
   assert.equal(payload.records.filter(record => record.scheduledDates.length > 1).length, 1);
   assert.equal(payload.records.filter(record => record.students === null).length, 1);
@@ -475,6 +585,102 @@ test('demo blijft werken en de browser ontvangt alleen de veilige stap-8-velden'
   assert.equal(payload.records[0].invoiceAmount, 600);
 });
 
+test('donuts tonen aantallen, percentages en vaste kleuren na filteren', () => {
+  const elements = clientHarness([
+    { source: 'A', region: 'Gorinchem', sector: 'PO', statusGroup: 'Open' },
+    { source: 'A', region: 'Gorinchem', sector: 'PO', statusGroup: 'Ingepland' },
+    { source: 'B', region: 'Altena', sector: 'VO', statusGroup: 'Uitgevoerd' }
+  ]);
+  const ring = elements.sectorChart.children[0];
+  assert.equal(ring.tagName, 'SVG');
+  assert.match(ring.getAttribute('aria-label'), /3 aanvragen/);
+  assert.deepEqual(elements.sectorChart.children[1].children.map(item => item.children[2].textContent),
+    ['2 · 66,7%', '1 · 33,3%']);
+  assert.equal(ring.children[0].getAttribute('fill'), '#6366f1');
+  assert.equal(ring.children[1].getAttribute('fill'), '#06b6d4');
+  assert.equal(ring.children.filter(item => item.tagName === 'PATH').length, 2);
+  assert.equal(ring.children[0].getAttribute('stroke'), '#ffffff');
+  assert.match(ring.children[0].getAttribute('d'), /A77,77.*A53,53/);
+  assert.doesNotMatch(ring.children[0].getAttribute('d'), /NaN/);
+  elements.sourceFilter.value = 'B';
+  elements.sourceFilter.trigger('change');
+  assert.equal(elements.sectorChart.children[0].children[0].getAttribute('fill'), '#06b6d4');
+  assert.match(elements.sectorChart.children[0].children[0].getAttribute('d'), /A77,77.*A77,77.*A53,53.*A53,53/);
+  assert.match(elements.sectorChart.children[1].children[0].children[2].textContent, /100,0%/);
+  assert.deepEqual(elements.statusTableRows.children[0].children.map(cell => cell.textContent), ['Uitgevoerd', '1']);
+});
+
+test('gemeentekaart telt aanvragen eenmaal en meldt niet-herkende regio’s afzonderlijk', () => {
+  const elements = clientHarness([
+    { source: 'A', region: 'Gorinchem', scheduledDates: ['2026-09-01', '2026-09-15'] },
+    { source: 'A', region: ' gemeente GORINCHEM ' },
+    { source: 'B', region: 'GM0512' },
+    { source: 'B', region: 'Hardinxveld Giessendam' },
+    { source: 'B', region: 'Ameide' },
+    { source: 'B', region: 'Onbekend' }
+  ]);
+  assert.equal(elements.mapCoverage.textContent, '4 van 6 aanvragen gekoppeld aan 2 gemeenten.');
+  assert.match(elements.mapUnmatched.textContent, /Ameide \(1\)/);
+  assert.match(elements.mapUnmatched.textContent, /Onbekend \(1\)/);
+  const rows = elements.mapTableRows.children.map(row => row.children.map(cell => cell.textContent));
+  assert.deepEqual(rows.find(row => row[0] === 'Gorinchem'), ['Gorinchem', 'Gemeente', '3']);
+  assert.equal(rows.reduce((sum, row) => sum + Number(row[2]), 0), 6);
+});
+
+test('kaartkleuren, aantallen en detailselectie volgen dezelfde filters en behouden het werkgebied', () => {
+  const elements = clientHarness([
+    { source: 'A', region: 'Gorinchem' },
+    { source: 'A', region: 'Gorinchem' },
+    { source: 'B', region: 'Molenlanden' }
+  ]);
+  const originalView = elements.municipalityMap.children[0].getAttribute('viewBox');
+  let paths = elements.municipalityMap.children[0].children.filter(child => child.tagName === 'PATH');
+  const gorinchem = paths.find(path => path.getAttribute('data-code') === 'GM0512');
+  const molenlanden = paths.find(path => path.getAttribute('data-code') === 'GM1978');
+  assert.notEqual(gorinchem.getAttribute('fill'), molenlanden.getAttribute('fill'));
+  gorinchem.trigger('click');
+  assert.equal(elements.mapMunicipality.value, 'GM0512');
+  assert.equal(elements.mapDetail.textContent, 'Gorinchem: 2 gekoppelde aanvragen.');
+  assert.equal(gorinchem.getAttribute('data-selected'), 'true');
+  elements.sourceFilter.value = 'B';
+  elements.sourceFilter.trigger('change');
+  assert.equal(elements.mapCoverage.textContent, '1 van 1 aanvragen gekoppeld aan 1 gemeente.');
+  assert.equal(elements.municipalityMap.children[0].getAttribute('viewBox'), originalView);
+  assert.equal(elements.mapDetail.textContent, 'Gorinchem: 0 gekoppelde aanvragen.');
+  paths = elements.municipalityMap.children[0].children.filter(child => child.tagName === 'PATH');
+  assert.equal(paths.find(path => path.getAttribute('data-code') === 'GM0512').getAttribute('fill'), '#ebe8ee');
+  elements.mapScope.value = 'netherlands';
+  elements.mapScope.trigger('change');
+  assert.notEqual(elements.municipalityMap.children[0].getAttribute('viewBox'), originalView);
+  elements.resetButton.trigger('click');
+  assert.equal(elements.mapScope.value, 'workarea');
+  assert.equal(elements.mapMunicipality.value, '');
+});
+
+test('ontbrekende kaartasset blokkeert donuts, kerncijfers en gegevens niet', () => {
+  const elements = clientHarness([{ source: 'A', sector: 'PO', region: 'Gorinchem' }], { mapAsset: false });
+  assert.match(elements.municipalityMap.children[0].textContent, /Kaart niet beschikbaar/);
+  assert.equal(elements.mapScope.disabled, true);
+  assert.equal(elements.sectorChart.children[0].tagName, 'SVG');
+  assert.equal(elements.kpis.children[0].children[1].textContent, '1');
+});
+
+test('kaartasset bevat uitsluitend volledige openbare gemeentegeometrie en bronvermelding', () => {
+  const html = fs.readFileSync('src/Municipalities.html', 'utf8');
+  const data = JSON.parse(html.match(/<script[^>]*>([\s\S]*)<\/script>/)[1]);
+  assert.equal(data.municipalities.length, 342);
+  assert.equal(new Set(data.municipalities.map(item => item.code)).size, 342);
+  assert.match(data.url, /^https:\/\/api\.pdok\.nl\//);
+  assert.equal(data.license, 'CC BY 4.0');
+  data.municipalities.forEach(item => {
+    assert.match(item.code, /^GM\d{4}$/);
+    assert.ok(item.path.startsWith('M') && item.path.endsWith('Z'));
+    assert.ok(item.bounds.every(Number.isFinite));
+    assert.ok(item.label.every(Number.isFinite));
+    assert.ok(item.bounds[0] < item.bounds[2] && item.bounds[1] < item.bounds[3]);
+  });
+});
+
 test('lang laden geeft stapsgewijze feedback en herstelt de bediening na succes', () => {
   const elements = clientHarness([], { deferLoad: true });
 
@@ -488,7 +694,7 @@ test('lang laden geeft stapsgewijze feedback en herstelt de bediening na succes'
   elements.__runTimersThrough(1500);
   assert.equal(elements.message.textContent, 'De Google Sheets worden gecontroleerd…');
   elements.__runTimersThrough(5000);
-  assert.equal(elements.message.textContent, 'De workshopregels van beide bronnen worden samengevoegd…');
+  assert.equal(elements.message.textContent, 'De workshopregels van alle tech-hubs worden samengevoegd…');
   elements.__runTimersThrough(10000);
   assert.match(elements.message.textContent, /duurt langer dan normaal/);
 
@@ -507,8 +713,10 @@ test('lang laden geeft stapsgewijze feedback en herstelt de bediening na succes'
   assert.equal(elements.message.classList.contains('loading'), false);
   assert.equal(elements.message.hidden, true);
   assert.equal(elements.modeBadge.textContent, 'Live gegevens');
-  assert.match(elements.updatedAt.textContent, /snelle snapshot/);
-  assert.match(elements.updatedAt.textContent, /geladen in \d+,\d s$/);
+  assert.match(elements.updatedAt.textContent, /^Bijgewerkt /);
+  assert.doesNotMatch(elements.updatedAt.textContent, /geladen in|snapshot/);
+  assert.equal(elements.dataOrigin.textContent, 'Snapshot');
+  assert.match(elements.dataDuration.textContent, /^\d+,\d s$/);
 
   elements.refreshButton.trigger('click');
   assert.equal(elements.__requestedMethod(), 'refreshDashboardData');
@@ -535,8 +743,8 @@ test('demodata levert de gedocumenteerde stap-6-kerncijfers op', () => {
   assert.deepEqual(elements.comparisonRows.children.map(row =>
     row.children.map(cell => cell.textContent)
   ), [
-    ['Stichting A', '5', '105', '5', '11', '2', '21,0', '1,0', '0'],
-    ['Stichting B', '5', '99', '5', '11', '2', '24,8', '1,0', '1']
+    ['Tech-hub A', '5', '105', '5', '11', '2', '21,0', '1,0', '0'],
+    ['Tech-hub B', '5', '99', '5', '11', '2', '24,8', '1,0', '1']
   ]);
 });
 
@@ -568,19 +776,19 @@ test('demodata levert de gedocumenteerde stap-8-financiële totalen op', () => {
 test('financiële totalen gebruiken bekende bedragen en marge alleen uit complete regels', () => {
   const elements = clientHarness([
     {
-      source: 'Stichting A', workshop: 'Compleet A',
+      source: 'Tech-hub A', workshop: 'Compleet A',
       providerTotalCosts: 100, invoiceAmount: 200, financialComplete: true
     },
     {
-      source: 'Stichting A', workshop: 'Alleen kosten',
+      source: 'Tech-hub A', workshop: 'Alleen kosten',
       providerTotalCosts: 50, invoiceAmount: null, financialComplete: false
     },
     {
-      source: 'Stichting B', workshop: 'Compleet B',
+      source: 'Tech-hub B', workshop: 'Compleet B',
       providerTotalCosts: 80, invoiceAmount: 100, financialComplete: true
     },
     {
-      source: 'Stichting B', workshop: 'Alleen factuur',
+      source: 'Tech-hub B', workshop: 'Alleen factuur',
       providerTotalCosts: null, invoiceAmount: 300, financialComplete: false
     }
   ]);
@@ -605,7 +813,7 @@ test('financiële totalen gebruiken bekende bedragen en marge alleen uit complet
     'Onvolledige financiële regels': '2'
   });
 
-  elements.sourceFilter.value = 'Stichting A';
+  elements.sourceFilter.value = 'Tech-hub A';
   elements.sourceFilter.trigger('change');
   assert.deepEqual(financial(), {
     'Totale kosten aanbieder': '€ 150,00',
@@ -648,7 +856,7 @@ test('demodata levert alle stap-7-verdelingen en gewogen leerjaren op', () => {
     ['Groep 6', '3,5'], ['Groep 7', '1,5'], ['Groep 8', '1']
   ]);
   assert.deepEqual(rows('voTableRows'), [['Leerjaar 1', '1'], ['Leerjaar 2', '1']]);
-  assert.equal(elements.timelineCaption.textContent, 'Aanvragen / workshops per maand en stichting');
+  assert.equal(elements.timelineCaption.textContent, 'Aanvragen / workshops per maand en tech-hub');
   assert.deepEqual(rows('timelineTableRows'), [
     ['september 2026', '2,5', '3', '5,5'],
     ['oktober 2026', '1,5', '2', '3,5']
@@ -660,13 +868,13 @@ test('demodata levert alle stap-7-verdelingen en gewogen leerjaren op', () => {
 test('maandgrafiek verdeelt meerdere lesdagen en wisselt tussen alle drie metrieken', () => {
   const elements = clientHarness([
     {
-      source: 'Stichting A', requestedDate: '2026-08-01',
+      source: 'Tech-hub A', requestedDate: '2026-08-01',
       scheduledDate: '2026-09-10', scheduledDates: ['2026-09-10', '2026-10-10'],
       students: 20, sessions: 2, sector: 'PO', grades: [5, 6],
       workshop: 'A', statusGroup: 'Ingepland'
     },
     {
-      source: 'Stichting B', requestedDate: '2026-08-02',
+      source: 'Tech-hub B', requestedDate: '2026-08-02',
       scheduledDate: '2026-09-20', scheduledDates: ['2026-09-20'],
       students: 10, sessions: 1, sector: 'VO', grades: [1],
       workshop: 'B', statusGroup: 'Open'
@@ -721,7 +929,7 @@ test('onbekende leerjaren blijven apart en combinatiegroepen behouden samen éé
 test('een lege selectie geeft nette lege grafiek- en tabelstaten', () => {
   const elements = clientHarness([
     {
-      source: 'Stichting A', scheduledDate: '2026-09-01',
+      source: 'Tech-hub A', scheduledDate: '2026-09-01',
       scheduledDates: ['2026-09-01'], sector: 'PO', grades: [6],
       region: 'Regio', provider: 'Maker', workshop: 'Workshop', statusGroup: 'Open'
     }
@@ -820,8 +1028,8 @@ test('dubbele niet-lege kolomkoppen worden geweigerd maar lege spacers niet', ()
     /Dubbele kolomkop.*Schoolnaam/
   );
   assert.throws(
-    () => context().normalizeSheet_([['Status'], ['Open']], 'Stichting A'),
-    /kolom Workshopnaam ontbreekt in Stichting A/
+    () => context().normalizeSheet_([['Status'], ['Open']], 'Tech-hub A'),
+    /kolom Workshopnaam ontbreekt in Tech-hub A/
   );
 });
 
@@ -974,7 +1182,7 @@ test('dashboardvelden verlaten gecontroleerd de server maar privacy- en detailve
 test('ontbrekende financiële bedragen blijven null in de browserprojectie', () => {
   const ctx = context();
   const record = {
-    source: 'Stichting A',
+    source: 'Tech-hub A',
     providerTotalCosts: undefined,
     invoiceAmount: 0,
     financialComplete: true
@@ -992,19 +1200,19 @@ test('ontbrekende financiële bedragen blijven null in de browserprojectie', () 
 test('alle negen dropdownfilters worden uit de records opgebouwd en gecombineerd', () => {
   const records = [
     {
-      source: 'Stichting A', schoolYear: '2026–2027', region: 'Ameide', sector: 'PO',
+      source: 'Tech-hub A', schoolYear: '2026–2027', region: 'Ameide', sector: 'PO',
       provider: 'Maker A', workshop: '3D ontwerpen', statusGroup: 'Ingepland',
       school: 'School A', type: 'Workshop', status: 'Akkoord', date: '2026-10-10',
       sessions: 2, students: 24
     },
     {
-      source: 'Stichting A', schoolYear: '2025–2026', region: 'Utrecht', sector: 'VO',
+      source: 'Tech-hub A', schoolYear: '2025–2026', region: 'Utrecht', sector: 'VO',
       provider: 'Maker B', workshop: 'Robotica', statusGroup: 'Open',
       school: 'School B', type: 'Training', status: 'Nieuw', date: '2026-05-10',
       sessions: 1, students: 18
     },
     {
-      source: 'Stichting B', schoolYear: '2026–2027', region: 'Ameide', sector: 'PO',
+      source: 'Tech-hub B', schoolYear: '2026–2027', region: 'Ameide', sector: 'PO',
       provider: 'Maker A', workshop: '3D ontwerpen', statusGroup: 'Uitgevoerd',
       school: 'School C', type: 'Workshop', status: 'Uitgevoerd', date: '2026-09-10',
       sessions: 3, students: 30
@@ -1012,7 +1220,7 @@ test('alle negen dropdownfilters worden uit de records opgebouwd en gecombineerd
   ];
   const elements = clientHarness(records);
   const selections = {
-    sourceFilter: 'Stichting A',
+    sourceFilter: 'Tech-hub A',
     schoolYearFilter: '2026–2027',
     regionFilter: 'Ameide',
     sectorFilter: 'PO',
@@ -1085,16 +1293,16 @@ test('een workshop matcht wanneer minstens één definitieve lesdag binnen de pe
     {
       requestedDate: '2026-01-10', scheduledDate: '2026-03-01',
       scheduledDates: ['2026-03-01', '2026-05-20'], students: 10,
-      source: 'Stichting A', workshop: 'Meerdere lessen', status: 'Ingepland'
+      source: 'Tech-hub A', workshop: 'Meerdere lessen', status: 'Ingepland'
     },
     {
       requestedDate: '2026-02-10', scheduledDate: '2026-04-15',
       scheduledDates: ['2026-04-15'], students: 20,
-      source: 'Stichting B', workshop: 'Eén les', status: 'Ingepland'
+      source: 'Tech-hub B', workshop: 'Eén les', status: 'Ingepland'
     },
     {
       requestedDate: '2026-03-10', scheduledDate: '', scheduledDates: [], students: 30,
-      source: 'Stichting B', workshop: 'Nog onbekend', status: 'Open'
+      source: 'Tech-hub B', workshop: 'Nog onbekend', status: 'Open'
     }
   ]);
 
@@ -1159,30 +1367,30 @@ test('datumsoort, onbekende waarden en Filters wissen blijven voorspelbaar', () 
   assert.equal(elements.resultCount.textContent, '4 van 4 workshops zichtbaar');
 });
 
-test('stap-6-kerncijfers en stichtingvergelijking gebruiken exact dezelfde filters', () => {
+test('stap-6-kerncijfers en tech-hubvergelijking gebruiken exact dezelfde filters', () => {
   const records = [
     {
-      source: 'Stichting A', region: 'Noord', school: 'School Eén', students: 20,
+      source: 'Tech-hub A', region: 'Noord', school: 'School Eén', students: 20,
       sessions: 2, statusGroup: 'Uitgevoerd', scheduledDate: '2026-09-01',
       scheduledDates: ['2026-09-01'], workshop: 'A', status: 'Uitgevoerd'
     },
     {
-      source: 'Stichting A', region: ' noord ', school: '  SCHOOL ÉÉN ', students: null,
+      source: 'Tech-hub A', region: ' noord ', school: '  SCHOOL ÉÉN ', students: null,
       sessions: 1, statusGroup: 'Open', scheduledDate: '2026-09-02',
       scheduledDates: ['2026-09-02'], workshop: 'B', status: 'Open'
     },
     {
-      source: 'Stichting A', region: 'Zuid', school: 'School Eén', students: 30,
+      source: 'Tech-hub A', region: 'Zuid', school: 'School Eén', students: 30,
       sessions: 3, statusGroup: 'Uitgevoerd', scheduledDate: '2026-09-03',
       scheduledDates: ['2026-09-03'], workshop: 'C', status: 'Uitgevoerd'
     },
     {
-      source: 'Stichting B', region: 'Noord', school: 'School Eén', students: 10,
+      source: 'Tech-hub B', region: 'Noord', school: 'School Eén', students: 10,
       sessions: 1, statusGroup: 'Uitgevoerd', scheduledDate: '2026-09-04',
       scheduledDates: ['2026-09-04'], workshop: 'D', status: 'Uitgevoerd'
     },
     {
-      source: 'Stichting B', region: 'Noord', school: 'Onbekende school', students: 0,
+      source: 'Tech-hub B', region: 'Noord', school: 'Onbekende school', students: 0,
       sessions: null, statusGroup: 'Open', scheduledDate: '2026-09-05',
       scheduledDates: ['2026-09-05'], workshop: 'E', status: 'Open'
     }
@@ -1210,19 +1418,19 @@ test('stap-6-kerncijfers en stichtingvergelijking gebruiken exact dezelfde filte
     '1 aanvraag heeft geen bekend leerlingaantal. Gemiddelden gebruiken alleen bekende aantallen.'
   );
   assert.deepEqual(rows(), [
-    ['Stichting A', '3', '50', '2', '6', '2', '25,0', '1,5', '1'],
-    ['Stichting B', '2', '10', '1', '1', '1', '5,0', '1,0', '0']
+    ['Tech-hub A', '3', '50', '2', '6', '2', '25,0', '1,5', '1'],
+    ['Tech-hub B', '2', '10', '1', '1', '1', '5,0', '1,0', '0']
   ]);
 
-  elements.sourceFilter.value = 'Stichting B';
+  elements.sourceFilter.value = 'Tech-hub B';
   elements.sourceFilter.trigger('change');
   assert.equal(kpis()['Aanvragen / workshops'], '2');
   assert.equal(kpis()['Leerlingdeelnames'], '10');
   assert.equal(kpis()['Gem. leerlingen / aanvraag'], '5,0');
   assert.equal(elements.comparisonSummary.textContent, '2 zichtbare aanvragen');
   assert.deepEqual(rows(), [
-    ['Stichting A', '0', '0', '0', '0', '0', '—', '—', '0'],
-    ['Stichting B', '2', '10', '1', '1', '1', '5,0', '1,0', '0']
+    ['Tech-hub A', '0', '0', '0', '0', '0', '—', '—', '0'],
+    ['Tech-hub B', '2', '10', '1', '1', '1', '5,0', '1,0', '0']
   ]);
 });
 
@@ -1234,7 +1442,7 @@ test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {
     }
   });
   const ctx = context({ SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) } });
-  const result = ctx.readGoogleSheet_({ name: 'Stichting A', spreadsheetId: 'test', sheetName: 'Workshops', headerRow: 8 });
+  const result = ctx.readGoogleSheet_({ name: 'Tech-hub A', spreadsheetId: 'test', sheetName: 'Workshops', headerRow: 8 });
   assert.deepEqual(requestedRange, [8, 1, 3, headers.length]);
   assert.equal(result.records.length, 2);
   assert.equal(result.warnings.duplicateRequestIds, 0);
@@ -1249,7 +1457,7 @@ test('Google Sheet gebruikt één compacte ankerscan en één brede dataread', (
   });
   const ctx = context({ SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) } });
   ctx.readGoogleSheet_({
-    name: 'Stichting A', spreadsheetId: 'test', sheetName: 'Workshops', headerRow: 8
+    name: 'Tech-hub A', spreadsheetId: 'test', sheetName: 'Workshops', headerRow: 8
   });
 
   assert.deepEqual(ranges, [
@@ -1271,7 +1479,7 @@ test('Google Sheet respecteert de rijlimiet en meldt overgeslagen rijen', () => 
     SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) }
   }, { maxRows: 1 });
   const result = ctx.readGoogleSheet_({
-    name: 'Stichting A', spreadsheetId: 'source-a-id', sheetName: 'Workshops', headerRow: 8
+    name: 'Tech-hub A', spreadsheetId: 'source-a-id', sheetName: 'Workshops', headerRow: 8
   });
 
   assert.deepEqual(requestedRange, [8, 1, 2, headers.length]);
@@ -1308,7 +1516,7 @@ test('formule-only rijen worden niet geladen of als workshop en waarschuwing get
   });
   const ctx = context({ SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) } });
   const result = ctx.readGoogleSheet_({
-    name: 'Stichting A', spreadsheetId: 'test', sheetName: 'Workshops', headerRow: 8
+    name: 'Tech-hub A', spreadsheetId: 'test', sheetName: 'Workshops', headerRow: 8
   });
 
   assert.deepEqual(wideRange, [8, 1, 4, headers.length]);
@@ -1337,7 +1545,7 @@ test('formule-only tussenrijen verbruiken de ingestelde rijlimiet niet', () => {
     SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) }
   }, { maxRows: 2 });
   const result = ctx.readGoogleSheet_({
-    name: 'Stichting A', spreadsheetId: 'source-a-id', sheetName: 'Workshops', headerRow: 8
+    name: 'Tech-hub A', spreadsheetId: 'source-a-id', sheetName: 'Workshops', headerRow: 8
   });
 
   assert.deepEqual(Array.from(result.records, record => record.requestId), ['REQ-001', 'REQ-002']);
@@ -1351,7 +1559,7 @@ test('een echte waarde naast formules houdt de workshoprij wel in de bron', () =
   const sheet = googleSheet([row()], { formulaRows: [formulaRow] });
   const ctx = context({ SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) } });
   const result = ctx.readGoogleSheet_({
-    name: 'Stichting A', spreadsheetId: 'test', sheetName: 'Workshops', headerRow: 8
+    name: 'Tech-hub A', spreadsheetId: 'test', sheetName: 'Workshops', headerRow: 8
   });
 
   assert.equal(result.records.length, 1);
@@ -1565,7 +1773,7 @@ test('datakwaliteitswaarschuwingen worden per bron als veilige aantallen gepubli
 
 test('bronprojectie laat technische velden en providerfouten nooit door', () => {
   const source = context().publicSourceStatus_({
-    name: 'Stichting A',
+    name: 'Tech-hub A',
     status: 'error',
     recordCount: 0,
     warningCount: 0,
@@ -1624,6 +1832,7 @@ test('doGet en include volgen rechtstreeks de HtmlService-methoden', () => {
   assert.equal(ctx.doGet().title, 'Workshopkompas');
   assert.equal(ctx.doGet().viewport, 'viewport:width=device-width, initial-scale=1');
   assert.equal(ctx.include('Styles'), '<Styles>');
+  assert.equal(ctx.include('Municipalities'), '<Municipalities>');
   assert.throws(() => ctx.include('Onbekend'), /Bestand niet beschikbaar/);
 });
 

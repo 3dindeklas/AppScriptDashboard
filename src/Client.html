@@ -15,6 +15,24 @@
       loadStartedAt: 0,
       loadingTimers: []
     };
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const donutColors = {
+      PO: '#6366f1', VO: '#06b6d4', Onbekend: '#94a3b8',
+      Open: '#f59e0b', Ingepland: '#3b82f6', Uitgevoerd: '#10b981',
+      Geannuleerd: '#f43f5e', 'Volgend schooljaar': '#a855f7', Overig: '#94a3b8'
+    };
+    let municipalities = [];
+    try {
+      const asset = JSON.parse(document.getElementById('municipalityData').textContent);
+      municipalities = Array.isArray(asset.municipalities) ? asset.municipalities : [];
+    } catch (error) { /* De overige grafieken blijven beschikbaar zonder kaartasset. */ }
+    const municipalityIndex = new Map();
+    municipalities.forEach(item => {
+      municipalityIndex.set(municipalityKey(item.name), item);
+      municipalityIndex.set(municipalityKey(item.code), item);
+    });
+    let mapPaths = new Map();
+    let mapCounts = new Map();
     const numberFormat = new Intl.NumberFormat('nl-NL');
     const decimalFormat = new Intl.NumberFormat('nl-NL', {
       minimumFractionDigits: 1,
@@ -65,6 +83,20 @@
       message: document.getElementById('message'),
       mode: document.getElementById('modeBadge'),
       updated: document.getElementById('updatedAt'),
+      dataUpdated: document.getElementById('dataUpdatedAt'),
+      dataOrigin: document.getElementById('dataOrigin'),
+      dataDuration: document.getElementById('dataDuration'),
+      layout: document.getElementById('dashboardLayout'),
+      sidebar: document.getElementById('filterSidebar'),
+      filterToggle: document.getElementById('filterToggle'),
+      closeFilters: document.getElementById('closeFilters'),
+      activeFilterCount: document.getElementById('activeFilterCount'),
+      filterSummary: document.getElementById('filterSummary'),
+      dataMenu: document.getElementById('dataMenu'),
+      displayMenu: document.getElementById('displayMenu'),
+      emptyView: document.getElementById('emptyView'),
+      financialVisibilityOption: document.getElementById('financialVisibilityOption'),
+      analyticsSection: document.getElementById('analyticsSection'),
       sourceSummary: document.getElementById('sourceSummary'),
       sourceCards: document.getElementById('sourceCards'),
       dateBasis: document.getElementById('dateBasis'),
@@ -98,6 +130,18 @@
       sectorTableRows: document.getElementById('sectorTableRows'),
       regionChart: document.getElementById('regionChart'),
       regionTableRows: document.getElementById('regionTableRows'),
+      map: document.getElementById('municipalityMap'),
+      mapScope: document.getElementById('mapScope'),
+      mapMunicipality: document.getElementById('mapMunicipality'),
+      mapDetail: document.getElementById('mapDetail'),
+      mapCoverage: document.getElementById('mapCoverage'),
+      mapUnmatched: document.getElementById('mapUnmatched'),
+      mapLegend: document.getElementById('mapLegend'),
+      mapTableRows: document.getElementById('mapTableRows'),
+      geographyView: document.getElementById('geographyView'),
+      geographyMap: document.getElementById('geographyMap'),
+      geographyRanking: document.getElementById('geographyRanking'),
+      mapScopeControl: document.getElementById('mapScopeControl'),
       statusChart: document.getElementById('statusChart'),
       statusTableRows: document.getElementById('statusTableRows'),
       workshopChart: document.getElementById('workshopChart'),
@@ -122,6 +166,15 @@
       ['school', document.getElementById('schoolFilter')],
       ['type', document.getElementById('typeFilter')]
     ].map(filter => ({ field: filter[0], element: filter[1] }));
+    const viewPanels = [
+      ['viewKpis', 'metricsPanel'], ['viewTimeline', 'timelinePanel'],
+      ['viewGeography', 'geographyPanel'], ['viewSector', 'sectorPanel'],
+      ['viewStatus', 'statusPanel'], ['viewWorkshops', 'workshopsPanel'],
+      ['viewProviders', 'providersPanel'], ['viewGrades', 'gradesPanel'],
+      ['viewRecent', 'recentPanel'], ['viewComparison', 'comparisonPanel'],
+      ['viewFinancial', 'financialOverview']
+    ].map(pair => ({ control: document.getElementById(pair[0]), panel: document.getElementById(pair[1]),
+      financial: pair[1] === 'financialOverview' }));
 
     function loadDashboard(forceRefresh) {
       beginLoadingFeedback(forceRefresh === true);
@@ -171,9 +224,10 @@
       configureStudentRange(true);
 
       elements.mode.textContent = state.mode === 'demo' ? 'Demogegevens' : 'Live gegevens';
-      elements.updated.textContent = 'Gegevens bijgewerkt ' + formatDateTime(state.generatedAt) +
-        ' · ' + snapshotSourceLabel(state.snapshotSource) +
-        ' · geladen in ' + formatLoadDuration(loadDuration);
+      elements.updated.textContent = 'Bijgewerkt ' + formatDateTime(state.generatedAt);
+      elements.dataUpdated.textContent = formatDateTime(state.generatedAt);
+      elements.dataOrigin.textContent = snapshotSourceLabel(state.snapshotSource);
+      elements.dataDuration.textContent = formatLoadDuration(loadDuration);
       renderSourceStatus();
       renderLoadMessage();
       render();
@@ -187,6 +241,7 @@
       const detail = error && error.message ? error.message.replace(/^Error:\s*/, '') : 'Onbekende fout.';
       elements.message.textContent = 'Dashboard kon niet laden. ' + detail;
       elements.mode.textContent = 'Niet geladen';
+      elements.dataDuration.textContent = 'Laden mislukt';
     }
 
     function renderLoadMessage() {
@@ -198,7 +253,7 @@
         elements.message.classList.add('warning');
         elements.message.textContent = state.records.length
           ? 'Het overzicht is onvolledig. De beschikbare bronnen worden wel getoond.'
-          : 'Er zijn geen live gegevens geladen. Controleer de bronstatus hieronder.';
+          : 'Er zijn geen live gegevens geladen. Controleer de bronstatus onder Data.';
         return;
       }
 
@@ -298,7 +353,7 @@
 
       [
         [1500, 'De Google Sheets worden gecontroleerd…'],
-        [5000, 'De workshopregels van beide bronnen worden samengevoegd…'],
+        [5000, 'De workshopregels van alle tech-hubs worden samengevoegd…'],
         [10000, 'Het laden duurt langer dan normaal. Grote Sheets en veel formules kunnen extra tijd kosten.']
       ].forEach(step => {
         state.loadingTimers.push(setTimeout(() => {
@@ -325,9 +380,9 @@
     }
 
     function snapshotSourceLabel(source) {
-      if (source === 'cache') return 'snelle snapshot';
-      if (source === 'live') return 'rechtstreeks uit Google Sheets';
-      return 'demogegevens';
+      if (source === 'cache') return 'Snapshot';
+      if (source === 'live') return 'Google Sheets';
+      return 'Demo';
     }
 
     function printDashboard() {
@@ -335,6 +390,55 @@
       if (!elements.financialOverview.hidden) elements.financialOverview.open = true;
       window.print();
       if (!financialWasOpen) elements.financialOverview.open = false;
+    }
+
+    function setFilterSidebar(open) {
+      elements.sidebar.hidden = !open;
+      if (open) elements.layout.classList.add('has-filters');
+      else elements.layout.classList.remove('has-filters');
+      elements.filterToggle.setAttribute('aria-expanded', String(open));
+    }
+
+    function applyPanelVisibility() {
+      elements.financialVisibilityOption.hidden = !state.canViewFinancials;
+      viewPanels.forEach(item => {
+        item.panel.hidden = !item.control.checked || (item.financial && !state.canViewFinancials);
+      });
+      const chartIds = ['timelinePanel', 'geographyPanel', 'sectorPanel', 'statusPanel',
+        'workshopsPanel', 'providersPanel', 'gradesPanel'];
+      elements.analyticsSection.hidden = chartIds.every(id => document.getElementById(id).hidden);
+      elements.emptyView.hidden = viewPanels.some(item => !item.panel.hidden);
+    }
+
+    function applyGeographyView() {
+      const ranking = elements.geographyView.value === 'ranking';
+      elements.geographyMap.hidden = ranking;
+      elements.geographyRanking.hidden = !ranking;
+      elements.mapScopeControl.hidden = ranking;
+    }
+
+    function renderFilterSummary() {
+      const selections = filters.filter(filter => Boolean(filter.element.value));
+      const summary = selections.map(filter => filter.element.value);
+      let active = selections.length;
+      const from = state.dateMonths[Number(elements.dateFrom.value)];
+      const to = state.dateMonths[Number(elements.dateTo.value)];
+      if (from && to) {
+        summary.push((elements.dateBasis.value === 'requestedDate' ? 'Aanvraag' : 'Lesdatum') + ': ' +
+          formatMonthShort(from) + ' – ' + formatMonthShort(to));
+      }
+      if (Number(elements.dateFrom.value) > 0 || Number(elements.dateTo.value) < state.dateMonths.length - 1 ||
+          !elements.includeUnknownDate.checked || elements.dateBasis.value !== 'scheduledDate') active += 1;
+      const studentsFiltered = state.studentBounds &&
+        (Number(elements.studentsFrom.value) > state.studentBounds.minimum ||
+         Number(elements.studentsTo.value) < state.studentBounds.maximum);
+      if (studentsFiltered) summary.push(elements.studentsFrom.value + ' – ' + elements.studentsTo.value + ' leerlingen');
+      if (studentsFiltered || !elements.includeUnknownStudents.checked) active += 1;
+      if (!elements.includeUnknownDate.checked) summary.push('Zonder onbekende datums');
+      if (!elements.includeUnknownStudents.checked) summary.push('Zonder onbekende leerlingaantallen');
+      elements.filterSummary.textContent = summary.join(' · ') || 'Alle tech-hubs · Alle gegevens';
+      elements.activeFilterCount.textContent = String(active);
+      elements.activeFilterCount.hidden = active === 0;
     }
 
     function valuesOf(field) {
@@ -548,6 +652,9 @@
       else clearFinancial();
       renderCharts(records);
       renderRecent(records);
+      renderFilterSummary();
+      applyPanelVisibility();
+      applyGeographyView();
     }
 
     function renderKpis(records) {
@@ -638,7 +745,7 @@
         const cell = document.createElement('td');
         cell.colSpan = 9;
         cell.className = 'empty';
-        cell.textContent = 'Geen stichtingen beschikbaar binnen deze gegevens.';
+        cell.textContent = 'Geen tech-hubs beschikbaar binnen deze gegevens.';
         row.appendChild(cell);
         elements.comparisonRows.appendChild(row);
         return;
@@ -763,13 +870,14 @@
     function renderCharts(records) {
       renderTimeline(records);
       renderCategoryChart(
-        elements.sectorChart, elements.sectorTableRows, countBy(records, 'sector'), 8
+        elements.sectorChart, elements.sectorTableRows, countBy(records, 'sector'), 8, 'donut'
       );
+      renderMunicipalityMap(records);
       renderCategoryChart(
         elements.regionChart, elements.regionTableRows, countBy(records, 'region'), 8
       );
       renderCategoryChart(
-        elements.statusChart, elements.statusTableRows, countBy(records, 'statusGroup'), 8
+        elements.statusChart, elements.statusTableRows, countBy(records, 'statusGroup'), 8, 'donut'
       );
       renderCategoryChart(
         elements.workshopChart, elements.workshopTableRows, countBy(records, 'workshop'), 6
@@ -785,8 +893,9 @@
       );
     }
 
-    function renderCategoryChart(chart, tableRows, entries, limit) {
-      renderBars(chart, entries, limit);
+    function renderCategoryChart(chart, tableRows, entries, limit, type) {
+      if (type === 'donut') renderDonut(chart, entries);
+      else renderBars(chart, entries, limit);
       tableRows.replaceChildren();
 
       if (!entries.length) {
@@ -810,6 +919,231 @@
         row.append(label, value);
         tableRows.appendChild(row);
       });
+    }
+
+    function svgElement(tag, attributes) {
+      const element = document.createElementNS(SVG_NS, tag);
+      Object.entries(attributes || {}).forEach(entry => element.setAttribute(entry[0], entry[1]));
+      return element;
+    }
+
+    function renderDonut(container, entries) {
+      container.replaceChildren();
+      const total = entries.reduce((sum, entry) => sum + entry[1], 0);
+      if (!total) {
+        container.appendChild(emptyMessage('Geen gegevens binnen deze filters.'));
+        return;
+      }
+      const ring = svgElement('svg', {
+        viewBox: '0 0 180 180', class: 'donut-ring', role: 'img',
+        'aria-label': total + ' aanvragen. ' + entries.map(entry => entry[0] + ': ' + entry[1]).join(', ')
+      });
+      let offset = 0;
+      entries.forEach(entry => {
+        const share = entry[1] / total * Math.PI * 2;
+        const segment = svgElement('path', {
+          d: donutSegmentPath(offset, share),
+          fill: donutColors[entry[0]] || '#94a3b8',
+          stroke: '#ffffff', 'stroke-width': Math.min(1.5, share * 53 * 0.15), 'stroke-linejoin': 'round',
+          'aria-hidden': 'true'
+        });
+        offset += share;
+        ring.appendChild(segment);
+      });
+      const value = svgElement('text', { x: 90, y: 88, class: 'donut-total', 'text-anchor': 'middle' });
+      value.textContent = numberFormat.format(total);
+      const unit = svgElement('text', { x: 90, y: 108, class: 'donut-unit', 'text-anchor': 'middle' });
+      unit.textContent = 'aanvragen';
+      ring.append(value, unit);
+      const legend = document.createElement('ul');
+      legend.className = 'donut-legend';
+      entries.forEach(entry => {
+        const item = document.createElement('li');
+        const swatch = document.createElement('span');
+        swatch.className = 'legend-swatch';
+        swatch.style.backgroundColor = donutColors[entry[0]] || '#94a3b8';
+        swatch.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.textContent = entry[0];
+        const value = document.createElement('strong');
+        value.textContent = numberFormat.format(entry[1]) + ' · ' + percentFormat.format(entry[1] / total);
+        item.append(swatch, label, value);
+        legend.appendChild(item);
+      });
+      container.append(ring, legend);
+    }
+
+    function donutSegmentPath(start, angle) {
+      if (angle >= Math.PI * 2 - 0.000001) {
+        return 'M90,13A77,77 0 1,1 90,167A77,77 0 1,1 90,13Z' +
+          'M90,37A53,53 0 1,0 90,143A53,53 0 1,0 90,37Z';
+      }
+      const gap = Math.min(0.035, angle * 0.15);
+      const first = start - Math.PI / 2 + gap / 2;
+      const last = start + angle - Math.PI / 2 - gap / 2;
+      const point = (radius, radians) => [90 + radius * Math.cos(radians), 90 + radius * Math.sin(radians)]
+        .map(value => value.toFixed(3)).join(',');
+      const large = last - first > Math.PI ? 1 : 0;
+      return 'M' + point(77, first) + 'A77,77 0 ' + large + ',1 ' + point(77, last) +
+        'L' + point(53, last) + 'A53,53 0 ' + large + ',0 ' + point(53, first) + 'Z';
+    }
+
+    function municipalityKey(value) {
+      return String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase('nl-NL').trim().replace(/^gemeente\s+/, '').replace(/[^a-z0-9]/g, '');
+    }
+
+    function municipalityTotals(records) {
+      const counts = new Map();
+      const unmatched = new Map();
+      records.forEach(record => {
+        const municipality = municipalityIndex.get(municipalityKey(record.region));
+        const target = municipality ? counts : unmatched;
+        const key = municipality ? municipality.code : record.region || 'Onbekend';
+        target.set(key, (target.get(key) || 0) + 1);
+      });
+      return { counts, unmatched };
+    }
+
+    function mapBounds(items) {
+      const bounds = items.reduce((box, item) => [
+        Math.min(box[0], item.bounds[0]), Math.min(box[1], item.bounds[1]),
+        Math.max(box[2], item.bounds[2]), Math.max(box[3], item.bounds[3])
+      ], [Infinity, Infinity, -Infinity, -Infinity]);
+      const width = Math.max(55, bounds[2] - bounds[0]);
+      const height = Math.max(55, bounds[3] - bounds[1]);
+      const centerX = (bounds[0] + bounds[2]) / 2;
+      const centerY = (bounds[1] + bounds[3]) / 2;
+      return [centerX - width * 0.6, centerY - height * 0.6, width * 1.2, height * 1.2];
+    }
+
+    function mapColor(count, maximum) {
+      if (!count) return '#ebe8ee';
+      const ratio = maximum <= 1 ? 1 : (count - 1) / (maximum - 1);
+      const light = [224, 204, 235];
+      const dark = [76, 50, 91];
+      return 'rgb(' + light.map((value, index) => Math.round(value + (dark[index] - value) * ratio)).join(',') + ')';
+    }
+
+    function renderMunicipalityMap(records) {
+      elements.map.replaceChildren();
+      elements.mapLegend.replaceChildren();
+      elements.mapTableRows.replaceChildren();
+      if (!municipalities.length) {
+        elements.map.appendChild(emptyMessage('Kaart niet beschikbaar. Werk Municipalities.html bij.'));
+        elements.mapCoverage.textContent = '';
+        elements.mapUnmatched.textContent = '';
+        elements.mapScope.disabled = true;
+        elements.mapMunicipality.disabled = true;
+        return;
+      }
+      const totals = municipalityTotals(records);
+      mapCounts = totals.counts;
+      const mappedCount = [...mapCounts.values()].reduce((sum, count) => sum + count, 0);
+      const allCodes = municipalityTotals(state.records).counts;
+      const activeArea = municipalities.filter(item => allCodes.has(item.code));
+      const bounds = mapBounds(elements.mapScope.value === 'netherlands' || !activeArea.length
+        ? municipalities : activeArea);
+      const visible = municipalities.filter(item => item.bounds[2] >= bounds[0] && item.bounds[0] <= bounds[0] + bounds[2] &&
+        item.bounds[3] >= bounds[1] && item.bounds[1] <= bounds[1] + bounds[3]);
+      const maximum = Math.max(0, ...mapCounts.values());
+      const map = svgElement('svg', {
+        viewBox: bounds.join(' '), class: 'municipality-svg', 'aria-labelledby': 'municipalityTitle',
+        'aria-describedby': 'mapCoverage', preserveAspectRatio: 'xMidYMid meet'
+      });
+      mapPaths = new Map();
+      visible.forEach(item => {
+        const count = mapCounts.get(item.code) || 0;
+        const path = svgElement('path', {
+          d: item.path, fill: mapColor(count, maximum), 'fill-rule': 'evenodd',
+          class: 'municipality-shape', 'vector-effect': 'non-scaling-stroke',
+          'data-code': item.code, 'aria-label': item.name + ': ' + count + ' gekoppelde aanvragen'
+        });
+        const title = svgElement('title');
+        title.textContent = item.name + ': ' + numberFormat.format(count) + ' aanvragen';
+        path.appendChild(title);
+        path.addEventListener('click', () => {
+          elements.mapMunicipality.value = item.code;
+          showMunicipalityDetail();
+        });
+        map.appendChild(path);
+        mapPaths.set(item.code, path);
+      });
+      // Labels voor de twaalf grootste aantallen; de lijst bevat alle gemeenten.
+      const labelSize = Math.max(bounds[2], bounds[3]) / 32;
+      const labels = visible.filter(item => mapCounts.has(item.code) &&
+        item.label[0] >= bounds[0] && item.label[0] <= bounds[0] + bounds[2] &&
+        item.label[1] >= bounds[1] && item.label[1] <= bounds[1] + bounds[3])
+        .sort((a, b) => mapCounts.get(b.code) - mapCounts.get(a.code) || a.name.localeCompare(b.name, 'nl')).slice(0, 12);
+      const placedLabels = [];
+      labels.forEach(item => {
+        if (placedLabels.some(point => Math.hypot(point[0] - item.label[0], point[1] - item.label[1]) < labelSize * 2)) return;
+        placedLabels.push(item.label);
+        const label = svgElement('text', {
+          x: item.label[0], y: item.label[1], class: 'map-count-label',
+          'font-size': labelSize,
+          'text-anchor': 'middle', 'dominant-baseline': 'central', 'aria-hidden': 'true'
+        });
+        label.textContent = numberFormat.format(mapCounts.get(item.code));
+        map.appendChild(label);
+      });
+      elements.map.appendChild(map);
+      const current = elements.mapMunicipality.value;
+      while (elements.mapMunicipality.options.length > 1) elements.mapMunicipality.remove(1);
+      visible.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.code;
+        option.textContent = item.name + ' (' + numberFormat.format(mapCounts.get(item.code) || 0) + ')';
+        elements.mapMunicipality.appendChild(option);
+      });
+      elements.mapMunicipality.value = visible.some(item => item.code === current) ? current : '';
+      showMunicipalityDetail();
+      elements.mapCoverage.textContent = numberFormat.format(mappedCount) + ' van ' + numberFormat.format(records.length) +
+        ' aanvragen gekoppeld aan ' + mapCounts.size + (mapCounts.size === 1 ? ' gemeente.' : ' gemeenten.');
+      elements.mapUnmatched.textContent = totals.unmatched.size ? 'Niet op de kaart: ' + [...totals.unmatched.entries()]
+        .sort((a, b) => b[1] - a[1]).slice(0, 5).map(entry => entry[0] + ' (' + entry[1] + ')').join(', ') +
+        (totals.unmatched.size > 5 ? ' en ' + (totals.unmatched.size - 5) + ' andere regio’s. Zie de tabel voor alle waarden.' : '.') : '';
+      const zero = document.createElement('span');
+      zero.className = 'map-zero';
+      zero.textContent = '0 gekoppeld';
+      const gradient = document.createElement('span');
+      gradient.className = 'map-gradient';
+      gradient.setAttribute('aria-hidden', 'true');
+      const scale = document.createElement('span');
+      scale.textContent = maximum ? '1 – ' + numberFormat.format(maximum) + ' aanvragen' : 'Geen gekoppelde aanvragen';
+      elements.mapLegend.append(zero, gradient, scale);
+      const entries = municipalities.filter(item => mapCounts.has(item.code))
+        .map(item => [item.name, 'Gemeente', mapCounts.get(item.code)])
+        .concat([...totals.unmatched.entries()].map(entry => [entry[0], 'Niet gekoppeld', entry[1]]))
+        .sort((a, b) => b[2] - a[2] || a[0].localeCompare(b[0], 'nl'));
+      entries.forEach(entry => {
+        const row = document.createElement('tr');
+        entry.forEach((value, index) => {
+          const cell = document.createElement(index === 0 ? 'th' : 'td');
+          if (index === 0) cell.setAttribute('scope', 'row');
+          cell.textContent = index === 2 ? numberFormat.format(value) : value;
+          row.appendChild(cell);
+        });
+        elements.mapTableRows.appendChild(row);
+      });
+      if (!entries.length) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 3;
+        cell.className = 'empty';
+        cell.textContent = 'Geen gegevens binnen deze filters.';
+        row.appendChild(cell);
+        elements.mapTableRows.appendChild(row);
+      }
+    }
+
+    function showMunicipalityDetail() {
+      const code = elements.mapMunicipality.value;
+      const municipality = municipalities.find(item => item.code === code);
+      mapPaths.forEach((path, key) => path.setAttribute('data-selected', key === code ? 'true' : 'false'));
+      elements.mapDetail.textContent = municipality
+        ? municipality.name + ': ' + numberFormat.format(mapCounts.get(code) || 0) + ' gekoppelde aanvragen.'
+        : 'Kies een gemeente op de kaart of in de lijst.';
     }
 
     function renderTimeline(records) {
@@ -945,7 +1279,7 @@
     }
 
     function renderTimelineTable(months, sources, values, metricLabel) {
-      elements.timelineCaption.textContent = metricLabel + ' per maand en stichting';
+      elements.timelineCaption.textContent = metricLabel + ' per maand en tech-hub';
       elements.timelineTableHead.replaceChildren();
       elements.timelineTableRows.replaceChildren();
 
@@ -1180,12 +1514,62 @@
     elements.includeUnknownDate.addEventListener('change', render);
     elements.includeUnknownStudents.addEventListener('change', render);
     elements.timelineMetric.addEventListener('change', render);
+    elements.mapScope.addEventListener('change', render);
+    elements.mapMunicipality.addEventListener('change', showMunicipalityDetail);
+    elements.geographyView.addEventListener('change', applyGeographyView);
+    elements.filterToggle.addEventListener('click', () => {
+      elements.dataMenu.open = false;
+      elements.displayMenu.open = false;
+      setFilterSidebar(elements.sidebar.hidden);
+    });
+    elements.closeFilters.addEventListener('click', () => {
+      setFilterSidebar(false);
+      elements.filterToggle.focus();
+    });
+    viewPanels.forEach(item => item.control.addEventListener('change', applyPanelVisibility));
+    document.getElementById('showAllPanels').addEventListener('click', () => {
+      viewPanels.forEach(item => { item.control.checked = true; });
+      applyPanelVisibility();
+    });
+    document.getElementById('closeDataMenu').addEventListener('click', () => {
+      elements.dataMenu.open = false;
+      document.getElementById('dataMenuButton').focus();
+    });
+    document.getElementById('closeDisplayMenu').addEventListener('click', () => {
+      elements.displayMenu.open = false;
+      document.getElementById('displayMenuButton').focus();
+    });
+    elements.dataMenu.addEventListener('toggle', () => {
+      if (elements.dataMenu.open) elements.displayMenu.open = false;
+    });
+    elements.displayMenu.addEventListener('toggle', () => {
+      if (elements.displayMenu.open) elements.dataMenu.open = false;
+    });
+    document.addEventListener('click', event => {
+      if (event.target.closest('.nav-menu')) return;
+      elements.dataMenu.open = false;
+      elements.displayMenu.open = false;
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+      const dataWasOpen = elements.dataMenu.open;
+      const displayWasOpen = elements.displayMenu.open;
+      const filtersWereOpen = !elements.sidebar.hidden;
+      elements.dataMenu.open = false;
+      elements.displayMenu.open = false;
+      setFilterSidebar(false);
+      if (dataWasOpen) document.getElementById('dataMenuButton').focus();
+      else if (displayWasOpen) document.getElementById('displayMenuButton').focus();
+      else if (filtersWereOpen) elements.filterToggle.focus();
+    });
     elements.refresh.addEventListener('click', () => loadDashboard(true));
     elements.print.addEventListener('click', printDashboard);
     elements.reset.addEventListener('click', () => {
       filters.forEach(filter => { filter.element.value = ''; });
       elements.dateBasis.value = 'scheduledDate';
       elements.timelineMetric.value = 'requests';
+      elements.mapScope.value = 'workarea';
+      elements.mapMunicipality.value = '';
       elements.includeUnknownDate.checked = true;
       elements.includeUnknownStudents.checked = true;
       configureDateRange(false);
@@ -1193,6 +1577,9 @@
       render();
     });
 
+    setFilterSidebar(false);
+    applyPanelVisibility();
+    applyGeographyView();
     loadDashboard(false);
   })();
 </script>

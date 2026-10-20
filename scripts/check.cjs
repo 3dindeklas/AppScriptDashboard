@@ -28,8 +28,13 @@ if (!manifest.oauthScopes?.includes('https://www.googleapis.com/auth/userinfo.em
 }
 
 const index = fs.readFileSync('src/Index.html', 'utf8');
-for (const include of ["include('Styles')", "include('Client')"]) {
+for (const include of ["include('Styles')", "include('Municipalities')", "include('Client')"]) {
   if (!index.includes(include)) throw new Error('Index.html mist ' + include + '.');
+}
+const asset = fs.readFileSync('src/Municipalities.html', 'utf8');
+const map = JSON.parse(asset.match(/<script[^>]*>([\s\S]*)<\/script>/)[1]);
+if (!Array.isArray(map.municipalities) || map.municipalities.length < 300) {
+  throw new Error('De openbare gemeentegrenzen ontbreken of zijn onvolledig.');
 }
 
 console.log('Servercode, clientcode, HTML-includes en manifest zijn syntactisch geldig.');
