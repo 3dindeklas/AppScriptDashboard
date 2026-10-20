@@ -1,4 +1,4 @@
-# Installatie van de minimale versie
+# Installatie van Workshopkompas
 
 Gebruik bij voorkeur een **nieuw leeg Apps Script-project**. Zo blijven oude `.gs`-bestanden, foutcodes en verkeerd aangemaakte HTML-bestanden niet onzichtbaar meedraaien.
 
@@ -70,7 +70,8 @@ Je hoort nu zonder verdere instellingen te zien:
 - een maandgrafiek met metriekkeuze;
 - verdelingen voor onderwijs, regio, statusgroep, workshop en aanbieder;
 - gewogen PO- en VO-leerjaren;
-- een leesbare tabelweergave onder iedere grafiek en de recente-workshoptabel.
+- een leesbare tabelweergave onder iedere grafiek en de recente-workshoptabel;
+- de paarse 3Dindeklas-header en een werkende knop **Afdrukken / PDF**.
 
 Werkt dit niet, koppel dan nog geen echte data. Controleer eerst of alle zeven bestanden het juiste type en exact dezelfde naam hebben.
 
@@ -215,6 +216,8 @@ De manifestinstelling blijft `executeAs: USER_ACCESSING`. Daardoor geeft iedere 
 
 Na latere codewijzigingen moet je de bestaande implementatie bewerken en een nieuwe versie selecteren. Alleen opslaan vernieuwt de gepubliceerde `/exec`-versie niet.
 
+Gebruik bij iedere productiepublicatie ook de volledige [productie- en beheerchecklist](PRODUCTIE.md). Die bevat de handmatige tests voor responsive gedrag, toetsenbordbediening, financiële afscherming, snapshotverversing, afdrukken en rollback.
+
 ## Verwachte toegangsmeldingen
 
 - **Geen toegang**: het actieve Google-account staat niet exact in `allowedEmails`, of Google heeft geen identiteit doorgegeven.
@@ -238,4 +241,4 @@ Een ontbrekende, verlopen of onvolledige snapshot krijgt geen aparte foutcode: d
 
 ## Waarom Microsoft 365 nog ontbreekt
 
-Microsoft 365 vereist Microsoft Graph, OAuth-tokens, tokenvernieuwing en extra foutafhandeling. Dat maakt fouten in de basis moeilijker te herkennen. Zodra demo en Google Sheets stabiel draaien, voegen we Microsoft als afzonderlijke fase toe zonder de werkende basis om te bouwen.
+Microsoft 365 vereist Microsoft Graph, OAuth-tokens, tokenvernieuwing en extra foutafhandeling. Deze koppeling staat daarom als afzonderlijke stap 10 gepland zodra hij met een Microsoft-testaccount gecontroleerd kan worden, zonder de werkende Google-versie om te bouwen.

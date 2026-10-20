@@ -142,7 +142,7 @@ function googleSheet(rows, overrides = {}) {
 
 function clientHarness(records, options = {}) {
   const ids = [
-    'dashboard', 'refreshButton', 'resetButton', 'message', 'modeBadge', 'updatedAt',
+    'dashboard', 'refreshButton', 'printButton', 'resetButton', 'message', 'modeBadge', 'updatedAt',
     'sourceSummary', 'sourceCards', 'sourceFilter', 'schoolYearFilter',
     'regionFilter', 'sectorFilter', 'providerFilter', 'workshopFilter',
     'statusGroupFilter', 'schoolFilter', 'typeFilter', 'dateBasis',
@@ -228,7 +228,9 @@ function clientHarness(records, options = {}) {
     getDashboardData() { requestedMethod = 'getDashboardData'; },
     refreshDashboardData() { requestedMethod = 'refreshDashboardData'; }
   };
-  const window = options.deferLoad ? {} : {
+  let printCount = 0;
+  const window = options.deferLoad ? { print: () => { printCount += 1; } } : {
+    print: () => { printCount += 1; },
     __DEMO_PAYLOAD__: {
       mode: 'demo',
       generatedAt: '2026-10-17T00:00:00.000Z',
@@ -263,6 +265,7 @@ function clientHarness(records, options = {}) {
         entry[1].handler();
       });
   };
+  elements.__printCount = () => printCount;
   elements.__resolveLoad = payload => successHandler(payload);
   elements.__rejectLoad = error => failureHandler(error);
   elements.__requestedMethod = () => requestedMethod;
@@ -418,6 +421,32 @@ test('iedere stap-7-grafiek heeft een leesbare tabelweergave zonder externe graf
   assert.equal((index.match(/<details class="chart-data">/g) || []).length, 8);
   assert.doesNotMatch(index, /<script[^>]+src=/i);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
+});
+
+test('stap 9 volgt de Foundation en heeft responsive, print- en bewegingsvoorkeuren', () => {
+  const index = fs.readFileSync('src/Index.html', 'utf8');
+  const styles = fs.readFileSync('src/Styles.html', 'utf8');
+
+  assert.match(index, /class="site-header"/);
+  assert.match(index, /LEREN DOOR CREËREN/);
+  assert.match(index, /Foundation\/assets\/logo-3dindeklas\.png/);
+  assert.match(index, /id="printButton"/);
+  assert.match(styles, /--purple:\s*#4c325b/);
+  assert.match(styles, /--yellow:\s*#fbbd30/);
+  assert.match(styles, /--teal:\s*#5ab3b1/);
+  assert.match(styles, /min-height:\s*2\.75rem/);
+  assert.match(styles, /@media \(max-width: 480px\)/);
+  assert.match(styles, /@media print/);
+  assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.doesNotMatch(index, /<link[^>]+rel=["']stylesheet/i);
+  assert.doesNotMatch(index, /<script[^>]+src=/i);
+});
+
+test('afdrukknop opent de browserafdrukweergave', () => {
+  const elements = clientHarness([]);
+  assert.equal(elements.__printCount(), 0);
+  elements.printButton.trigger('click');
+  assert.equal(elements.__printCount(), 1);
 });
 
 test('demo blijft werken en de browser ontvangt alleen de veilige stap-8-velden', () => {

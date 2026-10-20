@@ -42,8 +42,8 @@ We starten geen volgende featurebranch voordat de voorgaande PR is gemerged. Daa
 | 7 | Grafieken en leerjaren | Tijdlijn, verdelingen en gewogen PO/VO-leerjaren | stap 6 |
 | 8 | Financieel overzicht | Kosten, facturatie, marge en volledigheidsmelding | stap 7 |
 | 8.1 | Snapshotcache en laadtijd | Snelle servercache, handmatig verversen en veilige terugval | stap 8 |
-| 9 | Microsoft 365-bron | Microsoft Graph-adapter achter hetzelfde datacontract | stap 8.1 |
-| 10 | Vormgeving en afronding | Animaties, toegankelijkheid, responsive polish en productiedocumentatie | stap 9 |
+| 9 | Vormgeving en productieafronding | Foundation-stijl, toegankelijkheid, responsive/print en productiedocumentatie | stap 8.1 |
+| 10 | Microsoft 365-bron | Microsoft Graph-adapter achter hetzelfde datacontract | stap 9 |
 
 ## Stap 1 · Datamodel en normalisatie
 
@@ -240,29 +240,9 @@ Acceptatie:
 - een account zonder financiële toegang ontvangt ook vanuit de snapshot geen bedragen;
 - persoonsgegevens en technische velden worden nooit gecachet.
 
-## Stap 9 · Microsoft 365-bron
+## Stap 9 · Vormgeving en productieafronding
 
-Doel: Microsoft pas aansluiten wanneer het dashboard zelf stabiel is.
-
-In deze PR:
-
-- Excel-tabel via Microsoft Graph uitlezen;
-- OAuth-tokens uitsluitend server-side bewaren;
-- tokenvernieuwing met locking;
-- paginering van tabelrijen;
-- Graph-data door exact dezelfde normalisatiefunctie sturen;
-- Microsoft-bronstatus opnemen in de bestaande datakwaliteitssectie.
-
-Acceptatie:
-
-- de UI bevat geen Microsoft-specifieke logica;
-- tokens, IDs en Graph-fouten verlaten de server niet;
-- uitval van Microsoft blokkeert de Google-bron niet;
-- demo en Google-only blijven zonder Microsoft-configuratie werken.
-
-## Stap 10 · Vormgeving en productieafronding
-
-Doel: pas na functionele stabiliteit de uiteindelijke presentatie afronden.
+Doel: de functioneel stabiele Google-versie gereedmaken voor dagelijks gebruik en productie.
 
 In deze PR:
 
@@ -279,6 +259,26 @@ Acceptatie:
 - geen functionele wijzigingen aan tellingen of databronnen;
 - alle geautomatiseerde controles blijven groen;
 - `/dev` en een nieuwe `/exec`-implementatie zijn handmatig gecontroleerd.
+
+## Stap 10 · Microsoft 365-bron
+
+Doel: Microsoft aansluiten zodra de Graph-koppeling met een testaccount kan worden gecontroleerd.
+
+In deze PR:
+
+- Excel-tabel via Microsoft Graph uitlezen;
+- OAuth-tokens uitsluitend server-side bewaren;
+- tokenvernieuwing met locking;
+- paginering van tabelrijen;
+- Graph-data door exact dezelfde normalisatiefunctie sturen;
+- Microsoft-bronstatus opnemen in de bestaande datakwaliteitssectie.
+
+Acceptatie:
+
+- de UI bevat geen Microsoft-specifieke logica;
+- tokens, IDs en Graph-fouten verlaten de server niet;
+- uitval van Microsoft blokkeert de Google-bron niet;
+- demo en Google-only blijven zonder Microsoft-configuratie werken.
 
 ## Definition of done voor iedere PR
 

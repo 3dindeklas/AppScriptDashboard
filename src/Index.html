@@ -6,23 +6,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <?!= include('Styles'); ?>
   </head>
-  <body>
+  <body class="threediklas">
     <a class="skip-link" href="#dashboard">Ga naar het dashboard</a>
 
-    <header class="header">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true">w</span>
-        <span>workshop<strong>kompas</strong></span>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand-logo" href="https://www.3dindeklas.nl/" target="_blank" rel="noopener noreferrer" aria-label="Naar 3dindeklas.nl">
+          <img src="https://3dindeklas.github.io/Foundation/assets/logo-3dindeklas.png" width="58" height="70" alt="3dindeklas">
+        </a>
+        <div class="header-title">
+          <span>LEREN DOOR CREËREN</span>
+          <strong>Workshopkompas</strong>
+        </div>
+        <div class="header-actions">
+          <a class="header-link" href="https://www.3dindeklas.nl/" target="_blank" rel="noopener noreferrer">3dindeklas.nl <span aria-hidden="true">↗</span></a>
+          <button id="refreshButton" class="button button-header" type="button">Brongegevens vernieuwen</button>
+        </div>
       </div>
-      <button id="refreshButton" class="button" type="button">Brongegevens vernieuwen</button>
     </header>
 
     <main id="dashboard" class="page">
-      <section class="intro">
+      <section class="intro" aria-labelledby="pageTitle">
         <div>
           <p class="eyebrow">WORKSHOPS IN BEELD</p>
-          <h1>Eén helder overzicht.</h1>
-          <p>Een eenvoudige basis die we stap voor stap verder kunnen uitbreiden.</p>
+          <h1 id="pageTitle">Grip op bereik, planning en impact.</h1>
+          <p>De workshopgegevens van beide stichtingen in één veilig en filterbaar overzicht.</p>
         </div>
         <div class="load-meta">
           <span id="modeBadge" class="badge">Laden…</span>
@@ -51,7 +59,10 @@
             <p class="eyebrow">FILTERS</p>
             <h2 id="filtersTitle">Verfijn het overzicht</h2>
           </div>
-          <button id="resetButton" class="text-button" type="button">Filters wissen</button>
+          <div class="panel-actions">
+            <button id="printButton" class="text-button" type="button">Afdrukken / PDF</button>
+            <button id="resetButton" class="text-button" type="button">Filters wissen</button>
+          </div>
         </div>
 
         <div class="filter-grid">
@@ -290,15 +301,15 @@
         <p class="chart-note">Combinatiegroepen worden evenredig verdeeld over de herkende leerjaren. Onbekende leerjaren blijven apart zichtbaar.</p>
       </section>
 
-      <section class="panel">
+      <section class="panel recent-panel" aria-labelledby="recentTitle">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">LAATSTE DATA</p>
-            <h2>Recente workshops</h2>
+            <h2 id="recentTitle">Recente workshops</h2>
           </div>
         </div>
         <div class="table-wrap">
-          <table>
+          <table aria-labelledby="recentTitle">
             <thead>
               <tr>
                 <th id="recentDateHeading">Definitieve datum</th>
@@ -314,7 +325,7 @@
       </section>
 
       <footer>
-        <span>Workshopkompas</span>
+        <span><strong>Workshopkompas</strong> · 3Dindeklas</span>
         <span>Geen contactgegevens of notities in dit dashboard</span>
       </footer>
     </main>
