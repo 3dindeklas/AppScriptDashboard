@@ -755,7 +755,7 @@ test('lang laden geeft stapsgewijze feedback en herstelt de bediening na succes'
   assert.equal(elements.modeBadge.textContent, 'Snapshot gebruikt');
   assert.match(elements.updatedAt.textContent, /^Bijgewerkt /);
   assert.doesNotMatch(elements.updatedAt.textContent, /geladen in|snapshot/);
-  assert.equal(elements.dataOrigin.textContent, 'Snapshot gebruikt — bronnen niet opnieuw ingelezen');
+  assert.equal(elements.dataOrigin.textContent, 'Snapshot gebruikt');
   assert.match(elements.dataDuration.textContent, /^\d+,\d s$/);
 
   elements.refreshButton.trigger('click');
@@ -1962,4 +1962,24 @@ test('snapshotopslagfout wordt zichtbaar terwijl de brongegevens beschikbaar bli
   const result = ctx.getDashboardData();
   assert.equal(result.snapshot.storage, 'failed');
   assert.ok(result.records.length > 0);
+});
+
+
+test('herkomstlabels zijn kort en onderscheiden hergebruik van opslaan en fouten', () => {
+  const scenarios = [
+    [{ source: 'cache', storage: 'used' }, 'Snapshot gebruikt'],
+    [{ source: 'live', storage: 'saved' }, 'Snapshot opgeslagen'],
+    [{ source: 'live', storage: 'preserved' }, 'Vorige snapshot behouden'],
+    [{ source: 'live', storage: 'failed' }, 'Opslaan mislukt'],
+    [{ source: 'live', storage: 'busy' }, 'Snapshot bezet'],
+    [{ source: 'live', storage: 'disabled' }, 'Snapshot uitgeschakeld'],
+    [{ source: 'live', cacheEnabled: false }, 'Snapshot uitgeschakeld'],
+    [{ source: 'live' }, 'Zonder snapshot']
+  ];
+  for (const [snapshot, label] of scenarios) {
+    const elements = clientHarness([], { deferLoad: true });
+    elements.__resolveLoad({ records: [], sources: [], complete: true, snapshot });
+    assert.equal(elements.dataOrigin.textContent, label);
+    assert.doesNotMatch(elements.modeBadge.textContent, /Bronnen ingelezen/);
+  }
 });

@@ -217,7 +217,7 @@
       configureDateRange(true);
       configureStudentRange(true);
 
-      elements.mode.textContent = state.snapshotSource === 'cache' ? 'Snapshot gebruikt' : 'Bronnen ingelezen';
+      elements.mode.textContent = state.snapshotSource === 'cache' ? 'Snapshot gebruikt' : 'Actuele gegevens';
       elements.updated.textContent = 'Bijgewerkt ' + formatDateTime(state.generatedAt);
       elements.dataUpdated.textContent = formatDateTime(state.generatedAt);
       elements.dataOrigin.textContent = snapshotSourceLabel(state.snapshotSource, payload.snapshot);
@@ -386,16 +386,16 @@
     }
 
     function snapshotSourceLabel(source, snapshot) {
-      if (source === 'cache') return 'Snapshot gebruikt — bronnen niet opnieuw ingelezen';
+      if (source === 'cache') return 'Snapshot gebruikt';
       const storage = snapshot && snapshot.storage;
-      if (storage === 'saved') return 'Bronnen ingelezen — snapshot opgeslagen';
-      if (storage === 'preserved') return 'Bronnen ingelezen — vorige volledige snapshot behouden';
-      if (storage === 'failed') return 'Bronnen ingelezen — snapshot opslaan mislukt';
-      if (storage === 'busy') return 'Bronnen ingelezen — snapshot bezet, niet opgeslagen';
+      if (storage === 'saved') return 'Snapshot opgeslagen';
+      if (storage === 'preserved') return 'Vorige snapshot behouden';
+      if (storage === 'failed') return 'Opslaan mislukt';
+      if (storage === 'busy') return 'Snapshot bezet';
       if (storage === 'disabled' || (snapshot && snapshot.cacheEnabled === false)) {
-        return 'Bronnen ingelezen — snapshot uitgeschakeld';
+        return 'Snapshot uitgeschakeld';
       }
-      if (source === 'live') return 'Bronnen ingelezen';
+      if (source === 'live') return 'Zonder snapshot';
       return 'Onbekend';
     }
 
