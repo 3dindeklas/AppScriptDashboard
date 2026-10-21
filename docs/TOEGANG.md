@@ -6,7 +6,7 @@ Een ingevuld e-mailadres is geen bewijs dat iemand dat adres bezit. Daarom gebru
 
 Zonder geldige identiteit bouwt de server alleen **Access.html** op. Index, grafieken, kaartasset en brongegevens worden dan niet verstuurd. Bij een afwijzing tijdens het laden verdwijnt ook een al opgebouwde dashboardpagina. Ontbreekt een nieuw bestand, dan blijft er een eenvoudige foutpagina over, zonder dashboardblokken.
 
-De bestaande Google-toegang gebruikt `allowedEmails`. Een toegestaan Google-account blijft op de standaarddeployment direct werken.
+De bestaande Google-toegang gebruikt `allowedEmails` wanneer Google de actieve identiteit beschikbaar stelt. Op een deployment namens de beheerder kan die identiteit ontbreken; gebruik dan de e-mailcode en zet het adres ook in `emailAccess.allowedEmails`.
 
 Met e-mailtoegang aan vult de bezoeker een vooraf toegestaan adres in en ontvangt een zescijferige code. Die code is standaard **10 minuten** geldig, eenmalig bruikbaar en na **5 foute pogingen** geblokkeerd. Een opnieuw verstuurde code vervangt de vorige. Het antwoord verklapt niet of een ingevuld adres op de lijst staat.
 
@@ -38,7 +38,9 @@ Het verwijderen van een gastadres of uitschakelen van e-mailtoegang blokkeert be
 
 ## Deployment voor gebruikers zonder Google-account
 
-De standaard **src/appsscript.json** blijft uitvoeren als **de bezoeker** en vraagt geen mailrecht. Google vereist dan een Google-account vóór de app kan starten. Een HTML-inlogformulier kan die platformcontrole niet omzeilen.
+Het huidige **src/appsscript.json** gebruikt **USER_DEPLOYING / ANYONE_ANONYMOUS** en bevat `script.send_mail`. De app draait dus namens de beheerder, ook voor bezoekers zonder Google-account. De gastadressen en `emailAccess.enabled` moeten daarnaast in Config.gs worden ingesteld.
+
+De controles ondersteunen ook het eerdere Google-model: **USER_ACCESSING** met toegang voor aangemelde gebruikers, zoals **ANYONE**. Google vereist bij dat model een Google-account vóór de app kan starten. Een HTML-inlogformulier kan die platformcontrole niet omzeilen.
 
 Voor gasten is een deployment nodig die draait als **de beheerder** en bereikbaar is voor **iedereen, ook zonder Google-login**. De app controleert daarna zelf de e-mailcode en sessie bij iedere pagina- en data-aanvraag.
 
@@ -47,7 +49,7 @@ Gebruik bij voorkeur een **apart Apps Script-project voor gastinzage**. Zo blijv
 1. Kopieer alle elf bestanden uit `src/`: vijf scripts en zes HTML-bestanden. Zie [INSTALLATIE.md](INSTALLATIE.md).
 2. Vul de bronbladen en je eigen Google-account in; zet de gewenste gastadressen in `emailAccess.allowedEmails` en `enabled` op `true`.
 3. Zet eerst `demoMode: true` om de volledige gastflow met fictieve gegevens te testen.
-4. Kopieer voor dit gastproject de inhoud van **deploy/email-access/appsscript.json** naar het Apps Script-manifest. Dit voegt `script.send_mail` toe en zet de gastdeployment op `USER_DEPLOYING` / `ANYONE_ANONYMOUS`.
+4. Controleer in het Apps Script-manifest de gastinstellingen `USER_DEPLOYING / ANYONE_ANONYMOUS` en `script.send_mail`. Het huidige `src/appsscript.json` bevat deze al; **deploy/email-access/appsscript.json** is een alternatief met uitsluitend leesrechten voor Sheets.
 5. Voer als beheerder **checkEmailAccessSetup** vanuit de editor uit en verleen de gevraagde autorisaties. De beheerder moet in `allowedEmails` staan. Deze functie verstuurt geen mail; het uitvoeringslog toont of mailtoegang werkt, hoeveel dagquotum over is en of gasttoegang en de adreslijst zijn ingesteld.
 6. Maak een web-appdeployment: **Uitvoeren als: ik** en **Toegang: iedereen**. De beheerder moet de bron-Sheets kunnen lezen. Deel de bronbladen zelf niet met gasten.
 7. Open de gepubliceerde **/exec**-URL in een privévenster zonder Google-login. `/dev` is alleen toegankelijk voor projecteditors en test de gasttoegang dus niet.
@@ -60,7 +62,7 @@ Als je organisatie geen toegang voor anonieme bezoekers toestaat, kan de Workspa
 
 ## Een inlogcode kan niet worden verstuurd
 
-Een correct `emailAccess`-blok bepaalt wie een code mag aanvragen. Het verleent geen Google-mailrecht. De standaard **src/appsscript.json** bevat bewust geen `script.send_mail`-scope. Gebruik voor gastinzage het gastmanifest en verleen als beheerder opnieuw toestemming.
+Een correct `emailAccess`-blok bepaalt wie een code mag aanvragen. Het verleent geen Google-mailrecht. Het huidige **src/appsscript.json** bevat `script.send_mail`; bij een oudere lokale kopie kan die scope ontbreken. Controleer het manifest en verleen als beheerder opnieuw toestemming.
 
 1. Open het manifest **appsscript.json** in de Apps Script-editor. Is het bestand niet zichtbaar, schakel het tonen ervan in bij de projectinstellingen.
 2. Controleer of `oauthScopes` ook **https://www.googleapis.com/auth/script.send_mail** bevat. Het complete gastmanifest staat in **deploy/email-access/appsscript.json**.

@@ -1946,8 +1946,10 @@ test('bronstatus-interface staat in de HTML en gebruikt geen inline brondata', (
   assert.match(client, /replace\(\/\^Error:/);
 });
 
-test('manifest draait als bezoeker en vraagt alleen de benodigde identiteitsscope', () => {
+test('huidig manifest gebruikt de e-maildeployment met identiteit en mailrecht', () => {
   const manifest = JSON.parse(fs.readFileSync('src/appsscript.json', 'utf8'));
-  assert.equal(manifest.webapp.executeAs, 'USER_ACCESSING');
+  assert.equal(manifest.webapp.executeAs, 'USER_DEPLOYING');
+  assert.equal(manifest.webapp.access, 'ANYONE_ANONYMOUS');
   assert.ok(manifest.oauthScopes.includes('https://www.googleapis.com/auth/userinfo.email'));
+  assert.ok(manifest.oauthScopes.includes('https://www.googleapis.com/auth/script.send_mail'));
 });

@@ -225,6 +225,7 @@ test('een mislukte herverzending houdt de eerdere geldige code en verzendteller 
 test('mailcontrole voor de editor vraagt geen code aan en vereist bestaande Google-toegang', () => {
   const app = setup({ googleEmail: 'jouw-account@voorbeeld.nl' });
   const result = app.ctx.checkEmailAccessSetup();
+  assert.deepEqual(app.authorizationChecks, [{ mode: 'FULL', scopes: ['https://www.googleapis.com/auth/script.send_mail'] }]);
   assert.equal(result.mailPermissionGranted, true);
   assert.equal(result.remainingDailyQuota, 100);
   assert.equal(result.emailAccessEnabled, true);

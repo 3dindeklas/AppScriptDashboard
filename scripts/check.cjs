@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const vm = require('node:vm');
+const { validateManifest } = require('./validate-manifest.cjs');
 
 const sourceFiles = fs.readdirSync('src');
 
@@ -19,18 +20,9 @@ for (const name of sourceFiles) {
 }
 
 const manifest = JSON.parse(fs.readFileSync('src/appsscript.json', 'utf8'));
-if (manifest.runtimeVersion !== 'V8') throw new Error('Apps Script V8-runtime ontbreekt.');
-if (manifest.webapp?.executeAs !== 'USER_ACCESSING') {
-  throw new Error('De web-app moet uitvoeren als de gebruiker die de app opent.');
-}
-if (!manifest.oauthScopes?.includes('https://www.googleapis.com/auth/userinfo.email')) {
-  throw new Error('De userinfo.email-scope ontbreekt voor de accountcontrole.');
-}
+validateManifest(manifest, 'src/appsscript.json');
 const guestManifest = JSON.parse(fs.readFileSync('deploy/email-access/appsscript.json', 'utf8'));
-if (guestManifest.webapp?.executeAs !== 'USER_DEPLOYING' || guestManifest.webapp?.access !== 'ANYONE_ANONYMOUS' ||
-    !guestManifest.oauthScopes?.includes('https://www.googleapis.com/auth/script.send_mail')) {
-  throw new Error('Het optionele gastmanifest mist uitvoeringsidentiteit, anonieme toegang of mailrecht.');
-}
+validateManifest(guestManifest, 'deploy/email-access/appsscript.json', { guestOnly: true });
 
 const index = fs.readFileSync('src/Index.html', 'utf8');
 for (const include of ["include('Styles', accessToken)", "include('Municipalities', accessToken)", "include('AccessClient', accessToken)", "include('Client', accessToken)"]) {

@@ -70,7 +70,7 @@ Herhaal de toegangscontrole met:
 1. Open **Implementeren → Implementaties beheren**.
 2. Bewerk de bestaande web-appimplementatie.
 3. Kies **Nieuwe versie** en noteer kort welke pull request wordt gepubliceerd.
-4. Behoud voor de standaard Google-deployment **Uitvoeren als gebruiker die de web-app opent**. De optionele gastdeployment heeft andere uitvoeringsrechten en een eigen manifest; volg daarvoor [TOEGANG.md](TOEGANG.md).
+4. Gebruik met het huidige gastmanifest **Uitvoeren als: ik** en **Toegang: iedereen**; volg [TOEGANG.md](TOEGANG.md). Bestaande Google-deployments met `USER_ACCESSING` blijven ondersteund. Controleer bij een update dat je het bedoelde uitvoeringsmodel behoudt.
 5. Behoud de bedoelde Google Workspace-doelgroep; maak de app niet publiek.
 6. Publiceer en open de `/exec`-URL in een nieuw venster.
 7. Herhaal minimaal laden, één filter, handmatig vernieuwen, financiële afscherming en afdrukweergave.

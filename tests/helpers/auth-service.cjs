@@ -8,6 +8,7 @@ function setup(options = {}) {
   const mails = [];
   const templates = [];
   const logs = [];
+  const authorizationChecks = [];
   const props = {
     getProperty: key => values.get(key) || null,
     setProperty: (key, value) => values.set(key, value),
@@ -24,6 +25,10 @@ function setup(options = {}) {
     Session: {
       getActiveUser: () => ({ getEmail: () => options.googleEmail || '' }),
       getEffectiveUser: () => ({ getEmail: () => 'jouw-account@voorbeeld.nl' })
+    },
+    ScriptApp: {
+      AuthMode: { FULL: 'FULL' },
+      requireScopes: (mode, scopes) => authorizationChecks.push({ mode, scopes: Array.from(scopes) })
     },
     PropertiesService: { getScriptProperties: () => props },
     LockService: { getScriptLock: () => ({ tryLock: () => options.lock !== false, releaseLock() {} }) },
@@ -76,7 +81,7 @@ function setup(options = {}) {
         allowedEmails: ['gast@microsoft.example'], codeMinutes: 10, sessionHours: 8 }) + '),');
     vm.runInContext(source, ctx);
   }
-  return { ctx, values, mails, templates, logs, advance: ms => { now += ms; },
+  return { ctx, values, mails, templates, logs, authorizationChecks, advance: ms => { now += ms; },
     code: () => mails[mails.length - 1].body.match(/\b\d{6}\b/)[0] };
 }
 

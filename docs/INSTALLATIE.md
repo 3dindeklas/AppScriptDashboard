@@ -219,12 +219,14 @@ Wanneer de `/dev`-test werkt:
 
 1. kies **Implementeren → Nieuwe implementatie**;
 2. kies **Web-app**;
-3. voer de app uit als **gebruiker die de web-app opent**;
-4. kies alleen de doelgroep die toegang mag krijgen;
-5. deel de gebruikte Google Sheets met diezelfde gebruikers;
+3. voer de app met het huidige gastmanifest uit als **ik (de beheerder)**;
+4. kies **iedereen**, zodat ook bezoekers zonder Google-account de toegangspagina bereiken;
+5. controleer dat de beheerder de Google Sheets kan lezen en configureer de toegestane gastadressen;
 6. open de nieuwe `/exec`-URL.
 
-De manifestinstelling blijft `executeAs: USER_ACCESSING`. Daardoor geeft iedere gebruiker zelf toestemming en leest de app Google Sheets met de rechten van die gebruiker. De allowlist in `Config.gs` blijft daarnaast verplicht, ook wanneer `demoMode: true` staat.
+Het huidige manifest gebruikt `executeAs: USER_DEPLOYING`. De beheerder verleent de Sheet- en mailrechten; bezoekers verifiëren hun toegestane adres met een code. Volg [TOEGANG.md](TOEGANG.md) voor autoriseren en de gastacceptatietest. De allowlists blijven verplicht, ook wanneer `demoMode: true` staat.
+
+Een bestaande Google-installatie mag `USER_ACCESSING` met toegang voor aangemelde gebruikers blijven gebruiken. In dat model verleent iedere gebruiker zelf toestemming en moeten de bronbladen voor die gebruiker toegankelijk zijn. `npm run check` ondersteunt beide modellen en controleert de bijbehorende toegangsinstellingen en scopes.
 
 Na latere codewijzigingen moet je de bestaande implementatie bewerken en een nieuwe versie selecteren. Alleen opslaan vernieuwt de gepubliceerde `/exec`-versie niet.
 
