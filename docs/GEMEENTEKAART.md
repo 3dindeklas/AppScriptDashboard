@@ -4,7 +4,7 @@ De gemeentekaart laat zien waar de aanvragen in de huidige filterselectie vandaa
 
 ## Gebruik
 
-- **Weergave → Kaart/Ranglijst** binnen het gemeentevak wisselt tussen de kaart en de regionale staafgrafiek. Er staat geen tweede gemeenteblok op de pagina.
+- De kaart en de regionale staafgrafiek staan gelijktijdig in één gemeentevak. De ranglijst staat onder de werkgebiedtoelichting; de kaart groeit op desktop mee met de hoogte van die kolom. Op een klein scherm staan beide onder elkaar.
 - **Werkgebied** zoomt in op de gemeenten die in alle geladen gegevens herkend worden. De uitsnede blijft gelijk wanneer je filters aanpast.
 - **Heel Nederland** toont de volledige gemeentekaart.
 - Lichtpaars staat voor weinig aanvragen; donkerpaars voor het hoogste aantal in de huidige selectie. De legenda benoemt het actuele maximum.
@@ -13,7 +13,7 @@ De gemeentekaart laat zien waar de aanvragen in de huidige filterselectie vandaa
 - Klik of tik op een gemeente, of gebruik **Gemeente bekijken**, om het exacte aantal te zien. Dit bekijkt alleen details en verandert geen filter.
 - Open **Bekijk alle gemeenteaantallen als tabel** voor alle gekoppelde én niet-gekoppelde waarden.
 
-De kaart is een overzicht met absolute aantallen, geen ranglijst gecorrigeerd voor inwoneraantal of aantal scholen. Een geografisch grote gemeente kan daardoor visueel veel ruimte innemen zonder het hoogste aantal te hebben. Kies **Ranglijst** in hetzelfde blok voor een precieze vergelijking. Bronvermelding en licentie staan onder **Data → Kaartbronnen en licentie**.
+De kaart is een overzicht met absolute aantallen, geen ranglijst gecorrigeerd voor inwoneraantal of aantal scholen. Een geografisch grote gemeente kan daardoor visueel veel ruimte innemen zonder het hoogste aantal te hebben. De staven in hetzelfde blok geven een precieze vergelijking. Bronvermelding en licentie staan onder **Data → Kaartbronnen en licentie**.
 
 ## Gemeentekoppeling
 

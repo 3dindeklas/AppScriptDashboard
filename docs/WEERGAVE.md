@@ -1,5 +1,11 @@
 # Compact dashboard en screenshots
 
+## Introductie en schooljaar
+
+Het introductieblok toont **Grip op bereik, planning en impact.**, de modus, het bijgewerktijdstip en de actieve selectie met het aantal zichtbare workshops. Zo blijft de context ook bij een ingeklapte zijbalk en op screenshots zichtbaar.
+
+De schooljaarknoppen gebruiken de schooljaren uit de geladen gegevens, met het nieuwste eerst. **Alle schooljaren** neemt ook regels zonder bekend schooljaar mee. De knoppen en het schooljaarfilter in de zijbalk werken synchroon. Een schooljaarwissel behoudt alle andere filters, waaronder de ingestelde periode en leerlingaantallen. **Filters wissen** herstelt ook de schooljaarkeuze.
+
 ## Filters
 
 De filters staan standaard ingeklapt. Open **Filters** in de navigatie om de zijbalk te tonen. Op desktop staan de filters naast het dashboard; op kleinere schermen verschijnen ze erboven. Een getal naast de knop toont hoeveel filtergroepen actief zijn.
@@ -37,9 +43,9 @@ De keuze blijft behouden tijdens filteren en handmatig vernieuwen. Ze geldt alle
 
 ## Samengevoegde onderdelen
 
-**Gemeenten en regio’s** is één blok. Kies daar **Kaart** of **Ranglijst**. Beide gebruiken dezelfde actieve gegevensselectie; de kaarttabel maakt daarnaast duidelijk welke regio’s niet aan een gemeente zijn gekoppeld.
+**Gemeenten en regio’s** toont de kaart en de regionale staafgrafiek tegelijk. De staven staan onder de uitleg over het werkgebied. Op desktop groeit de kaart mee met de hoogte van deze kolom, ook bij het openen van de cijfertabel. Op kleinere schermen staan de kaart en de toelichting met staven onder elkaar. Beide gebruiken dezelfde actieve gegevensselectie; de kaarttabel maakt daarnaast duidelijk welke regio’s niet aan een gemeente zijn gekoppeld.
 
-**Bereik in PO en VO** combineert beide leerjaarverdelingen. De uitleg over combinatiegroepen staat onderaan datzelfde blok.
+**Bereik in PO en VO** combineert twee taartdiagrammen: PO-groepen en VO-leerjaren, met vaste heldere kleuren per leerjaar, gewogen aanvragen en percentages. De uitleg over combinatiegroepen staat onderaan datzelfde blok. De PO/VO-sectorverdeling blijft een afzonderlijke donut.
 
 **Tech-hubs naast elkaar** staat onderaan de pagina en kan ook via Weergave verborgen worden.
 

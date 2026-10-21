@@ -71,8 +71,12 @@
     </header>
     <main id="dashboard" class="page">
       <section class="intro" aria-labelledby="pageTitle">
-        <div><p class="eyebrow">WORKSHOPS IN BEELD</p><h1 id="pageTitle">Bereik, planning en impact.</h1><p>De workshopgegevens van alle tech-hubs in één overzicht.</p></div>
+        <div class="intro-copy"><p class="eyebrow">WORKSHOPS IN BEELD</p><h1 id="pageTitle">Grip op bereik, planning en impact.</h1><p>De workshopgegevens van alle tech-hubs in één veilig en filterbaar overzicht.</p></div>
         <div class="load-meta"><span id="modeBadge" class="badge">Laden…</span><span id="updatedAt">Even geduld</span></div>
+        <div class="intro-selection">
+          <div><p id="schoolYearSwitchLabel" class="selection-label">Schooljaar</p><div id="schoolYearSwitch" class="school-year-switch" role="group" aria-labelledby="schoolYearSwitchLabel"></div></div>
+          <div class="dashboard-summary"><div><p class="selection-label">Actieve selectie</p><p id="filterSummary">Alle tech-hubs · Alle gegevens</p></div><p id="resultCount" class="result-count" aria-live="polite"></p></div>
+        </div>
       </section>
       <div id="message" class="message" role="status" aria-live="polite" aria-atomic="true">Dashboardgegevens worden geladen.</div>
       <div id="dashboardLayout" class="dashboard-layout">
@@ -175,7 +179,6 @@
           </section>
         </aside>
         <div class="dashboard-content">
-          <div class="dashboard-summary"><p id="filterSummary">Alle tech-hubs</p><p id="resultCount" class="result-count" aria-live="polite"></p></div>
           <p id="emptyView" class="message" hidden>Er zijn geen onderdelen geselecteerd. Open Weergave om onderdelen te tonen.</p>
           <section id="metricsPanel" class="metrics-section" aria-labelledby="kpisTitle">
             <h2 id="kpisTitle" class="visually-hidden">Kerncijfers voor de huidige selectie</h2>
@@ -236,13 +239,12 @@
               <h3 id="municipalityTitle">Gemeenten en regio’s</h3>
 
             </div>
-            <label class="metric-select">Weergave<select id="geographyView"><option value="map">Kaart</option><option value="ranking">Ranglijst</option></select></label>
             <label id="mapScopeControl" class="metric-select">Kaartgebied
               <select id="mapScope"><option value="workarea">Werkgebied</option><option value="netherlands">Heel Nederland</option></select>
             </label>
           </div>
           <div id="geographyMap" class="municipality-layout">
-            <div>
+            <div class="map-visual">
               <div id="municipalityMap" class="municipality-map"></div>
               <div id="mapLegend" class="map-legend"></div>
             </div>
@@ -253,13 +255,14 @@
               <p id="mapDetail" class="map-detail" aria-live="polite">Kies een gemeente op de kaart of in de lijst.</p>
               <p id="mapCoverage" class="chart-subtitle"></p>
               <p id="mapUnmatched" class="map-unmatched"></p>
-              <p class="chart-subtitle">Werkgebied gebruikt de gemeenten uit alle geladen gegevens. Grijs betekent 0 gekoppelde aanvragen in de huidige selectie.</p>
+              <p id="mapExplanation" class="chart-subtitle">Werkgebied gebruikt de gemeenten uit alle geladen gegevens. Grijs betekent 0 gekoppelde aanvragen in de huidige selectie.</p>
+              <section class="map-ranking" aria-labelledby="regionRankingTitle">
+                <h3 id="regionRankingTitle">Aanvragen per gemeente / regio</h3>
+                <div id="regionChart" class="bar-chart"></div>
+                <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Aanvragen per gemeente of regio</caption><thead><tr><th scope="col">Gemeente / regio</th><th scope="col">Aanvragen</th></tr></thead><tbody id="regionTableRows"></tbody></table></div></details>
+              </section>
             </div>
           </div>
-          <div id="geographyRanking" hidden>
-<div id="regionChart" class="bar-chart"></div>
-            <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Aanvragen per gemeente of regio</caption><thead><tr><th scope="col">Gemeente / regio</th><th scope="col">Aanvragen</th></tr></thead><tbody id="regionTableRows"></tbody></table></div></details>
-</div>
           <details class="map-data chart-data">
             <summary>Bekijk alle gemeenteaantallen als tabel</summary>
             <div class="table-wrap"><table class="chart-table">
@@ -294,10 +297,12 @@
  <div class="panel-heading"><div><p class="eyebrow">LEERJAREN</p><h2>Bereik in PO en VO</h2></div></div>
  <div class="grades-grid">
   <section aria-labelledby="poTitle"><h3 id="poTitle">Primair onderwijs</h3>
-            <div id="poChart" class="bar-chart"></div>
+            <p class="chart-subtitle">Gewogen aanvragen per groep</p>
+            <div id="poChart" class="pie-chart"></div>
             <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Gewogen aanvragen per PO-groep</caption><thead><tr><th scope="col">Groep</th><th scope="col">Gewogen aanvragen</th></tr></thead><tbody id="poTableRows"></tbody></table></div></details></section>
   <section aria-labelledby="voTitle"><h3 id="voTitle">Voortgezet onderwijs</h3>
-            <div id="voChart" class="bar-chart"></div>
+            <p class="chart-subtitle">Gewogen aanvragen per leerjaar</p>
+            <div id="voChart" class="pie-chart"></div>
             <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Gewogen aanvragen per VO-leerjaar</caption><thead><tr><th scope="col">Leerjaar</th><th scope="col">Gewogen aanvragen</th></tr></thead><tbody id="voTableRows"></tbody></table></div></details></section>
  </div>
  <p class="chart-note">Combinatiegroepen worden evenredig verdeeld over de herkende leerjaren. Onbekende leerjaren blijven apart zichtbaar.</p>
