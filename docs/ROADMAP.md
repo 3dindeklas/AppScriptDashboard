@@ -280,7 +280,7 @@ Acceptatie: categorieaantallen blijven gelijk aan de tabellen, meerdere lesdagen
 
 ## Stap 10 · Microsoft 365-bron
 
-Status: **geïmplementeerd in deze PR; review/merge en Microsoft-praktijkacceptatie staan open**. Zie [MICROSOFT.md](MICROSOFT.md) voor de inrichting en [STATUS.md](STATUS.md) voor de acceptatiechecklist.
+Status: **geïmplementeerd in [PR #21](https://github.com/3dindeklas/AppScriptDashboard/pull/21); Microsoft-praktijkacceptatie staat open**. De actuele review-/mergestatus staat op de PR. Zie [MICROSOFT.md](MICROSOFT.md) voor de inrichting en [STATUS.md](STATUS.md) voor de acceptatiechecklist.
 
 Doel: een Microsoft 365 Excel-tabel naast Google Sheets aansluiten via hetzelfde datacontract.
 

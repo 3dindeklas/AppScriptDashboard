@@ -11,7 +11,7 @@ De roadmap blijft het overzicht van de oorspronkelijke requirements. We verwijde
 | Stap 9/9.1: vormgeving, donuts, gemeentekaart en compacte indeling | Aanwezig in de bestaande basis | Bestaande gebruikerscontroles; gewijzigde publicatie controleren |
 | Toegangspagina en e-mailcodes | PR #19 gemerged | Mailrechten en eigenaar-deployment blijven omgevingsafhankelijk |
 | Demo-opruiming | PR #20 gemerged | Google Sheets/snapshot na publicatie controleren |
-| Stap 10: Microsoft Graph-adapter, gedelegeerde OAuth, tokenrotatie, paginering en gedeelde normalisatie | Geïmplementeerd in de Microsoft-PR; review/merge open | **Open: echte Microsoft-tenant nog niet getest** |
+| Stap 10: Microsoft Graph-adapter, gedelegeerde OAuth, tokenrotatie, paginering en gedeelde normalisatie | Geïmplementeerd in [PR #21](https://github.com/3dindeklas/AppScriptDashboard/pull/21); actuele review-/mergestatus via die PR | **Open: echte Microsoft-tenant nog niet getest** |
 
 ## Nog nodig voor afronding stap 10
 

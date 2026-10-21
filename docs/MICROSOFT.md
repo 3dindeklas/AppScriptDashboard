@@ -1,6 +1,6 @@
 # Microsoft 365 als databron
 
-Status: de adapter en geautomatiseerde tests zijn geïmplementeerd in de Microsoft-PR. De koppeling is nog niet met een echte tenant gecontroleerd. Doorloop onderstaande acceptatie voordat de Microsoft-bron als productie-geaccepteerd wordt gemarkeerd. Zie [STATUS.md](STATUS.md).
+Status: de adapter en geautomatiseerde tests zijn geïmplementeerd in [PR #21](https://github.com/3dindeklas/AppScriptDashboard/pull/21). De koppeling is nog niet met een echte tenant gecontroleerd. Doorloop onderstaande acceptatie voordat de Microsoft-bron als productie-geaccepteerd wordt gemarkeerd. Zie [STATUS.md](STATUS.md).
 
 ## Wat je nodig hebt
 
