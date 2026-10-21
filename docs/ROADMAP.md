@@ -280,7 +280,7 @@ Acceptatie: categorieaantallen blijven gelijk aan de tabellen, meerdere lesdagen
 
 ## Stap 10 · Excel-import naar Google-tabblad
 
-Status: **geïmplementeerd in de vervangende import-PR; praktijkacceptatie open**. PR #21 met Microsoft Graph/OAuth is op verzoek gesloten en niet gemerged.
+Status: **geïmplementeerd in [PR #22](https://github.com/3dindeklas/AppScriptDashboard/pull/22); praktijkacceptatie open**. PR #21 met Microsoft Graph/OAuth is op verzoek gesloten en niet gemerged.
 
 Doel: eenvoudig beheer met bron-URL, Excel-tabblad en Google-doeltabblad in Config.gs. Het dashboard leest uitsluitend Google Sheets. Zie [EXCEL_IMPORT.md](EXCEL_IMPORT.md).
 

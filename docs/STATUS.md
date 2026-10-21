@@ -10,7 +10,7 @@ De roadmap blijft het historische requirementsdocument. We houden implementatie 
 | Toegangspagina en e-mailcodes | PR #19 gemerged | Deployment- en mailrechten blijven omgevingsafhankelijk |
 | Demo-opruiming | PR #20 gemerged | Gewone Google-bronnen blijven de basis |
 | Oorspronkelijke stap 10 met Graph/OAuth | PR #21 gesloten en niet gemerged; aanpak vervangen | Niet van toepassing op de nieuwe aanpak |
-| Vervangende stap 10: Excel-importtabblad | Geïmplementeerd in de import-PR, met geautomatiseerde controles | **Open: echte Drive-export/download en Apps Script-publicatie controleren** |
+| Vervangende stap 10: Excel-importtabblad | Geïmplementeerd in [PR #22](https://github.com/3dindeklas/AppScriptDashboard/pull/22), met geautomatiseerde controles | **Open: echte Drive-export/download en Apps Script-publicatie controleren** |
 
 De aangeleverde organisatielink vereiste bij een anonieme controle aanmelden (HTTP 401). De demo-openlink gaf een webpagina. Geen van beide is als werkende automatische downloadbron geaccepteerd. Er zijn geen echte workshopgegevens opgehaald of geïmporteerd tijdens deze implementatie.
 
