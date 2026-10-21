@@ -122,3 +122,5 @@ Controleer maandelijks:
 - of de officiële Foundation-stijl of het logo is bijgewerkt.
 
 Microsoft 365 valt buiten stap 9. Die koppeling wordt als afzonderlijke stap 10 toegevoegd zodra een testaccount beschikbaar is.
+
+Voor Excel-bronnen: volg [EXCEL_IMPORT.md](EXCEL_IMPORT.md). Controleer bronimporttijd én snapshottijd afzonderlijk. De implementatie- en acceptatiestatus staan in [STATUS.md](STATUS.md).

@@ -1,7 +1,7 @@
 /**
  * Enige configuratiebestand voor de minimale versie.
  *
- * Vul één of twee Google Sheets in.
+ * Vul Google-bronnen in; zie docs/EXCEL_IMPORT.md voor Excel naar een importtabblad.
  * Bij de standaarddeployment leest de beheerder de Sheets.
  * Vervang het voorbeeldadres in allowedEmails door ieder Google-account dat
  * het dashboard mag openen. Een lege lijst geeft niemand toegang.
@@ -31,6 +31,10 @@ const APP_CONFIG = Object.freeze({
     codeMinutes: 10,
     sessionHours: 8
   }),
+  // Voorbeeld extra importbron (niet tegelijk dezelfde doelnaam als een Google-bron gebruiken):
+  // { name: 'Tech-hub import', type: 'excel-import', url: '', driveFileId: '',
+  //   sourceSheetName: 'Workshops', headerRow: 8, spreadsheetId: 'GOOGLE_BESTAND_ID', sheetName: 'Import_Microsoft' },
+  // url: downloadbare .xlsx-link. driveFileId: Excel-export in Google Drive (heeft voorrang).
   sources: [
     {
       name: 'Tech-hub A',

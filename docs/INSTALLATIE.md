@@ -2,15 +2,16 @@
 
 Gebruik bij voorkeur een **nieuw leeg Apps Script-project**. Zo blijven oude `.gs`-bestanden, foutcodes en verkeerd aangemaakte HTML-bestanden niet onzichtbaar meedraaien.
 
-## Stap 1 · Maak exact elf bestanden
+## Stap 1 · Maak de Apps Script-bestanden
 
-Maak in Apps Script vijf scriptbestanden via **+ → Script**:
+Maak in Apps Script zes scriptbestanden via **+ → Script**:
 
 1. `Config`
 2. `Code`
 3. `Data`
 4. `Cache`
 5. `Auth`
+6. `ExcelImport`
 
 Maak daarna zes HTML-bestanden via **+ → HTML**:
 
@@ -225,6 +226,8 @@ De server logt alleen wanneer iets mislukt. Providerdetails blijven in de afgesc
 
 Een ontbrekende, verlopen of onvolledige snapshot krijgt geen aparte foutcode: de app valt dan automatisch terug op de live Google Sheets. Cacheproblemen zijn alleen als `[snapshot-cache:...]` in de afgeschermde serverlog herkenbaar.
 
-## Waarom Microsoft 365 nog ontbreekt
+## Excel uit Microsoft importeren
 
-Microsoft 365 vereist Microsoft Graph, OAuth-tokens, tokenvernieuwing en extra foutafhandeling. Deze koppeling staat daarom als afzonderlijke stap 10 gepland zodra hij met een Microsoft-testaccount gecontroleerd kan worden, zonder de werkende Google-versie om te bouwen.
+Volg [EXCEL_IMPORT.md](EXCEL_IMPORT.md). De app importeert een downloadbaar Excel-bestand of een in Drive geplaatste Excel-export naar een eigen Google-tabblad. De dashboardpagina downloadt nooit zelf Microsoft-data. Een bron die Microsoft-aanmelding vereist blijft zonder Microsoft-koppeling niet automatisch bereikbaar.
+
+Voeg ExcelImport.gs toe, werk Data.gs en Cache.gs samen bij en neem de aanvullende scopes en Advanced Drive v3 uit het manifest over. Behoud je bestaande toegangsadressen en broninstellingen. De beheerder autoriseert de Google-rechten opnieuw. Controleer de nieuwe Apps Script-publicatie na merge; zie STATUS.md voor de nog openstaande praktijkacceptatie.

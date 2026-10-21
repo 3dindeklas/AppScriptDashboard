@@ -24,6 +24,17 @@ validateManifest(manifest, 'src/appsscript.json');
 const guestManifest = JSON.parse(fs.readFileSync('deploy/email-access/appsscript.json', 'utf8'));
 validateManifest(guestManifest, 'deploy/email-access/appsscript.json', { guestOnly: true });
 
+for (const [filename, value] of [['src/appsscript.json', manifest], ['deploy/email-access/appsscript.json', guestManifest]]) {
+  for (const scope of ['spreadsheets', 'script.external_request', 'drive.file', 'drive.readonly']) {
+    if (!value.oauthScopes.includes('https://www.googleapis.com/auth/' + scope)) {
+      throw new Error(filename + ': Excel-import vereist ' + scope + '.');
+    }
+  }
+  if (!value.dependencies?.enabledAdvancedServices?.some(service => service.userSymbol === 'Drive' && service.serviceId === 'drive' && service.version === 'v3')) {
+    throw new Error(filename + ': Excel-import vereist Advanced Drive v3.');
+  }
+}
+
 const index = fs.readFileSync('src/Index.html', 'utf8');
 for (const include of ["include('Styles', accessToken)", "include('Municipalities', accessToken)", "include('AccessClient', accessToken)", "include('Client', accessToken)"]) {
   if (!index.includes(include)) throw new Error('Index.html mist ' + include + '.');

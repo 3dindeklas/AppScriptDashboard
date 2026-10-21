@@ -2,6 +2,8 @@
 
 De minimale dashboardbasis uit PR #4 is het vaste vertrekpunt. We bouwen de oorspronkelijke visie terug in kleine pull requests. Iedere PR moet zelfstandig te beoordelen, te testen en terug te draaien zijn.
 
+De [implementatiestatus](STATUS.md) houdt code, review/merge en praktijkacceptatie apart. Geïmplementeerd betekent niet automatisch getest in de echte omgeving.
+
 ## Werkwijze per stap
 
 Voor iedere stap gebruiken we dezelfde volgorde:
@@ -44,7 +46,7 @@ We starten geen volgende featurebranch voordat de voorgaande PR is gemerged. Daa
 | 8.1 | Snapshotcache en laadtijd | Snelle servercache, handmatig verversen en veilige terugval | stap 8 |
 | 9 | Vormgeving en productieafronding | Foundation-stijl, toegankelijkheid, responsive/print en productiedocumentatie | stap 8.1 |
 | 9.1 | Donuts en gemeentekaart | Delen van het totaal en geografisch bereik inzichtelijk maken | stap 9 |
-| 10 | Microsoft 365-bron | Microsoft Graph-adapter achter hetzelfde datacontract | stap 9.1 |
+| 10 | Excel-import naar Google-tabblad | Downloadbare URL of Drive-export, daarna hetzelfde Google-datacontract | stap 9.1 |
 
 ## Stap 1 · Datamodel en normalisatie
 
@@ -276,25 +278,34 @@ Dezelfde stap bevat de compacte indeling: filters als inklapbare zijbalk, bronst
 
 Acceptatie: categorieaantallen blijven gelijk aan de tabellen, meerdere lesdagen verdubbelen geen kaartaanvraag en onbekende regio’s verdwijnen niet uit de telling.
 
-## Stap 10 · Microsoft 365-bron
+## Stap 10 · Excel-import naar Google-tabblad
 
-Doel: Microsoft aansluiten zodra de Graph-koppeling met een testaccount kan worden gecontroleerd.
+Status: **geïmplementeerd in de vervangende import-PR; praktijkacceptatie open**. PR #21 met Microsoft Graph/OAuth is op verzoek gesloten en niet gemerged.
+
+Doel: eenvoudig beheer met bron-URL, Excel-tabblad en Google-doeltabblad in Config.gs. Het dashboard leest uitsluitend Google Sheets. Zie [EXCEL_IMPORT.md](EXCEL_IMPORT.md).
 
 In deze PR:
 
-- Excel-tabel via Microsoft Graph uitlezen;
-- OAuth-tokens uitsluitend server-side bewaren;
-- tokenvernieuwing met locking;
-- paginering van tabelrijen;
-- Graph-data door exact dezelfde normalisatiefunctie sturen;
-- Microsoft-bronstatus opnemen in de bestaande datakwaliteitssectie.
+- eenmalig of periodiek importeren van een downloadbare .xlsx-URL;
+- een Drive-export als alternatief voor Microsoft-links die aanmelding vereisen;
+- bron-URL, bronblad, kopregel en doelbestand/-tabblad instellen bij de bron;
+- automatische aanmaak van een apart Google-tabblad per importbron;
+- tijdelijk converteren via Google Drive en dezelfde normalisatie als Google Sheets;
+- staging vóór vervanging, behoud van vorige data bij falen en automatische opruiming;
+- importtijdstip en gerichte fouten in de bestaande bronstatus;
+- geen Microsoft-tokens, appregistratie of OAuth-flow.
 
 Acceptatie:
 
-- de UI bevat geen Microsoft-specifieke logica;
-- tokens, IDs en Graph-fouten verlaten de server niet;
-- uitval van Microsoft blokkeert de Google-bron niet;
-- Google-only blijft zonder Microsoft-configuratie werken.
+- openen van het dashboard doet geen nieuwe Excel-download;
+- een import kan bestaande Google-bronnen niet overschrijven;
+- alleen analysekolommen worden gepubliceerd, geen contactgegevens/notities;
+- mislukte download/conversie laat eerdere gegevens intact en meldt een verouderde bron;
+- Google-only blijft werken zonder geconfigureerde importbron;
+- een beschermde SharePoint-link krijgt een duidelijke fout, geen schijnbaar geslaagde import;
+- URL-import, Drive-export en de gepubliceerde Apps Script-versie worden handmatig gecontroleerd.
+
+De eerder opgegeven organisatielink gaf bij een anonieme controle HTTP 401; de demo-openlink gaf HTML. Geen van beide is daarmee als werkende downloadbron geaccepteerd. Organisatierechten worden niet omzeild. De status blijft open totdat een bereikbare download of een Drive-export is getest.
 
 ## Definition of done voor iedere PR
 
