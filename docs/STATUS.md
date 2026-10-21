@@ -24,3 +24,5 @@ Voor de beschermde organisatiebron is een in Google Drive geplaatste Excel-expor
 | Gepubliceerde Apps Script-versie, gastlogin en tijdtrigger | Nog niet uitgevoerd voor importversie | Open |
 
 Na een geslaagde praktijkcontrole: noteer versie, datum en resultaat in deze tabel. Pas daarna is stap 10 afgerond. Nieuwe wensen kunnen vervolgens als afzonderlijke issues/PR's worden uitgewerkt.
+
+PR #22 bevat ook de editorhulpen authorizeApp en checkAppSetup, met aparte tests voor scopes, services, schrijftest, opruimen en bronbereikbaarheid. De algemene Apps Script-melding zonder eigen startlog kan niet door de functie worden afgevangen. De nieuw opgegeven OneDrive-deellink eindigde anoniem eveneens op HTTP 401; er is geen daadwerkelijke Excel-import met die link bewezen.

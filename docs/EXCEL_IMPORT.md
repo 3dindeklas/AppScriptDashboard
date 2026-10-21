@@ -15,9 +15,13 @@ De organisatielink uit de bespreking gaf anoniem HTTP 401; de demo-openlink gaf 
 
 Voor het organisatiebestand waarvan je de deelinstellingen niet kunt wijzigen is de Drive-export de direct bruikbare route. Automatische synchronisatie van die beschermde bron zou toestemming/ondersteuning vanuit de organisatie of alsnog Microsoft-authenticatie vereisen. Een tijdtrigger op de import maakt een handmatig aangeleverde export niet automatisch actueler.
 
+## Eerst rechten en services controleren
+
+Volg [DIAGNOSE.md](DIAGNOSE.md): voeg Diagnostics.gs toe en voer achtereenvolgens **authorizeApp**, **checkAppSetup** en **refreshExcelImports** uit in de Apps Script-editor. De diagnose maakt onderscheid tussen Google-rechten, bestandsrechten, Drive-service en Microsoft-aanmelding.
+
 ## Eenmalig in Google instellen
 
-1. Voeg **ExcelImport** als scriptbestand toe. Werk ook **Data.gs** en **Cache.gs** bij en houd de overige bestanden uit dezelfde versie.
+1. Voeg **ExcelImport** en **Diagnostics** als scriptbestanden toe. Werk ook **Data.gs** en **Cache.gs** bij en houd de overige bestanden uit dezelfde versie.
 2. Gebruik het bijgewerkte manifest of neem de aanvullingen over in je eigen manifest. Behoud `script.send_mail`, identiteit en je bestaande deploymentinstellingen.
 3. Het manifest bevat **Google Drive API v3** onder `dependencies.enabledAdvancedServices`. In Apps Script hoort onder **Services** nu Drive v3 te staan. Voeg die service daar zo nodig toe. Bij een eigen Google Cloud-project moet de Drive API ook in dat Cloud-project zijn ingeschakeld.
 4. De aanvullende Google-scopes zijn `script.external_request` (download), `drive.file` (tijdelijke conversie/opruimen), `drive.readonly` (je aangewezen Excel-export lezen) en volledige `spreadsheets` (importtabblad schrijven). Het gastmanifest heeft daarom ook schrijfrecht voor Sheets nodig. Dit zijn Google-rechten; er is geen Microsoft-appregistratie nodig.
@@ -70,7 +74,7 @@ De doelkopie bevat geen contactpersonen, e-mailadressen, telefoonnummers of noti
 
 ## Downloadbare URL
 
-De importer ondersteunt HTTPS op Microsoft-bestandshosts: SharePoint, OneDrive/1drv en korte 1drv.ms-links. Hij probeert bij SharePoint `download=1` toe te voegen, zonder de bestaande linkparameters te verwijderen. Dat is alleen een downloadvariant, geen garantie dat elke deel-URL werkt. Redirects worden maximaal zes keer en alleen naar toegestane Microsoft-bestandshosts gevolgd. Aanmeldredirects en 401/403 worden afgewezen.
+De importer ondersteunt HTTPS op Microsoft-bestandshosts: SharePoint, OneDrive/1drv, korte 1drv.ms-links en exact `my.microsoftpersonalcontent.com` als OneDrive-bestandshost. Hij probeert bij SharePoint-, 1drv.ms- en onedrive.live.com-links `download=1` toe te voegen, zonder de bestaande linkparameters te verwijderen. Dat is alleen een downloadvariant, geen garantie dat elke deel-URL werkt. Redirects worden maximaal zes keer en alleen naar toegestane Microsoft-bestandshosts gevolgd. Aanmeldredirects en 401/403 worden afgewezen.
 
 Een link moet uiteindelijk een `.xlsx`-bestand opleveren. HTML, een loginpagina, een ander bestandstype en een download groter dan 5 MB worden geweigerd. Legacy `.xls`, wachtwoordbeveiligde bestanden en conversies die Google niet ondersteunt vallen buiten deze stap. De API-conversie kan anders reageren op niet-ondersteunde Excel-formules; vergelijk de uitkomst met Excel bij acceptatie.
 
@@ -92,6 +96,7 @@ Een mislukte import vervangt het vorige tabblad niet. De bron toont de laatste g
 
 | Foutcode | Actie |
 | --- | --- |
+| `IMPORT_GOOGLE_PERMISSION_REQUIRED` | Voer authorizeApp en checkAppSetup uit; controleer het Google-manifest |
 | `IMPORT_LOGIN_REQUIRED` | Bron vereist Microsoft-aanmelding; gebruik Drive-export of vraag de organisatie om een bruikbare export/download |
 | `IMPORT_VIEWER_LINK` | Gebruik een bestandslink of Drive-export in plaats van de Excel-webpagina |
 | `IMPORT_NOT_CONFIGURED` | Vul doelbestand, doeltabblad, Excel-tabblad en URL of Drive-ID in |

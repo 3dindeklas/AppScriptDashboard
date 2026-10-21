@@ -4,7 +4,7 @@ Gebruik bij voorkeur een **nieuw leeg Apps Script-project**. Zo blijven oude `.g
 
 ## Stap 1 · Maak de Apps Script-bestanden
 
-Maak in Apps Script zes scriptbestanden via **+ → Script**:
+Maak in Apps Script zeven scriptbestanden via **+ → Script**:
 
 1. `Config`
 2. `Code`
@@ -12,6 +12,7 @@ Maak in Apps Script zes scriptbestanden via **+ → Script**:
 4. `Cache`
 5. `Auth`
 6. `ExcelImport`
+7. `Diagnostics`
 
 Maak daarna zes HTML-bestanden via **+ → HTML**:
 
@@ -231,3 +232,5 @@ Een ontbrekende, verlopen of onvolledige snapshot krijgt geen aparte foutcode: d
 Volg [EXCEL_IMPORT.md](EXCEL_IMPORT.md). De app importeert een downloadbaar Excel-bestand of een in Drive geplaatste Excel-export naar een eigen Google-tabblad. De dashboardpagina downloadt nooit zelf Microsoft-data. Een bron die Microsoft-aanmelding vereist blijft zonder Microsoft-koppeling niet automatisch bereikbaar.
 
 Voeg ExcelImport.gs toe, werk Data.gs en Cache.gs samen bij en neem de aanvullende scopes en Advanced Drive v3 uit het manifest over. Behoud je bestaande toegangsadressen en broninstellingen. De beheerder autoriseert de Google-rechten opnieuw. Controleer de nieuwe Apps Script-publicatie na merge; zie STATUS.md voor de nog openstaande praktijkacceptatie.
+
+Voor het controleren van scopes, services en bronrechten en het starten van de import: zie [DIAGNOSE.md](DIAGNOSE.md). Gebruik in de editor eerst authorizeApp, daarna checkAppSetup en vervolgens refreshExcelImports.

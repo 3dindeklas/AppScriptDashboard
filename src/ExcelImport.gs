@@ -10,9 +10,18 @@ const EXCEL_IMPORT_MAX_BYTES_ = 5 * 1024 * 1024;
 
 /** Editorknop: alleen een toegestane Google-beheerder, geen gastendpoint. */
 function refreshExcelImports() {
+  console.log('[IMPORT_START] Excel-import gestart. Gebruik checkAppSetup voor een volledige rechtencontrole.');
   const email = requireAccess_();
   if (email !== effectiveUserEmail_()) throw new Error('Importeer vanuit de Apps Script-editor als beheerder.');
-  return refreshExcelImports_();
+  try {
+    const results = refreshExcelImports_();
+    console.log('[IMPORT_DONE] ' + results.filter(function(result) { return result.status !== 'error'; }).length +
+      ' van ' + results.length + ' importbronnen verwerkt.');
+    return results;
+  } catch (error) {
+    const reference = logServerError_('refreshExcelImports', new Error('IMPORT_RUN_FAILED'));
+    throw new Error('Excel-import kon niet starten. Voer checkAppSetup uit. Foutcode: IMPORT_RUN_FAILED. Referentie: ' + reference);
+  }
 }
 
 /** Ook geschikt als tijdtrigger. Privé, dus niet bereikbaar via google.script.run. */
@@ -25,6 +34,7 @@ function refreshExcelImports_() {
   if (!lock.tryLock(30000)) throw new Error('Er is al een gegevensverversing bezig.');
   try {
     const sources = (APP_CONFIG.sources || []).filter(function(source) { return source.type === 'excel-import'; });
+    if (!sources.length) console.log('[IMPORT_NO_SOURCES] Voeg een bron met type excel-import toe aan APP_CONFIG.sources.');
     // Publiceren mag nooit een tabblad overschrijven dat door een andere bron wordt gebruikt.
     const targets = (APP_CONFIG.sources || []).map(function(source) {
       return String(source.spreadsheetId || '') + ':' + String(source.sheetName || '');
@@ -69,16 +79,24 @@ function excelImportConfigured_(source) {
 function importExcelSource_(source, conflictingTarget) {
   let temporaryFileId = '';
   let previous = excelImportState_(source);
-  const props = PropertiesService.getScriptProperties();
+  let props;
+  let phase = 'setup';
   try {
+    props = PropertiesService.getScriptProperties();
     if (!excelImportConfigured_(source)) throw new Error('IMPORT_NOT_CONFIGURED');
     if (conflictingTarget) throw new Error('IMPORT_TARGET_CONFLICT');
     if (typeof Drive === 'undefined' || !Drive.Files) throw new Error('IMPORT_DRIVE_SERVICE_REQUIRED');
+    phase = 'download';
+    console.log('[IMPORT_PHASE] ' + source.name + ' · ' + phase);
     const blob = excelImportBlob_(source);
+    phase = 'conversion';
+    console.log('[IMPORT_PHASE] ' + source.name + ' · ' + phase);
     const temporary = Drive.Files.create({ name: 'Workshopkompas tijdelijke Excel-import',
       mimeType: 'application/vnd.google-apps.spreadsheet' }, blob, { fields: 'id' });
     temporaryFileId = temporary.id;
     if (!temporaryFileId) throw new Error('IMPORT_CONVERSION_FAILED');
+    phase = 'source-sheet';
+    console.log('[IMPORT_PHASE] ' + source.name + ' · ' + phase);
     if (!SpreadsheetApp.openById(temporaryFileId).getSheetByName(source.sourceSheetName)) {
       throw new Error('IMPORT_SOURCE_SHEET_NOT_FOUND');
     }
@@ -97,6 +115,8 @@ function importExcelSource_(source, conflictingTarget) {
         });
       })
     );
+    phase = 'publish';
+    console.log('[IMPORT_PHASE] ' + source.name + ' · ' + phase);
     const book = SpreadsheetApp.openById(source.spreadsheetId);
     const state = { signature: excelImportSignature_(source), lastSuccessfulAt: new Date().toISOString(),
       warnings: result.warnings, errorCode: '', errorReference: '' };
@@ -104,15 +124,17 @@ function importExcelSource_(source, conflictingTarget) {
     return { name: source.name, status: warningCount_(result.warnings) ? 'warning' : 'ok', recordCount: result.records.length, updatedAt: state.lastSuccessfulAt };
   } catch (error) {
     const rawCode = error && error.message;
-    const code = /^IMPORT_[A-Z_]+$/.test(rawCode || '') ? rawCode : 'IMPORT_FAILED';
+    const code = /^IMPORT_[A-Z_]+$/.test(rawCode || '') ? rawCode :
+      /permission|not authorized|authorization|autorisatie|toestemming|rechten|scope/i.test(rawCode || '') ? 'IMPORT_GOOGLE_PERMISSION_REQUIRED' : 'IMPORT_FAILED';
     // Alleen vaste codes loggen: providerfouten kunnen URL's/bestands- of accountgegevens bevatten.
-    const reference = logServerError_('excelImport', new Error(code));
+    const reference = logServerError_('excelImport phase=' + phase, new Error(code));
     previous = previous || {};
     previous.errorCode = code;
+    previous.errorPhase = phase;
     previous.errorReference = reference;
     previous.lastAttemptAt = new Date().toISOString();
     try { props.setProperty(excelImportStateKey_(source), JSON.stringify(previous)); } catch (ignored) {}
-    return { name: source.name, status: 'error', errorCode: code, errorReference: reference };
+    return { name: source.name, status: 'error', phase: phase, errorCode: code, errorReference: reference, message: excelImportErrorMessage_(code) };
   } finally {
     if (temporaryFileId) {
       try { Drive.Files.remove(temporaryFileId); }
@@ -178,6 +200,7 @@ function readExcelImport_(source) {
 
 function excelImportErrorMessage_(code) {
   const messages = {
+    IMPORT_GOOGLE_PERMISSION_REQUIRED: 'Google-rechten ontbreken. Voer authorizeApp en daarna checkAppSetup uit in de Apps Script-editor.',
     IMPORT_LOGIN_REQUIRED: 'De bron vereist Microsoft-aanmelding. Gebruik een downloadbare link of een Excel-export in Google Drive.',
     IMPORT_VIEWER_LINK: 'Dit is een weergavelink. Gebruik een downloadbare bestandslink of een Excel-export in Google Drive.',
     IMPORT_NOT_EXCEL: 'De bron leverde geen .xlsx-bestand op.',
@@ -215,7 +238,7 @@ function excelImportBlob_(source) {
 
 function excelImportUrl_(url) {
   const match = String(url || '').match(/^https:\/\/([a-z0-9.-]+)(?::443)?(\/[^#]*)?(?:#.*)?$/i);
-  if (!match || !(/(?:^|\.)sharepoint\.com$|(?:^|\.)1drv\.com$|^1drv\.ms$|^onedrive\.live\.com$|^api\.onedrive\.com$|^excel\.cloud\.microsoft$/i.test(match[1]))) {
+  if (!match || !(/(?:^|\.)sharepoint\.com$|(?:^|\.)1drv\.com$|^1drv\.ms$|^onedrive\.live\.com$|^api\.onedrive\.com$|^excel\.cloud\.microsoft$|^my\.microsoftpersonalcontent\.com$/i.test(match[1]))) {
     throw new Error('IMPORT_URL_NOT_ALLOWED');
   }
   if (match[1].toLowerCase() === 'excel.cloud.microsoft') throw new Error('IMPORT_VIEWER_LINK');
@@ -225,7 +248,7 @@ function excelImportUrl_(url) {
 function downloadExcelImport_(configuredUrl) {
   let current = excelImportUrl_(configuredUrl);
   // SharePoint kan een downloadvariant leveren; dit verleent geen extra toegangsrechten.
-  if (/\.sharepoint\.com$/i.test(current.origin) && !/[?&]download=/i.test(current.url)) {
+  if (/(?:\.sharepoint\.com|\/\/1drv\.ms|\/\/onedrive\.live\.com)$/i.test(current.origin) && !/[?&]download=/i.test(current.url)) {
     current.url += (current.url.indexOf('?') === -1 ? '?' : '&') + 'download=1';
   }
   for (let redirects = 0; redirects < 6; redirects += 1) {

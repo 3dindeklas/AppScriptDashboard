@@ -48,6 +48,7 @@ Stap 10 importeert een Excel-bestand vanuit een downloadbare URL of een export i
 | `Config.gs` | server | enige configuratieplek, inclusief toegestane accounts |
 | `Code.gs` | server | toegang, `doGet`, `include` en `getDashboardData` |
 | `Data.gs` | server | Google Sheets en importtabbladen lezen, normaliseren en browservelden toestaan |
+| `Diagnostics.gs` | server | Google-autorisatie en gerichte controles op services en bronrechten vanuit de editor |
 | `ExcelImport.gs` | server | Excel ophalen, tijdelijk converteren en gecontroleerd publiceren naar een Google-tabblad |
 | `Cache.gs` | server | privacyveilige snapshots, compressie, locking en herstel bij een cache-miss |
 | `Auth.gs` | server | eenmalige e-mailcodes, verzendbegrenzing en gastsessies |
@@ -72,6 +73,8 @@ npm test
 De app wordt getest via de Apps Script-web-app. Fictieve gegevens bestaan alleen binnen de geautomatiseerde tests; er is geen lokale demo of GitHub Pages-versie.
 
 ## Installeren
+
+Start bij rechten- of importproblemen met [de diagnosehandleiding](docs/DIAGNOSE.md): **authorizeApp → checkAppSetup → refreshExcelImports**.
 
 Volg [docs/INSTALLATIE.md](docs/INSTALLATIE.md). Stel de toegangsrechten in en koppel minimaal één Google Sheet.
 
