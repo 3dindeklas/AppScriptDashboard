@@ -102,3 +102,21 @@ Een beschermde organisatiebron kan nog steeds Microsoft-aanmelding vereisen. De 
 - [AuthorizationInfo: verleende scopes en status](https://developers.google.com/apps-script/reference/script/authorization-info)
 - [ScriptApp: requireAllScopes en autorisatiecontrole](https://developers.google.com/apps-script/reference/script/script-app)
 - [Drive: bestandsrechten en capabilities](https://developers.google.com/workspace/drive/api/reference/rest/v3/files)
+
+## Snapshot wordt telkens opnieuw opgeslagen
+
+Werk Cache.gs bij en publiceer een nieuwe implementatieversie. Het teruglezen maakt nu expliciet een gzip-blob met MIME-type en bestandsnaam aan. Een schrijfactie telt pas als geslaagd nadat dezelfde leesroute de snapshot volledig heeft teruggelezen en gevalideerd. Een decodeerfout kan daardoor niet langer ongemerkt als **Snapshot opgeslagen** worden getoond.
+
+Open de pagina twee keer zonder **Brongegevens vernieuwen**. De tweede opening hoort **Snapshot gebruikt** te tonen zolang de cache beschikbaar is en de bronconfiguratie gelijk blijft. De knop vernieuwt bewust de bronnen.
+
+Voer eventueel **checkDashboardSnapshot** uit vanuit de editor. Dit leest geen Sheets en verandert de cache niet. Het rapport bevat `enabled` (cache aan), `compression` (compressie en teruglezen werken) en `available` (snapshot nu bruikbaar). De uitvoeringslogs gebruiken vaste codes:
+
+- `HIT`: een snapshot is succesvol teruggelezen.
+- `WRITE_VERIFIED`: nieuwe snapshot geschreven én teruggelezen.
+- `WRITE_UNREADABLE`: na schrijven niet bruikbaar; raadpleeg de nabijgelegen `[snapshot-cache:read]` fout.
+- `MISS_EMPTY`: manifest ontbreekt of is verlopen/verwijderd.
+- `MISS_MANIFEST`: metadata past niet bij de huidige code/configuratie.
+- `MISS_CHUNKS`: een deel van de opgeslagen data ontbreekt.
+- `MISS_INVALID`: de gedecodeerde snapshot is ongeldig.
+
+CacheService kan items vóór de ingestelde vervaltijd verwijderen; zes uur is geen garantie. Zie de [officiële Cache-documentatie](https://developers.google.com/apps-script/reference/cache/cache). De gzip-route volgt [Utilities](https://developers.google.com/apps-script/reference/utilities/utilities#ungzip(BlobSource)). Deze controles tonen geen workshopregels, accounts of bron-URL’s.

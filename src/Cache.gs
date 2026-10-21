@@ -77,7 +77,10 @@ function readDashboardSnapshot_() {
 
   try {
     const manifestText = cache.get(SNAPSHOT_CACHE_MANIFEST_KEY_);
-    if (!manifestText) return null;
+    if (!manifestText) {
+      snapshotCacheEvent_('MISS_EMPTY');
+      return null;
+    }
     const manifest = JSON.parse(manifestText);
 
     if (manifest.schema !== SNAPSHOT_CACHE_SCHEMA_ ||
@@ -86,6 +89,7 @@ function readDashboardSnapshot_() {
         !Number.isInteger(manifest.chunkCount) ||
         manifest.chunkCount < 1 ||
         manifest.chunkCount > SNAPSHOT_CACHE_MAX_CHUNKS_) {
+      snapshotCacheEvent_('MISS_MANIFEST');
       cache.remove(SNAPSHOT_CACHE_MANIFEST_KEY_);
       return null;
     }
@@ -93,6 +97,7 @@ function readDashboardSnapshot_() {
     const keys = snapshotChunkKeys_(manifest.revision, manifest.chunkCount);
     const values = cache.getAll(keys);
     if (keys.some(function(key) { return !Object.prototype.hasOwnProperty.call(values, key); })) {
+      snapshotCacheEvent_('MISS_CHUNKS');
       cache.remove(SNAPSHOT_CACHE_MANIFEST_KEY_);
       return null;
     }
@@ -100,7 +105,12 @@ function readDashboardSnapshot_() {
     const snapshot = decodeDashboardSnapshot_(keys.map(function(key) {
       return values[key];
     }).join(''));
-    return validDashboardSnapshot_(snapshot) ? snapshot : null;
+    if (!validDashboardSnapshot_(snapshot)) {
+      snapshotCacheEvent_('MISS_INVALID');
+      return null;
+    }
+    snapshotCacheEvent_('HIT');
+    return snapshot;
   } catch (error) {
     cacheError_('read', error);
     try { cache.remove(SNAPSHOT_CACHE_MANIFEST_KEY_); } catch (ignored) {}
@@ -137,7 +147,12 @@ function writeDashboardSnapshot_(snapshot) {
       chunkCount: chunks.length,
       updatedAt: snapshot.updatedAt
     }), ttl);
-    return true;
+    // Een geslaagde put garandeert nog geen bruikbare snapshot. Controleer
+    // dezelfde decodeer-/validatieroute die de volgende pagina-opening gebruikt.
+    const verified = readDashboardSnapshot_();
+    const usable = Boolean(verified && verified.revision === snapshot.revision);
+    snapshotCacheEvent_(usable ? 'WRITE_VERIFIED' : 'WRITE_UNREADABLE');
+    return usable;
   } catch (error) {
     cacheError_('write', error);
     return false;
@@ -151,7 +166,7 @@ function encodeDashboardSnapshot_(snapshot) {
 }
 
 function decodeDashboardSnapshot_(encoded) {
-  const compressed = Utilities.newBlob(Utilities.base64Decode(encoded));
+  const compressed = Utilities.newBlob(Utilities.base64Decode(encoded), 'application/x-gzip', 'dashboard.json.gz');
   const json = Utilities.ungzip(compressed).getDataAsString('UTF-8');
   return JSON.parse(json);
 }
@@ -250,4 +265,27 @@ function refreshDashboardSnapshot() {
   if (!email || allowedEmails.indexOf(email) === -1) throw new Error('Geen toegang.');
   if (!snapshotCacheEnabled_()) return '';
   return liveDashboardSnapshot_(true).snapshot.updatedAt;
+}
+
+/** Alleen vaste codes; geen brongegevens, accounts of configuratiewaarden. */
+function snapshotCacheEvent_(code) {
+  try { console.log('[snapshot-cache] ' + code); } catch (ignored) {}
+}
+
+/** Read-only diagnose voor de beheerder vanuit de Apps Script-editor. */
+function checkDashboardSnapshot() {
+  const email = effectiveUserEmail_();
+  if (!email || (APP_CONFIG.allowedEmails || []).map(normalizeEmail_).indexOf(email) === -1) {
+    throw new Error('Geen toegang.');
+  }
+  const enabled = snapshotCacheEnabled_();
+  // Isoleer de compressieroute van cachebeschikbaarheid, zonder bronnen te lezen.
+  let compression = false;
+  try {
+    compression = decodeDashboardSnapshot_(encodeDashboardSnapshot_({ probe: true })).probe === true;
+  } catch (error) { cacheError_('compression-check', error); }
+  const snapshot = enabled ? readDashboardSnapshot_() : null;
+  const result = { enabled: enabled, compression: compression, available: Boolean(snapshot) };
+  console.log('[snapshot-check] ' + JSON.stringify(result));
+  return result;
 }

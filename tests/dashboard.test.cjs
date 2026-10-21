@@ -5,13 +5,15 @@ const vm = require('node:vm');
 const zlib = require('node:zlib');
 const silentConsole = { log() {}, error() {} };
 
-function testBlob(value) {
+function testBlob(value, contentType, name) {
   const bytes = Buffer.isBuffer(value)
     ? value
     : Array.isArray(value)
       ? Buffer.from(value.map(byte => byte < 0 ? byte + 256 : byte))
       : Buffer.from(String(value));
   return {
+    getContentType: () => contentType,
+    getName: () => name,
     getBytes: () => Array.from(bytes, byte => byte > 127 ? byte - 256 : byte),
     getDataAsString: () => bytes.toString('utf8')
   };
@@ -21,7 +23,7 @@ function testUtilities() {
   return {
     formatDate: date => date.toISOString().slice(0, 10),
     getUuid: () => '12345678-abcd-4321-abcd-1234567890ab',
-    newBlob: value => testBlob(value),
+    newBlob: (value, contentType, name) => testBlob(value, contentType, name),
     gzip: blob => testBlob(zlib.gzipSync(Buffer.from(blob.getBytes().map(byte => byte < 0 ? byte + 256 : byte)))),
     ungzip: blob => testBlob(zlib.gunzipSync(Buffer.from(blob.getBytes().map(byte => byte < 0 ? byte + 256 : byte)))),
     base64Encode: bytes => Buffer.from(bytes.map(byte => byte < 0 ? byte + 256 : byte)).toString('base64'),
@@ -1982,4 +1984,48 @@ test('herkomstlabels zijn kort en onderscheiden hergebruik van opslaan en fouten
     assert.equal(elements.dataOrigin.textContent, label);
     assert.doesNotMatch(elements.modeBadge.textContent, /Bronnen ingelezen/);
   }
+});
+
+
+test('een nieuwe serveruitvoering hergebruikt de snapshot zonder bronnen te openen', () => {
+  const stored = memoryCache();
+  const utilities = testUtilities();
+  const ungzip = utilities.ungzip;
+  utilities.ungzip = blob => {
+    assert.equal(blob.getContentType(), 'application/x-gzip');
+    assert.equal(blob.getName(), 'dashboard.json.gz');
+    return ungzip(blob);
+  };
+  const first = liveContext({ Utilities: utilities, CacheService: stored.service,
+    SpreadsheetApp: { openById: () => ({ getSheetByName: () => googleSheet([row()]) }) } });
+  assert.equal(first.getDashboardData().snapshot.storage, 'saved');
+  const second = liveContext({ Utilities: utilities, CacheService: stored.service,
+    SpreadsheetApp: { openById() { throw new Error('Bron mag niet opnieuw worden geopend'); } } });
+  const result = second.getDashboardData();
+  assert.equal(result.snapshot.source, 'cache');
+  assert.ok(result.records.length > 0);
+  assert.equal(second.checkDashboardSnapshot().available, true);
+});
+
+test('onleesbare compressie mag nooit Snapshot opgeslagen teruggeven', () => {
+  const logs = [];
+  const utilities = testUtilities();
+  utilities.ungzip = () => { throw new Error('Invalid argument'); };
+  const ctx = liveContext({ Utilities: utilities, CacheService: memoryCache().service,
+    console: { log: message => logs.push(message), error: message => logs.push(message) },
+    SpreadsheetApp: { openById: () => ({ getSheetByName: () => googleSheet([row()]) }) } });
+  const result = ctx.getDashboardData();
+  assert.equal(result.snapshot.storage, 'failed');
+  assert.ok(result.records.length > 0);
+  assert.ok(logs.some(message => message.includes('WRITE_UNREADABLE')));
+  assert.equal(ctx.checkDashboardSnapshot().compression, false);
+});
+
+test('snapshotdiagnose leest geen Sheets en vereist beheerdersrechten', () => {
+  const ctx = liveContext({ CacheService: memoryCache().service,
+    SpreadsheetApp: { openById() { throw new Error('Geen bronnen lezen'); } } });
+  assert.equal(ctx.checkDashboardSnapshot().available, false);
+  assert.equal(ctx.checkDashboardSnapshot().compression, true);
+  ctx.Session = session('outsider@example.nl');
+  assert.throws(() => ctx.checkDashboardSnapshot(), /Geen toegang/);
 });
