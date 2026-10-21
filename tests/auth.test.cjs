@@ -165,3 +165,85 @@ test('een ongeldig gasttoken valt nooit terug op een eventueel toegestaan Google
   assert.equal(app.ctx.getDashboardData().records.length, 10);
   assert.throws(() => app.ctx.getDashboardData('0'.repeat(64)), /ACCESS_REQUIRED/);
 });
+
+test('ontbrekend mailrecht krijgt een herstelbare foutcode en dezelfde referentie in het serverlog', () => {
+  const app = setup({ quotaError: 'You do not have permission to call MailApp.getRemainingDailyQuota. Required permissions: https://www.googleapis.com/auth/script.send_mail' });
+  assert.throws(() => app.ctx.requestEmailCode('gast@microsoft.example'), error => {
+    assert.match(error.message, /EMAIL_MAIL_PERMISSION_REQUIRED/);
+    assert.match(error.message, /gastmanifest.*mailautorisatie/);
+    const reference = error.message.match(/Referentie: ([A-F0-9]{8})/)[1];
+    assert.match(app.logs[0], new RegExp('\\[' + reference + '\\]'));
+    assert.match(app.logs[0], /phase=quota.*MailApp\.getRemainingDailyQuota.*script\.send_mail/);
+    assert.doesNotMatch(error.message, /Required permissions|MailApp\.getRemainingDailyQuota/);
+    return true;
+  });
+  assert.equal(app.mails.length, 0);
+  assert.equal(app.values.size, 0);
+});
+
+test('geen mailquotum en een verzendfout worden afzonderlijk herkenbaar zonder privédetails', () => {
+  for (const [options, expected, phase] of [
+    [{ quota: 0 }, 'EMAIL_MAIL_QUOTA_EXCEEDED', 'quota'],
+    [{ mailFailure: 'Providerfout voor gast@microsoft.example code 123456 sleutel ' + 'a'.repeat(64) }, 'EMAIL_CODE_SEND_FAILED', 'send']
+  ]) {
+    const app = setup(options);
+    assert.throws(() => app.ctx.requestEmailCode('gast@microsoft.example'), new RegExp(expected));
+    assert.match(app.logs[0], new RegExp('phase=' + phase + ' code=' + expected));
+    assert.doesNotMatch(app.logs.join('\n'), /gast@microsoft\.example|123456|a{64}/);
+    assert.equal(app.values.size, 0);
+  }
+});
+
+test('herhalen na een mislukte verzending blijft falen en doet niet alsof een code is verstuurd', () => {
+  const options = { mailFailure: true };
+  const app = setup(options);
+  for (let index = 0; index < 2; index++) {
+    assert.throws(() => app.ctx.requestEmailCode('gast@microsoft.example'), /EMAIL_CODE_SEND_FAILED/);
+  }
+  assert.equal(app.logs.length, 2);
+  assert.equal(app.mails.length, 0);
+  assert.equal(app.values.size, 0);
+  options.mailFailure = false;
+  const challenge = app.ctx.requestEmailCode('gast@microsoft.example');
+  assert.equal(app.mails.length, 1);
+  assert.ok(app.ctx.verifyEmailCode(challenge.challengeId, app.code()).token);
+});
+
+test('een mislukte herverzending houdt de eerdere geldige code en verzendteller intact', () => {
+  const options = {};
+  const app = setup(options);
+  const first = app.ctx.requestEmailCode('gast@microsoft.example');
+  const code = app.code();
+  const before = JSON.stringify(Array.from(app.values.entries()));
+  app.advance(60000);
+  options.mailFailure = true;
+  assert.throws(() => app.ctx.requestEmailCode('gast@microsoft.example'), /EMAIL_CODE_SEND_FAILED/);
+  assert.equal(JSON.stringify(Array.from(app.values.entries())), before);
+  assert.ok(app.ctx.verifyEmailCode(first.challengeId, code).token);
+});
+
+test('mailcontrole voor de editor vraagt geen code aan en vereist bestaande Google-toegang', () => {
+  const app = setup({ googleEmail: 'jouw-account@voorbeeld.nl' });
+  const result = app.ctx.checkEmailAccessSetup();
+  assert.equal(result.mailPermissionGranted, true);
+  assert.equal(result.remainingDailyQuota, 100);
+  assert.equal(result.emailAccessEnabled, true);
+  assert.equal(result.allowedAddressesConfigured, true);
+  assert.equal(app.values.size, 0);
+  assert.equal(app.mails.length, 0);
+  assert.match(app.logs[0], /E-mailcontrole geslaagd/);
+  assert.doesNotMatch(app.logs[0], /@/);
+  const denied = setup();
+  assert.throws(() => denied.ctx.checkEmailAccessSetup(), /ACCESS_REQUIRED/);
+  const permissionMissing = setup({ googleEmail: 'jouw-account@voorbeeld.nl', quotaError: 'Authorization is required' });
+  assert.throws(() => permissionMissing.ctx.checkEmailAccessSetup(), /EMAIL_MAIL_PERMISSION_REQUIRED/);
+});
+
+test('toegestane Hotmail-adressen volgen dezelfde e-mailcodeflow', () => {
+  const app = setup();
+  vm.runInContext("APP_CONFIG.emailAccess.allowedEmails.push('voorbeeld@hotmail.com')", app.ctx);
+  const challenge = app.ctx.requestEmailCode('voorbeeld@hotmail.com');
+  assert.equal(app.mails[0].to, 'voorbeeld@hotmail.com');
+  const { token } = app.ctx.verifyEmailCode(challenge.challengeId, app.code());
+  assert.equal(app.ctx.requireAccess_(token), 'voorbeeld@hotmail.com');
+});

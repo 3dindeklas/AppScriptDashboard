@@ -7,6 +7,7 @@ function setup(options = {}) {
   const values = new Map();
   const mails = [];
   const templates = [];
+  const logs = [];
   const props = {
     getProperty: key => values.get(key) || null,
     setProperty: (key, value) => values.set(key, value),
@@ -19,7 +20,7 @@ function setup(options = {}) {
   }
   const ctx = vm.createContext({
     Date: Clock,
-    console: { error() { throw new Error('Authenticatie mag geen codes of adressen loggen'); } },
+    console: { error: value => logs.push(String(value)), log: value => logs.push(String(value)) },
     Session: {
       getActiveUser: () => ({ getEmail: () => options.googleEmail || '' }),
       getEffectiveUser: () => ({ getEmail: () => 'jouw-account@voorbeeld.nl' })
@@ -32,8 +33,14 @@ function setup(options = {}) {
       computeDigest: (algorithm, value) => Array.from(crypto.createHash('sha256').update(value).digest(), b => b > 127 ? b - 256 : b)
     },
     MailApp: {
-      getRemainingDailyQuota: () => options.quota === 0 ? 0 : 100,
-      sendEmail: mail => { if (options.mailFailure) throw new Error('Geheime providerfout'); mails.push(mail); }
+      getRemainingDailyQuota: () => {
+        if (options.quotaError) throw new Error(options.quotaError);
+        return options.quota ?? 100;
+      },
+      sendEmail: mail => {
+        if (options.mailFailure) throw new Error(typeof options.mailFailure === 'string' ? options.mailFailure : 'Geheime providerfout');
+        mails.push(mail);
+      }
     }
   });
   function output(content) {
@@ -69,7 +76,7 @@ function setup(options = {}) {
         allowedEmails: ['gast@microsoft.example'], codeMinutes: 10, sessionHours: 8 }) + '),');
     vm.runInContext(source, ctx);
   }
-  return { ctx, values, mails, templates, advance: ms => { now += ms; },
+  return { ctx, values, mails, templates, logs, advance: ms => { now += ms; },
     code: () => mails[mails.length - 1].body.match(/\b\d{6}\b/)[0] };
 }
 

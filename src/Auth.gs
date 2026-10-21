@@ -55,19 +55,10 @@ function requestEmailCode(address) {
       email: email, codeHash: authHash_(id + ':' + code), attempts: 0,
       expiresAt: now + settings.codeMinutes * 60000
     }));
-    properties.setProperty(mailKey, JSON.stringify({
-      lastSentAt: now, challengeId: id,
-      count: mail.expiresAt > now ? mail.count + 1 : 1,
-      expiresAt: mail.expiresAt > now ? mail.expiresAt : now + 3600000
-    }));
-    properties.setProperty(globalKey, JSON.stringify({
-      count: global.expiresAt > now ? global.count + 1 : 1,
-      expiresAt: global.expiresAt > now ? global.expiresAt : now + 3600000
-    }));
-    // Een opnieuw verstuurde code vervangt de vorige code voor hetzelfde adres.
-    if (mail.challengeId) properties.deleteProperty(AUTH_PREFIX_ + 'challenge:' + authHash_(mail.challengeId));
+    let phase = 'quota';
     try {
-      if (MailApp.getRemainingDailyQuota() < 1) throw new Error('Quota');
+      remainingMailQuota_();
+      phase = 'send';
       MailApp.sendEmail({
         to: email,
         subject: 'Je inlogcode voor Workshopkompas',
@@ -78,11 +69,73 @@ function requestEmailCode(address) {
       });
     } catch (error) {
       properties.deleteProperty(key);
-      // Geen adressen, codes of providerfouten naar browser of logs.
-      throw new Error('Er kon geen inlogcode worden verstuurd. Probeer later opnieuw of neem contact op met de beheerder.');
+      throw emailMailFailure_(error, phase);
     }
+    // Tel alleen geaccepteerde verzendingen. Een mislukte mail geeft nooit een
+    // onbruikbare challenge terug en maakt een eerder verstuurde code niet ongeldig.
+    properties.setProperty(mailKey, JSON.stringify({
+      lastSentAt: now, challengeId: id,
+      count: mail.expiresAt > now ? mail.count + 1 : 1,
+      expiresAt: mail.expiresAt > now ? mail.expiresAt : now + 3600000
+    }));
+    properties.setProperty(globalKey, JSON.stringify({
+      count: global.expiresAt > now ? global.count + 1 : 1,
+      expiresAt: global.expiresAt > now ? global.expiresAt : now + 3600000
+    }));
+    if (mail.challengeId) properties.deleteProperty(AUTH_PREFIX_ + 'challenge:' + authHash_(mail.challengeId));
     return response;
   });
+}
+
+/** Voer als toegestane Google-beheerder uit in de editor; verstuurt geen mail. */
+function checkEmailAccessSetup() {
+  requireAccess_();
+  let remaining;
+  try { remaining = remainingMailQuota_(); } catch (error) { throw emailMailFailure_(error, 'setup'); }
+  const settings = emailAccessSettings_();
+  const result = {
+    emailAccessEnabled: settings.enabled,
+    allowedAddressesConfigured: settings.allowedEmails.some(emailAccessAllowed_),
+    mailPermissionGranted: true,
+    remainingDailyQuota: remaining
+  };
+  console.log('E-mailcontrole geslaagd: ' + JSON.stringify(result));
+  return result;
+}
+
+function remainingMailQuota_() {
+  const remaining = MailApp.getRemainingDailyQuota();
+  if (remaining < 1) {
+    const error = new Error('Het dagelijkse Google-mailquotum is verbruikt.');
+    error.mailCode = 'EMAIL_MAIL_QUOTA_EXCEEDED';
+    throw error;
+  }
+  return remaining;
+}
+
+/** Publiek: een vaste herstelmelding. Serverlog: begrensde, opgeschoonde oorzaak. */
+function emailMailFailure_(error, phase) {
+  const detail = String(error && error.message ? error.message : error);
+  let code = 'EMAIL_CODE_SEND_FAILED';
+  let message = 'Er kon geen inlogcode worden verstuurd. Neem contact op met de beheerder.';
+  if (/script\.send_mail|authorization|authorisation|permission|not authorized|access denied|autorisatie|machtiging|toestemming/i.test(detail)) {
+    code = 'EMAIL_MAIL_PERMISSION_REQUIRED';
+    message = 'De app heeft geen toestemming om inlogcodes te versturen. Laat de beheerder het gastmanifest en de Google-mailautorisatie controleren.';
+  } else if ((error && error.mailCode === 'EMAIL_MAIL_QUOTA_EXCEEDED') ||
+      /\bquota\b|daily limit|limit exceeded|too many times|limiet|quotum/i.test(detail)) {
+    code = 'EMAIL_MAIL_QUOTA_EXCEEDED';
+    message = 'De dagelijkse verzendlimiet is bereikt. Probeer later opnieuw of neem contact op met de beheerder.';
+  }
+  const reference = errorReference_();
+  const safeDetail = detail
+    .replace(/[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9.-]+/gi, '[e-mailadres]')
+    .replace(/\b[A-Za-z0-9_-]{32,}\b/g, '[sleutel]')
+    .replace(/\b\d{6}\b/g, '[code]')
+    .slice(0, 1500);
+  try {
+    console.error('[' + reference + '] requestEmailCode phase=' + phase + ' code=' + code + ': ' + safeDetail);
+  } catch (loggingError) { /* Een loggingfout mag de herstelmelding niet blokkeren. */ }
+  return new Error(message + ' Foutcode: ' + code + '. Referentie: ' + reference + '.');
 }
 
 function verifyEmailCode(challengeId, code) {
