@@ -21,7 +21,7 @@ We starten geen volgende featurebranch voordat de voorgaande PR is gemerged. Daa
 
 - Geen echte spreadsheet-ID's, OAuth-tokens, persoonsgegevens of productiedata in GitHub.
 - `.gs` bevat alleen servercode; `document` en `window` blijven in `.html`.
-- `Index.html` gebruikt alleen de officiële `include(filename)`-opzet.
+- `Index.html` gebruikt de officiële HTML-include-opzet; een gastsessie wordt expliciet aan `include(filename, accessToken)` doorgegeven.
 - Browserdata wordt asynchroon geladen met `google.script.run`.
 - De demomodus moet na iedere PR blijven werken.
 - Een nieuwe databron levert hetzelfde genormaliseerde recordformaat als de bestaande bron.

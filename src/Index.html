@@ -4,7 +4,7 @@
     <base target="_top">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <?!= include('Styles'); ?>
+    <?!= include('Styles', accessToken); ?>
   </head>
   <body class="threediklas">
     <a class="skip-link" href="#dashboard">Ga naar het dashboard</a>
@@ -66,10 +66,12 @@
             </div>
           </details>
           <button id="printButton" class="nav-button" type="button" aria-label="Afdrukken of opslaan als PDF"><span class="print-label">Afdrukken / PDF</span><span class="print-label-short" aria-hidden="true">PDF</span></button>
+          <button id="logoutButton" class="nav-button" type="button" hidden>Uitloggen</button>
         </nav>
       </div>
     </header>
     <main id="dashboard" class="page">
+      <div id="message" class="message" role="status" aria-live="polite" aria-atomic="true">Dashboardgegevens worden geladen.</div>
       <section class="intro" aria-labelledby="pageTitle">
         <div class="intro-copy"><p class="eyebrow">WORKSHOPS IN BEELD</p><h1 id="pageTitle">Grip op bereik, planning en impact.</h1><p>De workshopgegevens van alle tech-hubs in één veilig en filterbaar overzicht.</p></div>
         <div class="load-meta"><span id="modeBadge" class="badge">Laden…</span><span id="updatedAt">Even geduld</span></div>
@@ -78,7 +80,6 @@
           <div class="dashboard-summary"><div><p class="selection-label">Actieve selectie</p><p id="filterSummary">Alle tech-hubs · Alle gegevens</p></div><p id="resultCount" class="result-count" aria-live="polite"></p></div>
         </div>
       </section>
-      <div id="message" class="message" role="status" aria-live="polite" aria-atomic="true">Dashboardgegevens worden geladen.</div>
       <div id="dashboardLayout" class="dashboard-layout">
         <aside id="filterSidebar" class="filter-sidebar" aria-labelledby="filtersTitle" hidden>
           <section class="panel filters">
@@ -259,7 +260,6 @@
               <section class="map-ranking" aria-labelledby="regionRankingTitle">
                 <h3 id="regionRankingTitle">Aanvragen per gemeente / regio</h3>
                 <div id="regionChart" class="bar-chart"></div>
-                <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Aanvragen per gemeente of regio</caption><thead><tr><th scope="col">Gemeente / regio</th><th scope="col">Aanvragen</th></tr></thead><tbody id="regionTableRows"></tbody></table></div></details>
               </section>
             </div>
           </div>
@@ -299,12 +299,16 @@
   <section aria-labelledby="poTitle"><h3 id="poTitle">Primair onderwijs</h3>
             <p class="chart-subtitle">Gewogen aanvragen per groep</p>
             <div id="poChart" class="pie-chart"></div>
-            <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Gewogen aanvragen per PO-groep</caption><thead><tr><th scope="col">Groep</th><th scope="col">Gewogen aanvragen</th></tr></thead><tbody id="poTableRows"></tbody></table></div></details></section>
+  </section>
   <section aria-labelledby="voTitle"><h3 id="voTitle">Voortgezet onderwijs</h3>
             <p class="chart-subtitle">Gewogen aanvragen per leerjaar</p>
             <div id="voChart" class="pie-chart"></div>
-            <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Gewogen aanvragen per VO-leerjaar</caption><thead><tr><th scope="col">Leerjaar</th><th scope="col">Gewogen aanvragen</th></tr></thead><tbody id="voTableRows"></tbody></table></div></details></section>
+  </section>
  </div>
+ <details class="chart-data grade-data"><summary>Bekijk cijfers als tabel</summary><div class="grade-tables">
+  <div class="table-wrap"><table class="chart-table"><caption>Primair onderwijs</caption><thead><tr><th scope="col">Groep</th><th scope="col">Gewogen aanvragen</th></tr></thead><tbody id="poTableRows"></tbody></table></div>
+  <div class="table-wrap"><table class="chart-table"><caption>Voortgezet onderwijs</caption><thead><tr><th scope="col">Leerjaar</th><th scope="col">Gewogen aanvragen</th></tr></thead><tbody id="voTableRows"></tbody></table></div>
+ </div></details>
  <p class="chart-note">Combinatiegroepen worden evenredig verdeeld over de herkende leerjaren. Onbekende leerjaren blijven apart zichtbaar.</p>
 </article>
             </div>
@@ -363,7 +367,8 @@
       </div>
       <footer><span><strong>Workshopkompas</strong> · 3Dindeklas</span></footer>
     </main>
-    <?!= include('Municipalities'); ?>
-    <?!= include('Client'); ?>
+    <?!= include('Municipalities', accessToken); ?>
+    <?!= include('AccessClient', accessToken); ?>
+    <?!= include('Client', accessToken); ?>
   </body>
 </html>

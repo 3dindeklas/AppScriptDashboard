@@ -2,28 +2,31 @@
 
 Gebruik bij voorkeur een **nieuw leeg Apps Script-project**. Zo blijven oude `.gs`-bestanden, foutcodes en verkeerd aangemaakte HTML-bestanden niet onzichtbaar meedraaien.
 
-## Stap 1 · Maak exact acht bestanden
+## Stap 1 · Maak exact elf bestanden
 
-Maak in Apps Script vier scriptbestanden via **+ → Script**:
+Maak in Apps Script vijf scriptbestanden via **+ → Script**:
 
 1. `Config`
 2. `Code`
 3. `Data`
 4. `Cache`
+5. `Auth`
 
-Maak daarna vier HTML-bestanden via **+ → HTML**:
+Maak daarna zes HTML-bestanden via **+ → HTML**:
 
 1. `Index`
 2. `Styles`
 3. `Municipalities`
 4. `Client`
+5. `Access`
+6. `AccessClient`
 
 Kopieer de inhoud uit de gelijknamige bestanden in `src/`.
 
 Controleer de bestandstypen goed:
 
-- `Config`, `Code`, `Data` en `Cache` krijgen in Apps Script de extensie `.gs`;
-- `Index`, `Styles`, `Municipalities` en `Client` krijgen de extensie `.html`;
+- `Config`, `Code`, `Data`, `Cache` en `Auth` krijgen in Apps Script de extensie `.gs`;
+- `Index`, `Styles`, `Municipalities`, `Client`, `Access` en `AccessClient` krijgen de extensie `.html`;
 - `document` en `window` mogen nergens in een `.gs`-bestand staan.
 
 ## Stap 2 · Sta je Google-account toe
@@ -46,7 +49,7 @@ financialAllowedEmails: [
 ],
 ```
 
-Een account in `financialAllowedEmails` moet ook in `allowedEmails` staan. Alleen in de financiële lijst staan geeft dus geen toegang tot de app. Een lege financiële lijst is toegestaan: het dashboard blijft dan werken, maar het financiële blok blijft voor iedereen verborgen en de bedragen worden niet naar de browser gestuurd.
+Een Google-account in `financialAllowedEmails` moet ook in `allowedEmails` staan. Voor een gast met e-mailcode geldt de lijst `emailAccess.allowedEmails`; zie [TOEGANG.md](TOEGANG.md). Alleen in de financiële lijst staan geeft geen toegang tot de app. Een lege financiële lijst is toegestaan: het dashboard blijft dan werken, maar het financiële blok blijft voor iedereen verborgen en de bedragen worden niet naar de browser gestuurd.
 
 Zet geen wachtwoorden, tokens, spreadsheet-ID's of andere geheimen in deze lijst.
 
@@ -76,9 +79,11 @@ Je hoort nu zonder verdere instellingen te zien:
 - een leesbare tabelweergave onder iedere grafiek en de recente-workshoptabel;
 - de paarse 3Dindeklas-header en een werkende knop **Afdrukken / PDF**.
 
-Werkt dit niet, koppel dan nog geen echte data. Controleer eerst of alle acht bestanden het juiste type en exact dezelfde naam hebben.
+Werkt dit niet, koppel dan nog geen echte data. Controleer eerst of alle elf bestanden het juiste type en exact dezelfde naam hebben.
 
 Bij het bijwerken van een bestaand project: voeg **Municipalities** via **+ → HTML** toe en werk ook `Code.gs`, `Index.html`, `Styles.html` en `Client.html` samen bij. De gemeentekaart heeft geen API-sleutel of extra instelling nodig. Zie [Gemeentekaart](GEMEENTEKAART.md) voor uitleg over de koppeling van regio’s.
+
+Bijwerken vanaf PR 18: voeg **Auth** toe als script en **Access** en **AccessClient** als HTML. Werk `Code.gs`, `Index.html`, `Styles.html` en `Client.html` samen bij. Behoud je eigen Config.gs; zonder het optionele `emailAccess`-blok blijft gasttoegang uit. Zie [TOEGANG.md](TOEGANG.md) voor het inschakelen en deployen van e-mailcodes.
 
 ## Stap 4 · Koppel één Google Sheet
 
@@ -214,12 +219,14 @@ Wanneer de `/dev`-test werkt:
 
 1. kies **Implementeren → Nieuwe implementatie**;
 2. kies **Web-app**;
-3. voer de app uit als **gebruiker die de web-app opent**;
-4. kies alleen de doelgroep die toegang mag krijgen;
-5. deel de gebruikte Google Sheets met diezelfde gebruikers;
+3. voer de app met het huidige gastmanifest uit als **ik (de beheerder)**;
+4. kies **iedereen**, zodat ook bezoekers zonder Google-account de toegangspagina bereiken;
+5. controleer dat de beheerder de Google Sheets kan lezen en configureer de toegestane gastadressen;
 6. open de nieuwe `/exec`-URL.
 
-De manifestinstelling blijft `executeAs: USER_ACCESSING`. Daardoor geeft iedere gebruiker zelf toestemming en leest de app Google Sheets met de rechten van die gebruiker. De allowlist in `Config.gs` blijft daarnaast verplicht, ook wanneer `demoMode: true` staat.
+Het huidige manifest gebruikt `executeAs: USER_DEPLOYING`. De beheerder verleent de Sheet- en mailrechten; bezoekers verifiëren hun toegestane adres met een code. Volg [TOEGANG.md](TOEGANG.md) voor autoriseren en de gastacceptatietest. De allowlists blijven verplicht, ook wanneer `demoMode: true` staat.
+
+Een bestaande Google-installatie mag `USER_ACCESSING` met toegang voor aangemelde gebruikers blijven gebruiken. In dat model verleent iedere gebruiker zelf toestemming en moeten de bronbladen voor die gebruiker toegankelijk zijn. `npm run check` ondersteunt beide modellen en controleert de bijbehorende toegangsinstellingen en scopes.
 
 Na latere codewijzigingen moet je de bestaande implementatie bewerken en een nieuwe versie selecteren. Alleen opslaan vernieuwt de gepubliceerde `/exec`-versie niet.
 

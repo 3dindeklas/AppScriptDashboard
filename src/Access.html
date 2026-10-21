@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?!= accessInclude_('Styles'); ?>
+  </head>
+  <body class="threediklas access-body">
+    <main class="access-page">
+      <section class="access-card" aria-labelledby="accessTitle">
+        <p class="eyebrow">WORKSHOPKOMPAS</p>
+        <h1 id="accessTitle" tabindex="-1">Welkom bij Workshopkompas</h1>
+        <p>Dit overzicht is alleen beschikbaar voor uitgenodigde gebruikers.</p>
+        <p id="accessMessage" class="access-message" role="status" aria-live="polite">Je bent nog niet aangemeld met een toegestaan account.</p>
+        <? if (emailLoginEnabled) { ?>
+        <form id="emailAccessForm" class="access-form">
+          <label for="accessEmail">Inloggen met een e-mailcode</label>
+          <input id="accessEmail" name="email" type="email" autocomplete="email" maxlength="254" placeholder="jij@organisatie.nl" required>
+          <button id="requestCodeButton" class="button" type="submit">Stuur mij een inlogcode</button>
+          <p class="access-help">Ook geschikt voor een Microsoft-adres. Je hebt geen Google-account nodig.</p>
+        </form>
+        <form id="verifyAccessForm" class="access-form" hidden>
+          <label for="accessCode">Inlogcode uit je e-mail</label>
+          <input id="accessCode" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+          <button id="verifyCodeButton" class="button" type="submit">Open het dashboard</button>
+          <button id="changeAccessEmail" class="text-button" type="button">Ander adres of nieuwe code</button>
+        </form>
+        <? } ?>
+        <div class="access-google">
+          <button id="retryGoogleAccess" class="text-button" type="button">Google-toegang opnieuw controleren</button>
+          <p class="access-help">Geen toegang? Neem contact op met de beheerder van jouw tech-hub.</p>
+        </div>
+      </section>
+      <p class="access-footer">Workshopkompas · 3Dindeklas</p>
+    </main>
+    <?!= accessInclude_('AccessClient'); ?>
+  </body>
+</html>

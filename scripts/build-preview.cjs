@@ -18,7 +18,7 @@ const payload = {
 };
 
 let html = fs.readFileSync('src/Index.html', 'utf8').replace(
-  /<\?!= include\('([^']+)'\); \?>/g,
+  /<\?!= include\('([^']+)', accessToken\); \?>/g,
   (_, name) => fs.readFileSync('src/' + name + '.html', 'utf8')
 );
 
@@ -29,4 +29,9 @@ html = html.replace(
 
 fs.mkdirSync('preview', { recursive: true });
 fs.writeFileSync('preview/index.html', html);
+const access = fs.readFileSync('src/Access.html', 'utf8')
+  .replace(/<\? if \(emailLoginEnabled\) \{ \?>([\s\S]*?)<\? \} \?>/g, '$1')
+  .replace(/<\?!= accessInclude_\('([^']+)'\); \?>/g,
+    (_, name) => fs.readFileSync('src/' + name + '.html', 'utf8'));
+fs.writeFileSync('preview/access.html', access);
 console.log('Fictieve preview gemaakt: preview/index.html');

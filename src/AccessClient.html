@@ -1,0 +1,201 @@
+<script>
+  (() => {
+    'use strict';
+    if (window.WorkshopAccess) return;
+    const storageKey = 'workshopkompas-email-session';
+    let token = '';
+    let expiresAt = 0;
+    let expiryTimer;
+    let cooldownUntil = 0;
+    let cooldownTimer;
+    let onLock;
+    let generation = 0;
+    let statusPending = false;
+
+    function savedToken(value) {
+      try {
+        if (value === undefined) return sessionStorage.getItem(storageKey) || '';
+        if (value) sessionStorage.setItem(storageKey, value);
+        else sessionStorage.removeItem(storageKey);
+      } catch (error) { /* De sessie blijft werken zonder browseropslag. */ }
+      return '';
+    }
+
+    function rpc(method, args, success, failure) {
+      if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        failure(new Error('De Apps Script-verbinding is niet beschikbaar.'));
+        return;
+      }
+      const runner = google.script.run.withSuccessHandler(success).withFailureHandler(failure);
+      runner[method](...args);
+    }
+
+    function showMessage(message, error) {
+      const element = document.getElementById('accessMessage');
+      if (!element) return;
+      element.textContent = message;
+      element.classList.toggle('error', Boolean(error));
+    }
+
+    function busy(value) {
+      const page = document.querySelector('.access-card');
+      if (!page) return;
+      page.setAttribute('aria-busy', String(value));
+      page.querySelectorAll('button, input').forEach(element => { element.disabled = value; });
+      if (!value) updateCooldown();
+    }
+
+    function updateCooldown() {
+      clearTimeout(cooldownTimer);
+      const button = document.getElementById('requestCodeButton');
+      if (!button) return;
+      const seconds = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
+      button.disabled = seconds > 0;
+      button.textContent = seconds ? 'Nieuwe code over ' + seconds + ' s' : 'Stuur mij een inlogcode';
+      if (seconds) cooldownTimer = setTimeout(updateCooldown, 1000);
+    }
+
+    /** Alleen HTML afkomstig van de eigen, gecontroleerde Apps Script-server. */
+    function mountPage(html) {
+      const page = new DOMParser().parseFromString(html, 'text/html');
+      document.body.className = page.body.className;
+      document.body.replaceChildren(...Array.from(page.body.childNodes).map(node => document.importNode(node, true)));
+      // DOMParser voert scripts niet uit. Activeer uitsluitend de eigen inline JS-partials.
+      document.body.querySelectorAll('script').forEach(original => {
+        if (original.src || (original.type && original.type !== 'text/javascript')) return;
+        const script = document.createElement('script');
+        script.textContent = original.textContent;
+        original.replaceWith(script);
+      });
+      window.scrollTo(0, 0);
+    }
+
+    function armExpiry(remaining) {
+      clearTimeout(expiryTimer);
+      expiresAt = Date.now() + remaining;
+      expiryTimer = setTimeout(() => lock('Je sessie is verlopen. Vraag een nieuwe inlogcode aan.'), remaining);
+    }
+
+    function openDashboard(accessToken) {
+      const requestGeneration = ++generation;
+      busy(true);
+      rpc(accessToken ? 'getDashboardPage' : 'openGoogleDashboard', accessToken ? [accessToken] : [], response => {
+        if (requestGeneration !== generation) return;
+        if (!response || !response.html || (accessToken && !(response.expiresInMs > 0))) {
+          fail(new Error('Je sessie is verlopen. Vraag een nieuwe code aan.'));
+          return;
+        }
+        token = accessToken;
+        savedToken(token);
+        if (token) armExpiry(response.expiresInMs);
+        mountPage(response.html);
+        const heading = document.getElementById('pageTitle');
+        if (heading) { heading.setAttribute('tabindex', '-1'); heading.focus(); }
+      }, error => {
+        if (requestGeneration !== generation) return;
+        savedToken('');
+        fail(error);
+      });
+    }
+
+    function fail(error) {
+      busy(false);
+      const detail = error && error.message ? error.message.replace(/^Error:\s*/, '') : 'Probeer opnieuw.';
+      showMessage(detail, true);
+    }
+
+    function bindAccessPage(message) {
+      const form = document.getElementById('emailAccessForm');
+      const verify = document.getElementById('verifyAccessForm');
+      let challengeId = '';
+      if (message) showMessage(message, false);
+      if (form) {
+        form.addEventListener('submit', event => {
+          event.preventDefault();
+          if (!form.reportValidity()) return;
+          busy(true);
+          rpc('requestEmailCode', [document.getElementById('accessEmail').value], response => {
+            challengeId = response.challengeId;
+            cooldownUntil = Date.now() + 60000;
+            form.hidden = true;
+            verify.hidden = false;
+            busy(false);
+            showMessage(response.message + ' De code is ' + response.codeMinutes + ' minuten geldig.', false);
+            document.getElementById('accessCode').focus();
+          }, fail);
+        });
+        verify.addEventListener('submit', event => {
+          event.preventDefault();
+          if (!verify.reportValidity()) return;
+          busy(true);
+          rpc('verifyEmailCode', [challengeId, document.getElementById('accessCode').value], response => {
+            openDashboard(response.token);
+          }, fail);
+        });
+        document.getElementById('changeAccessEmail').addEventListener('click', () => {
+          verify.hidden = true;
+          form.hidden = false;
+          document.getElementById('accessCode').value = '';
+          updateCooldown();
+          document.getElementById('accessEmail').focus();
+        });
+      }
+      const retry = document.getElementById('retryGoogleAccess');
+      if (retry) retry.addEventListener('click', () => openDashboard(''));
+    }
+
+    function lock(message) {
+      generation += 1;
+      clearTimeout(expiryTimer);
+      clearTimeout(cooldownTimer);
+      const previousToken = token;
+      token = '';
+      expiresAt = 0;
+      savedToken('');
+      if (onLock) { onLock(); onLock = undefined; }
+      // Verwijder de gegevens direct, ook als de toegangspagina niet kan worden opgehaald.
+      document.body.replaceChildren();
+      const placeholder = document.createElement('p');
+      placeholder.className = 'message';
+      placeholder.textContent = message;
+      document.body.appendChild(placeholder);
+      if (previousToken) rpc('logoutDashboard', [previousToken], () => {}, () => {});
+      const requestGeneration = generation;
+      rpc('getAccessPage', [], html => {
+        if (requestGeneration !== generation) return;
+        mountPage(html);
+        bindAccessPage(message);
+        document.getElementById('accessTitle').focus();
+      }, () => {
+        placeholder.textContent = message + ' Open de dashboardlink opnieuw om in te loggen.';
+      });
+    }
+
+    function checkSession() {
+      if (!token || document.hidden || statusPending) return;
+      if (Date.now() >= expiresAt) { lock('Je sessie is verlopen. Vraag een nieuwe inlogcode aan.'); return; }
+      statusPending = true;
+      const checkedToken = token;
+      rpc('getSessionStatus', [checkedToken], response => {
+        statusPending = false;
+        if (token === checkedToken) armExpiry(response.expiresInMs);
+      }, () => {
+        statusPending = false;
+        if (token === checkedToken) lock('Je sessie is verlopen of je toegang is ingetrokken. Meld je opnieuw aan.');
+      });
+    }
+
+    window.WorkshopAccess = {
+      token: () => token,
+      onLock: callback => { onLock = callback; },
+      lock,
+      signOut: () => lock('Je bent uitgelogd. Je kunt opnieuw een inlogcode aanvragen.')
+    };
+    document.addEventListener('visibilitychange', checkSession);
+    if (document.getElementById('accessTitle')) {
+      bindAccessPage();
+      const stored = savedToken();
+      if (stored) openDashboard(stored);
+    }
+  })();
+</script>

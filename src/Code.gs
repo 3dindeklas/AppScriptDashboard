@@ -8,17 +8,11 @@ function doGet() {
   try {
     requireAccess_();
   } catch (error) {
-    return messagePage_(
-      'Geen toegang',
-      'Open dit dashboard met een Google-account dat in Config.gs is toegestaan.'
-    );
+    return accessPage_();
   }
 
   try {
-    return HtmlService.createTemplateFromFile('Index')
-      .evaluate()
-      .setTitle(APP_CONFIG.title)
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    return dashboardPage_('');
   } catch (error) {
     return messagePage_(
       'Dashboard tijdelijk niet beschikbaar',
@@ -31,9 +25,9 @@ function doGet() {
  * Voegt een HTML-partial toe aan Index.html.
  * Styles bevat CSS, Municipalities openbare JSON en Client browsercode.
  */
-function include(filename) {
-  requireAccess_();
-  if (['Styles', 'Municipalities', 'Client'].indexOf(filename) === -1) {
+function include(filename, accessToken) {
+  requireAccess_(accessToken);
+  if (['Styles', 'Municipalities', 'AccessClient', 'Client'].indexOf(filename) === -1) {
     throw new Error('Bestand niet beschikbaar.');
   }
   try {
@@ -44,20 +38,20 @@ function include(filename) {
 }
 
 /**
- * Enige functie die vanuit de browser wordt aangeroepen.
+ * Levert uitsluitend de toegestane dashboardvelden aan een gecontroleerde bezoeker.
  * Contactgegevens, notities, technische ID's en financiële detailvelden worden niet teruggestuurd.
  */
-function getDashboardData() {
-  return dashboardDataResponse_(false);
+function getDashboardData(accessToken) {
+  return dashboardDataResponse_(false, accessToken);
 }
 
 /** Haalt de Google-bronnen bewust opnieuw op en vervangt de gedeelde snapshot. */
-function refreshDashboardData() {
-  return dashboardDataResponse_(true);
+function refreshDashboardData(accessToken) {
+  return dashboardDataResponse_(true, accessToken);
 }
 
-function dashboardDataResponse_(forceRefresh) {
-  const email = requireAccess_();
+function dashboardDataResponse_(forceRefresh, accessToken) {
+  const email = requireAccess_(accessToken);
   const canViewFinancials = canViewFinancials_(email);
 
   try {
@@ -143,15 +137,56 @@ function errorReference_() {
 }
 
 /** Weigert standaard wanneer Google geen identiteit beschikbaar stelt. */
-function requireAccess_() {
+function requireAccess_(accessToken) {
+  if (accessToken) return emailSession_(accessToken).email;
   const email = activeUserEmail_();
   const allowedEmails = (APP_CONFIG.allowedEmails || []).map(normalizeEmail_);
 
   if (!email || allowedEmails.indexOf(email) === -1) {
-    throw new Error('Geen toegang.');
+    throw new Error('Geen toegang of je sessie is verlopen. Foutcode: ACCESS_REQUIRED.');
   }
 
   return email;
+}
+
+/** Index wordt pas opgebouwd nadat de server de identiteit heeft gecontroleerd. */
+function dashboardPage_(accessToken) {
+  requireAccess_(accessToken);
+  const template = HtmlService.createTemplateFromFile('Index');
+  template.accessToken = accessToken || '';
+  return template.evaluate().setTitle(APP_CONFIG.title)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function getDashboardPage(accessToken) {
+  const session = emailSession_(accessToken);
+  return { html: dashboardPage_(accessToken).getContent(), expiresInMs: session.expiresAt - Date.now() };
+}
+
+function openGoogleDashboard() {
+  return { html: dashboardPage_('').getContent() };
+}
+
+/** Alleen de publieke toegangspagina; bevat geen dashboard-HTML of gegevens. */
+function getAccessPage() {
+  return accessPage_().getContent();
+}
+
+function accessPage_() {
+  try {
+    const template = HtmlService.createTemplateFromFile('Access');
+    template.emailLoginEnabled = emailAccessSettings_().enabled;
+    return template.evaluate().setTitle('Toegang · ' + APP_CONFIG.title)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  } catch (error) {
+    return messagePage_('Geen toegang', 'Open dit dashboard met een toegestaan Google-account of neem contact op met de beheerder.');
+  }
+}
+
+/** Alleen statische toegangsmiddelen; private helpers zijn niet via script.run bereikbaar. */
+function accessInclude_(filename) {
+  if (['Styles', 'AccessClient'].indexOf(filename) === -1) throw new Error('Bestand niet beschikbaar.');
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
 function activeUserEmail_() {
