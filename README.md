@@ -1,6 +1,6 @@
 # Workshopkompas · Google Apps Script-dashboard
 
-Workshopkompas combineert de workshopgegevens van alle tech-hubs in één afgeschermd, filterbaar dashboard. Na het invullen van één toegestaan Google-account start de app met fictieve demogegevens en kan daarna Google Sheets met dezelfde kolomstructuur uitlezen.
+Workshopkompas combineert de workshopgegevens van alle tech-hubs in één afgeschermd, filterbaar dashboard. De app draait uitsluitend via Google Apps Script en leest Google Sheets met dezelfde kolomstructuur.
 
 De server normaliseert de volledige analysekolomstructuur naar één intern workshopmodel. Alleen de velden voor de huidige interface en filters worden via een vaste allowlist doorgestuurd; uitgebreidere cijfers volgen per roadmapstap.
 
@@ -38,7 +38,6 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - responsive bediening voor telefoon, tablet en desktop, met respect voor minder beweging;
 - een afdruk- en PDF-weergave voor een compact A4-landscapeoverzicht;
 - uitsluitend centraal toegestane analysevelden naar de browser; geen namen van contactpersonen, e-mailadressen, telefoonnummers, notities of technische ID's;
-- demomodus zonder databronnen, maar nooit zonder toegangscontrole.
 
 Microsoft 365 als databron volgt als stap 10 zodra de Graph-koppeling met een testaccount gecontroleerd kan worden. Toegang voor een Microsoft-e-mailadres kan al via de optionele e-mailcodefunctie.
 
@@ -67,14 +66,13 @@ Node.js 20 of nieuwer is voldoende; er zijn geen packages nodig.
 ```sh
 npm run check
 npm test
-npm run preview:build
 ```
 
-Open daarna `preview/index.html`. De preview bevat uitsluitend fictieve gegevens.
+De app wordt getest via de Apps Script-web-app. Fictieve gegevens bestaan alleen binnen de geautomatiseerde tests; er is geen lokale demo of GitHub Pages-versie.
 
 ## Installeren
 
-Volg [docs/INSTALLATIE.md](docs/INSTALLATIE.md). Vul eerst je Google-account in, begin met `demoMode: true` en koppel pas daarna een Google Sheet.
+Volg [docs/INSTALLATIE.md](docs/INSTALLATIE.md). Stel de toegangsrechten in en koppel minimaal één Google Sheet.
 
 Gebruik voor publicatie, acceptatietest, beheer en rollback de [productie- en beheerhandleiding](docs/PRODUCTIE.md).
 

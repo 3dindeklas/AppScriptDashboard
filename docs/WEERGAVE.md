@@ -17,7 +17,7 @@ Filteren werkt direct. Sluiten of inklappen met Escape verandert de selectie nie
 Open **Data** voor het brede bronoverzicht. Daar staan:
 
 - het tijdstip waarop de brongegevens zijn ingelezen;
-- de herkomst: **Google Sheets**, **Snapshot** of **Demo**;
+- de herkomst: **Google Sheets** of **Snapshot**;
 - de gemeten laadtijd;
 - de status en datakwaliteit per tech-hub;
 - **Brongegevens vernieuwen** om de snapshot bewust te vervangen;

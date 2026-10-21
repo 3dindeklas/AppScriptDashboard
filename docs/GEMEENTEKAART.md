@@ -47,16 +47,15 @@ curl --fail --location --output /tmp/workshopkompas-gemeenten.geojson 'https://a
 node scripts/build-municipalities.cjs /tmp/workshopkompas-gemeenten.geojson
 npm run check
 npm test
-npm run preview:build
 ```
 
 Controleer gemeentecodes, datum, gewijzigde namen, kaartuitsnede en labels. Pas de documentatie, bronvermelding in `Index.html` en de controle op het verwachte gemeenteaantal in de tests aan als de indeling is gewijzigd. Kopieer daarna de gegenereerde inhoud naar het Apps Script-HTML-bestand **Municipalities**.
 
 ## Acceptatietest
 
-1. Open de demo: 10 aanvragen horen aan 7 gemeenten gekoppeld te zijn.
-2. Controleer de PO/VO-donut: PO 8 / 80,0%, VO 2 / 20,0%.
-3. Controleer de statusdonut: Ingepland 4 / 40,0%, Uitgevoerd 4 / 40,0%, Open 2 / 20,0%.
+1. Open de Apps Script-web-app en vergelijk gemeenteaantallen met de brongegevens.
+2. Controleer aantallen en percentages in de PO/VO-donut.
+3. Controleer aantallen en percentages in de statusdonut.
 4. Filter op een tech-hub of periode: donuts, kaart en bestaande cijfers moeten dezelfde selectie tonen.
 5. Bekijk een gemeente via klik/tik en via de keuzelijst. Beide moeten hetzelfde aantal tonen.
 6. Wissel tussen werkgebied en landelijke weergave; wis vervolgens de filters.

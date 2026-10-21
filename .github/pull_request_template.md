@@ -22,8 +22,6 @@
 - [ ] Deze PR behandelt één roadmapstap.
 - [ ] `npm run check` slaagt.
 - [ ] `npm test` slaagt.
-- [ ] `npm run preview:build` slaagt.
-- [ ] De demomodus werkt nog.
 - [ ] Apps Script `/dev` is handmatig getest.
 - [ ] Er staan geen echte IDs, tokens, persoonsgegevens of productiedata in de diff.
 - [ ] `.gs` bevat geen `document` of `window`.

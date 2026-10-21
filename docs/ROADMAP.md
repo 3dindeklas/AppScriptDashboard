@@ -9,8 +9,8 @@ Voor iedere stap gebruiken we dezelfde volgorde:
 1. De vorige PR is gemerged en `main` is groen.
 2. Maak een nieuwe branch vanaf de nieuwste `main`.
 3. Voeg uitsluitend de functionaliteit van die stap toe.
-4. Werk demogegevens en geautomatiseerde tests tegelijk bij.
-5. Voer `npm run check`, `npm test` en `npm run preview:build` uit.
+4. Werk testgegevens en geautomatiseerde tests tegelijk bij.
+5. Voer `npm run check` en `npm test` uit.
 6. Test de opgeslagen versie handmatig via de Apps Script `/dev`-URL.
 7. Zet de testuitkomst in de PR; merge pas na review.
 8. Maak indien nodig een nieuwe Apps Script-versie en controleer de `/exec`-URL.
@@ -23,7 +23,7 @@ We starten geen volgende featurebranch voordat de voorgaande PR is gemerged. Daa
 - `.gs` bevat alleen servercode; `document` en `window` blijven in `.html`.
 - `Index.html` gebruikt de officiële HTML-include-opzet; een gastsessie wordt expliciet aan `include(filename, accessToken)` doorgegeven.
 - Browserdata wordt asynchroon geladen met `google.script.run`.
-- De demomodus moet na iedere PR blijven werken.
+- De Apps Script-web-app moet na iedere PR blijven werken.
 - Een nieuwe databron levert hetzelfde genormaliseerde recordformaat als de bestaande bron.
 - Een PR bevat geen vooruitgeschoven functionaliteit uit een latere stap.
 - Veranderingen aan tellingen of definities worden vastgelegd in `DATADEFINITIES.md`.
@@ -68,7 +68,7 @@ Acceptatie:
 - dezelfde rij geeft altijd hetzelfde genormaliseerde record, ongeacht kolomvolgorde;
 - persoonsgegevens komen niet in `getDashboardData()` terecht;
 - ongeldige waarden veroorzaken geen fout in de hele pagina;
-- demo en één echte Google Sheet laden nog steeds.
+- één echte Google Sheet blijft laden.
 
 ## Stap 2 · Toegang en privacy
 
@@ -89,7 +89,7 @@ Nog niet in deze PR: rollen, verschillende dashboards per tech-hub of financiël
 Acceptatie:
 
 - een niet-toegestaan account ontvangt geen dashboarddata;
-- de demomodus omzeilt de toegangscontrole niet in een gepubliceerde web-app;
+- iedere data-aanvraag controleert de toegang in de gepubliceerde web-app;
 - de configuratie blijft op één duidelijke plek.
 
 ## Stap 3 · Bronstatus en datakwaliteit
@@ -102,7 +102,7 @@ In deze PR:
 - per bron aantallen, waarschuwingen en laadstatus teruggeven;
 - beschikbare brondata tonen als één bron faalt;
 - rijlimieten en duidelijke foutmeldingen toevoegen;
-- nooit automatisch terugvallen op demogegevens bij een live fout;
+- geen fictieve gegevens laden bij een bronfout;
 - een compacte sectie `Bronnen & datakwaliteit` toevoegen.
 
 Acceptatie:
@@ -294,7 +294,7 @@ Acceptatie:
 - de UI bevat geen Microsoft-specifieke logica;
 - tokens, IDs en Graph-fouten verlaten de server niet;
 - uitval van Microsoft blokkeert de Google-bron niet;
-- demo en Google-only blijven zonder Microsoft-configuratie werken.
+- Google-only blijft zonder Microsoft-configuratie werken.
 
 ## Definition of done voor iedere PR
 
@@ -302,8 +302,8 @@ Een stap is pas klaar wanneer:
 
 - de PR één roadmapstap behandelt;
 - code en documentatie overeenkomen;
-- demogegevens de nieuwe situatie afdekken;
-- syntaxcontrole, tests en previewbuild slagen;
+- testgegevens de nieuwe situatie afdekken;
+- syntaxcontrole en tests slagen;
 - geen geheimen of echte data in de diff staan;
 - de Apps Script `/dev`-URL handmatig werkt;
 - regressies in bestaande functies zijn uitgesloten;

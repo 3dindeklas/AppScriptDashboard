@@ -55,32 +55,17 @@ function dashboardDataResponse_(forceRefresh, accessToken) {
   const canViewFinancials = canViewFinancials_(email);
 
   try {
-    let delivery;
-    if (APP_CONFIG.demoMode) {
-      const demo = demoDashboardData_();
-      assertDashboardResult_(demo);
-      delivery = {
-        source: 'demo',
-        snapshot: {
-          updatedAt: new Date().toISOString(),
-          complete: demo.complete,
-          records: demo.records.map(function(record) { return publicRecord_(record, true); }),
-          sources: demo.sources.map(publicSourceStatus_)
-        }
-      };
-    } else {
-      delivery = liveDashboardSnapshot_(forceRefresh === true);
-    }
+    const delivery = liveDashboardSnapshot_(forceRefresh === true);
 
     const snapshot = delivery.snapshot;
 
     return {
-      mode: APP_CONFIG.demoMode ? 'demo' : 'live',
+      mode: 'live',
       generatedAt: snapshot.updatedAt,
       complete: snapshot.complete,
       snapshot: {
         source: delivery.source,
-        cacheEnabled: !APP_CONFIG.demoMode && snapshotCacheEnabled_()
+        cacheEnabled: snapshotCacheEnabled_()
       },
       permissions: {
         canViewFinancials: canViewFinancials

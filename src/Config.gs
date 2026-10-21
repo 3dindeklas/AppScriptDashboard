@@ -1,9 +1,8 @@
 /**
  * Enige configuratiebestand voor de minimale versie.
  *
- * Laat demoMode op true staan om de app eerst zonder databronnen te testen.
- * Zet demoMode daarna op false en vul één of twee Google Sheets in.
- * Bij de standaarddeployment leest de bezoeker de Sheets; bij gastinzage de beheerder.
+ * Vul één of twee Google Sheets in.
+ * Bij de standaarddeployment leest de beheerder de Sheets.
  * Vervang het voorbeeldadres in allowedEmails door ieder Google-account dat
  * het dashboard mag openen. Een lege lijst geeft niemand toegang.
  * Zet alleen accounts die financiële cijfers mogen zien daarnaast ook in
@@ -14,7 +13,6 @@
  */
 const APP_CONFIG = Object.freeze({
   title: 'Workshopkompas',
-  demoMode: true,
   maxRowsPerSource: 5000,
   snapshotCache: Object.freeze({
     enabled: true,

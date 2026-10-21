@@ -3,6 +3,5 @@
 .env
 .env.*
 node_modules/
-preview/
 artifacts/
 *local*
