@@ -1,8 +1,8 @@
 # Workshopkompas · Google Apps Script-dashboard
 
-Workshopkompas combineert de workshopgegevens van alle tech-hubs in één afgeschermd, filterbaar dashboard. De app draait uitsluitend via Google Apps Script en leest Google Sheets met dezelfde kolomstructuur.
+Workshopkompas combineert de workshopgegevens van alle tech-hubs in één afgeschermd, filterbaar dashboard. De app draait uitsluitend via Google Apps Script en leest Google Sheets en importtabbladen met dezelfde kolomstructuur.
 
-De server normaliseert de volledige analysekolomstructuur naar één intern workshopmodel. Alleen de velden voor de huidige interface en filters worden via een vaste allowlist doorgestuurd; uitgebreidere cijfers volgen per roadmapstap.
+De server normaliseert de volledige analysekolomstructuur naar één intern workshopmodel. Alleen de velden voor de huidige interface en filters worden via een vaste allowlist doorgestuurd; financiële velden hebben een extra toegangscontrole.
 
 ## Wat het dashboard doet
 
@@ -39,7 +39,7 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - een afdruk- en PDF-weergave voor een compact A4-landscapeoverzicht;
 - uitsluitend centraal toegestane analysevelden naar de browser; geen namen van contactpersonen, e-mailadressen, telefoonnummers, notities of technische ID's;
 
-Microsoft 365 als databron volgt als stap 10 zodra de Graph-koppeling met een testaccount gecontroleerd kan worden. Toegang voor een Microsoft-e-mailadres kan al via de optionele e-mailcodefunctie.
+Stap 10 importeert een Excel-bestand vanuit een downloadbare URL of een export in Google Drive naar een eigen Google-tabblad. Er is geen Microsoft Graph-/OAuth-inrichting nodig. Links waarvoor Microsoft-aanmelding vereist is, kunnen niet automatisch worden gedownload; gebruik daarvoor een handmatig bijgewerkte export. Zie [Excel-import](docs/EXCEL_IMPORT.md) en [implementatiestatus](docs/STATUS.md). Gastlogin met een Microsoft-e-mailadres staat hier los van.
 
 ## Bestanden
 
@@ -47,7 +47,9 @@ Microsoft 365 als databron volgt als stap 10 zodra de Graph-koppeling met een te
 | --- | --- | --- |
 | `Config.gs` | server | enige configuratieplek, inclusief toegestane accounts |
 | `Code.gs` | server | toegang, `doGet`, `include` en `getDashboardData` |
-| `Data.gs` | server | Google Sheets lezen, normaliseren en browservelden toestaan |
+| `Data.gs` | server | Google Sheets en importtabbladen lezen, normaliseren en browservelden toestaan |
+| `Diagnostics.gs` | server | Google-autorisatie en gerichte controles op services en bronrechten vanuit de editor |
+| `ExcelImport.gs` | server | Excel ophalen, tijdelijk converteren en gecontroleerd publiceren naar een Google-tabblad |
 | `Cache.gs` | server | privacyveilige snapshots, compressie, locking en herstel bij een cache-miss |
 | `Auth.gs` | server | eenmalige e-mailcodes, verzendbegrenzing en gastsessies |
 | `Index.html` | browser | paginastructuur |
@@ -71,6 +73,8 @@ npm test
 De app wordt getest via de Apps Script-web-app. Fictieve gegevens bestaan alleen binnen de geautomatiseerde tests; er is geen lokale demo of GitHub Pages-versie.
 
 ## Installeren
+
+Start bij rechten- of importproblemen met [de diagnosehandleiding](docs/DIAGNOSE.md): **authorizeApp → checkAppSetup → refreshExcelImports**.
 
 Volg [docs/INSTALLATIE.md](docs/INSTALLATIE.md). Stel de toegangsrechten in en koppel minimaal één Google Sheet.
 

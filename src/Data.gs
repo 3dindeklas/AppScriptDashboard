@@ -51,7 +51,7 @@ const PUBLIC_WARNING_FIELDS_ = Object.freeze([
   'unknownSectors'
 ]);
 
-/** Leest iedere Google-bron onafhankelijk en combineert wat wel beschikbaar is. */
+/** Leest iedere Google-bron en geïmporteerd tabblad onafhankelijk en combineert wat wel beschikbaar is. */
 function readConfiguredSheets_() {
   const sourceResults = (APP_CONFIG.sources || []).map(function(source) {
     return readSource_(source);
@@ -64,7 +64,7 @@ function readConfiguredSheets_() {
     records: records,
     sources: sourceResults,
     complete: sourceResults.length > 0 && sourceResults.every(function(result) {
-      return result.status === 'ok' || result.status === 'warning';
+      return (result.status === 'ok' || result.status === 'warning') && result.fresh !== false;
     })
   };
 }
@@ -72,7 +72,9 @@ function readConfiguredSheets_() {
 function readSource_(source) {
   const name = textValue_(source && source.name) || 'Naamloze bron';
 
-  if (!source || !source.spreadsheetId || !source.sheetName) {
+  const excelImport = source && source.type === 'excel-import';
+  const knownType = !source || !source.type || source.type === 'google' || excelImport;
+  if (!source || !knownType || !source.spreadsheetId || !source.sheetName) {
     return sourceResult_(
       name, 'not-configured', [], emptyWarnings_(),
       'Bron is nog niet geconfigureerd.', 'SOURCE_NOT_CONFIGURED', ''
@@ -80,6 +82,7 @@ function readSource_(source) {
   }
 
   try {
+    if (excelImport) return readExcelImport_(source);
     const result = readGoogleSheet_(source);
     const warningCount = warningCount_(result.warnings);
     return sourceResult_(
@@ -95,7 +98,8 @@ function readSource_(source) {
     const reference = logServerError_('readSource: ' + name, error);
     return sourceResult_(
       name, 'error', [], emptyWarnings_(),
-      'Controleer de tabbladnaam en of dit account toegang heeft.',
+      excelImport ? 'Het importtabblad kon niet worden gelezen. Controleer de laatste import en de Google-rechten.' :
+        'Controleer de tabbladnaam en of dit account toegang heeft.',
       'SOURCE_READ_FAILED',
       reference
     );

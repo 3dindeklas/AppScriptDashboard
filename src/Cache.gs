@@ -195,7 +195,8 @@ function snapshotCacheTtlSeconds_() {
 /** Verandert de cache automatisch wanneer een relevante broninstelling wijzigt. */
 function snapshotConfigVersion_() {
   const sourceConfig = (APP_CONFIG.sources || []).map(function(source) {
-    return [source.name, source.spreadsheetId, source.sheetName, source.headerRow];
+    return [source.name, source.type || 'google', source.spreadsheetId, source.sheetName, source.headerRow,
+      source.url, source.driveFileId, source.sourceSheetName];
   });
   const text = JSON.stringify([APP_CONFIG.maxRowsPerSource, sourceConfig]);
   let hash = 2166136261;

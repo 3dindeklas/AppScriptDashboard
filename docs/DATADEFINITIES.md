@@ -236,3 +236,15 @@ Bij het eenduidig tellen van scholen worden hoofdletters, accenten en overtollig
 Een leerlingaantal van nul is een bekende waarde en telt mee in som en gemiddelde. Ontbrekende leerlingaantallen blijven onbekend, worden nooit als nul geïnterpreteerd en worden onder de KPI’s en per tech-hub apart gemeld. Gemiddelden worden met één decimaal getoond; als er geen geldige deler is, verschijnt `—`.
 
 De tech-hubvergelijking herhaalt dezelfde definities per bron. Ook wanneer het tech-hubfilter actief is blijven beide tech-hubs als rij zichtbaar; een door het filter uitgesloten tech-hub toont dan nulwaarden. Zo is direct zichtbaar dat de tabel dezelfde filters volgt.
+
+## Excel-importtabbladen
+
+Een bron met `type: 'excel-import'` publiceert een Excel-tabblad eerst naar Google Sheets. De download/conversie gebeurt alleen via `refreshExcelImports` (editor) of de private tijdtrigger `refreshExcelImports_`; het dashboard leest de laatste gepubliceerde Google-kopie. `headerRow` en `sourceSheetName` horen bij Excel, `spreadsheetId` en `sheetName` bij het Google-doel. Het doeltabblad krijgt altijd een kopregel op rij 1.
+
+Bij publicatie worden alleen de kolommen voor aanvraag-ID, aanvraagdatum, school, regio, workshop, aanbieder, lesmomenten, leerlingaantal, groep/leerjaar, PO/VO, definitieve lesdagen, type, kosten, facturatie en status geschreven. Contactgegevens, notities en technische mail-/agenda-ID's worden niet naar het importtabblad gekopieerd. De volledige Excel staat wel tijdelijk in het privé-Drivebestand voor conversie en wordt daarna verwijderd; opruimen is best effort bij platformfouten/timeouts.
+
+De gedeelde normalisatie en rijlimiet gelden vóór publicatie. Formule-only rijen tellen dus niet mee. Alleen berekende waarden, geen Excel-formules, worden doorgezet. Meerdere lesdagen en combinatiegroepen houden dezelfde definities. De oorspronkelijke datakwaliteitswaarschuwingen blijven bij de import opgeslagen, ook als de gepubliceerde waarden al genormaliseerd zijn.
+
+De bronmelding toont het tijdstip van de laatste geslaagde import. De algemene dashboardtijd is het bijwerktijdstip van de snapshot en kan recenter zijn dan de bronimport. Een mislukte vervolgimport toont oude data met status `warning` en maakt het totaal onvolledig. Een lege import wordt geweigerd zodat een verkeerd of leeg bronblad geen bestaande gegevens wist. Een broninstellingswijziging vereist een nieuwe import; data van de vorige broninstellingen wordt niet als actuele bron getoond.
+
+Het Google-tabblad is alleen voor deze importer bedoeld. De stagingwissel behoudt de vaste tabbladnaam, maar vervangt het sheet-ID; maak geen handmatige formules, grafieken of externe verwijzingen naar dat tabblad. De dashboardbron zoekt bewust op naam. Bron-URL's, Drive-ID's en providerfoutdetails komen nooit in browserantwoord of importlog; alleen vaste foutcodes en referenties.
