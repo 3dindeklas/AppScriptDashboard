@@ -1,11 +1,4 @@
 /** Excel wordt alleen bij een bewuste import opgehaald; dashboardopeningen lezen Google. */
-const EXCEL_IMPORT_FIELDS_ = Object.freeze([
-  ['Aanvraag ID', 'requestId'], ['Datum aanvraag', 'requestedDate'], ['Schoolnaam', 'school'],
-  ['Gemeente / Regio', 'region'], ['Workshopnaam', 'workshop'], ['Aanbieder', 'provider'],
-  ['Lesmomenten', 'sessions'], ['Aantal leerlingen', 'students'], ['Groep / leerjaar', 'gradeLabel'],
-  ['PO / VO', 'sector'], ['Definitieve datum', 'scheduledDates'], ['Type', 'type'],
-  ['Totale kosten aanbieder', 'providerTotalCosts'], ['Te factureren i_lab', 'invoiceAmount'], ['Status', 'status']
-]);
 const EXCEL_IMPORT_MAX_BYTES_ = 5 * 1024 * 1024;
 
 /** Editorknop: alleen een toegestane Google-beheerder, geen gastendpoint. */
@@ -100,21 +93,19 @@ function importExcelSource_(source, conflictingTarget) {
     if (!SpreadsheetApp.openById(temporaryFileId).getSheetByName(source.sourceSheetName)) {
       throw new Error('IMPORT_SOURCE_SHEET_NOT_FOUND');
     }
-    const result = readGoogleSheet_({ spreadsheetId: temporaryFileId,
+    const sourceRows = readGoogleSheetRows_({ spreadsheetId: temporaryFileId,
       sheetName: source.sourceSheetName, headerRow: source.headerRow || 1, name: source.name });
-    // Een onverwacht leeg/verkeerd tabblad mag de laatste geslaagde import niet wissen.
+    // Valideer via hetzelfde dashboardmodel, maar publiceer de oorspronkelijke bronwaarden.
+    if (sourceRows.values.length < 2) throw new Error('IMPORT_EMPTY_DATA');
+    const result = normalizeSheet_(sourceRows.values, source.name);
+    result.warnings.rowsTruncated = sourceRows.rowsTruncated;
     if (!result.records.length) throw new Error('IMPORT_EMPTY_DATA');
-    const rows = [EXCEL_IMPORT_FIELDS_.map(function(field) { return field[0]; })].concat(
-      result.records.map(function(record) {
-        return EXCEL_IMPORT_FIELDS_.map(function(field) {
-          let value = record[field[1]];
-          if (Array.isArray(value)) value = value.join('\n');
-          if (value === null || value === undefined) return '';
-          // setValues behandelt een beginnende = als formule; schrijf broninhoud als tekst.
-          return typeof value === 'string' && value.charAt(0) === '=' ? "'" + value : value;
-        });
-      })
-    );
+    const rows = sourceRows.values.map(function(row) {
+      return row.map(function(value) {
+        // Alleen letterlijke tekst beveiligen; geen kolomnamen/volgorde/bronwaarden normaliseren.
+        return typeof value === 'string' && value.charAt(0) === '=' ? "'" + value : value;
+      });
+    });
     phase = 'publish';
     console.log('[IMPORT_PHASE] ' + source.name + ' · ' + phase);
     const book = SpreadsheetApp.openById(source.spreadsheetId);

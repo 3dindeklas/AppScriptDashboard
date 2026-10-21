@@ -1,6 +1,6 @@
 # Excel importeren naar een Google-tabblad
 
-Stap 10 gebruikt een eenvoudig importtabblad. Apps Script haalt een Excel-bestand op, zet het tijdelijk om naar Google Sheets en publiceert alleen de analysekolommen naar een eigen tabblad. Het dashboard leest daarna die Google-kopie. De directe Microsoft Graph-/OAuth-variant (PR #21) is gesloten en niet gemerged.
+Stap 10 gebruikt een eenvoudig importtabblad. Apps Script haalt een Excel-bestand op, zet het tijdelijk om naar Google Sheets en kopieert de oorspronkelijke kolommen en celwaarden naar een eigen tabblad. Het dashboard leest daarna die Google-kopie. De directe Microsoft Graph-/OAuth-variant (PR #21) is gesloten en niet gemerged.
 
 ## Welke bron werkt?
 
@@ -70,7 +70,17 @@ Bij iedere import wordt eerst een stagingtabblad gevuld. Pas na succes krijgt da
 5. Controleer het resultaat in het uitvoeringslog en het nieuwe Google-tabblad.
 6. Voor een volgende export kun je in Drive een nieuwe versie van hetzelfde bestand uploaden, zodat het ID gelijk blijft, of je past `driveFileId` aan. Start daarna de import opnieuw.
 
-De doelkopie bevat geen contactpersonen, e-mailadressen, telefoonnummers of notities. Het oorspronkelijke Excel-exportbestand in Drive kan die wel bevatten: houd de export en het doelbestand privé/gedeeld met de bedoelde beheerders. De financiële dashboardallowlist beheert alleen dashboardinzage; personen met toegang tot de Google-bron kunnen de daar opgeslagen bedragen zien.
+De doelkopie behoudt nu alle bronkolommen, dus ook eventuele contactpersonen, e-mailadressen, telefoonnummers en notities. Deel het Google-importbestand met de bedoelde bronbeheerders, zoals bij de gewone Google-bron. Het dashboard stuurt contactgegevens/notities niet door naar de browser of snapshot. De financiële dashboardallowlist beheert alleen dashboardinzage; personen met toegang tot de Google-bron kunnen de daar opgeslagen bedragen zien.
+
+## Bronkolommen behouden
+
+De importer gebruikt `readGoogleSheetRows_`, dezelfde rijselectie als de gewone Google-bronnen. De kopregel wordt exact overgenomen, inclusief spaties en lege tussenkolommen binnen het gebruikte bronbereik. Er is geen eigen importkolomlijst, geen hernoeming en geen toevoeging van financiële kolommen als die niet in de bron staan. Ook Gewenste periode, Locatie, Punten per workshop, Actie nodig en Notities blijven op hun oorspronkelijke plek.
+
+De echte workshoprijen worden zonder voorafgaande normalisatie gekopieerd. Datums, getallen, teksten en de oorspronkelijke schrijfwijze van meerdere lesdagen blijven als celwaarden behouden. Excel-formules worden als berekende waarden overgenomen; tekst die letterlijk met `=` begint wordt veilig als tekst geschreven. Formule-only rijen en de bestaande rijlimiet blijven dezelfde regels volgen als Google Sheets. Volledig ongebruikte kolommen buiten het bronbereik en Excel-opmaak worden niet gerepliceerd.
+
+Daarna loopt de Google-kopie via `readGoogleSheet_` en `normalizeSheet_` door precies hetzelfde analysepad als de gewone bronnen. De kopregel staat in het importtabblad op rij 1; `headerRow` in Config blijft de kopregel in Excel aanduiden. Bestaande financiële veldrechten en de browser-allowlist blijven gelden.
+
+Bij bijwerken vanaf PR #22: werk **Data.gs en ExcelImport.gs samen** bij en voer **refreshExcelImports** opnieuw uit om het bestaande verkorte importtabblad met de originele kolommen te vervangen. Config, Google-scopes en OneDrive-cookieafhandeling blijven gelijk.
 
 ## Downloadbare URL
 
@@ -124,7 +134,8 @@ Verander je de bron-URL, het Excel-tabblad, Drive-ID, kopregel of rijlimiet, dan
 - [ ] Eventuele openbare demo-downloadlink levert werkelijk Excel en importeert correct.
 - [ ] Doeltabblad wordt eenmaal aangemaakt en bij een herimport zonder dubbelen vervangen.
 - [ ] Aantallen, meerdere lesdagen, leerlingaantallen, kosten en facturatie komen overeen met Excel.
-- [ ] Lege/formule-only rijen tellen niet mee; contactgegevens/notities ontbreken in het importtabblad.
+- [ ] Kolomnamen, volgorde, lege tussenkolommen en bronwaarden komen overeen met Excel.
+- [ ] Lege/formule-only rijen tellen niet mee; contactgegevens/notities ontbreken in browser en snapshot.
 - [ ] Verkeerde link/bronblad veroorzaakt een melding en behoudt vorige gegevens.
 - [ ] Dashboardopeningen downloaden Excel niet opnieuw; importtijd en snapshottijd zijn begrijpelijk.
 - [ ] Gastlogin en financiële afscherming werken na een nieuwe `/exec`-deployment.

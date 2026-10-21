@@ -299,7 +299,8 @@ Acceptatie:
 
 - openen van het dashboard doet geen nieuwe Excel-download;
 - een import kan bestaande Google-bronnen niet overschrijven;
-- alleen analysekolommen worden gepubliceerd, geen contactgegevens/notities;
+- originele bronkolommen, volgorde, lege tussenkolommen en celwaarden blijven in het importtabblad behouden;
+- browser en snapshot bevatten uitsluitend toegestane analysevelden, geen contactgegevens/notities;
 - mislukte download/conversie laat eerdere gegevens intact en meldt een verouderde bron;
 - Google-only blijft werken zonder geconfigureerde importbron;
 - een beschermde SharePoint-link krijgt een duidelijke fout, geen schijnbaar geslaagde import;
