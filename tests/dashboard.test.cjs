@@ -75,6 +75,16 @@ function context(extra = {}, configTransform = source => source) {
   return ctx;
 }
 
+function fixtureContext(extra = {}, transform) {
+  const ctx = context(extra, transform);
+  vm.runInContext(fs.readFileSync('tests/helpers/workshop-fixture.gs', 'utf8'), ctx);
+  vm.runInContext(`liveDashboardSnapshot_ = function() {
+    const data = fixtureDashboardData_();
+    return { source: 'live', snapshot: { ...data, updatedAt: new Date().toISOString() } };
+  }`, ctx);
+  return ctx;
+}
+
 function liveContext(extra = {}, options = {}) {
   const ids = options.ids || ['source-a-id', 'source-b-id'];
   const maxRows = options.maxRows || 5000;
@@ -82,7 +92,6 @@ function liveContext(extra = {}, options = {}) {
   return context(extra, source => {
     let sourceIndex = 0;
     return finishTransform(source
-      .replace('demoMode: true', 'demoMode: false')
       .replace('maxRowsPerSource: 5000', 'maxRowsPerSource: ' + maxRows)
       .replace(/spreadsheetId: ''/g, () => "spreadsheetId: '" + (ids[sourceIndex++] || '') + "'"));
   });
@@ -248,17 +257,7 @@ function clientHarness(records, options = {}) {
     refreshDashboardData() { requestedMethod = 'refreshDashboardData'; }
   };
   let printCount = 0;
-  const window = options.deferLoad ? { print: () => { printCount += 1; } } : {
-    print: () => { printCount += 1; },
-    __DEMO_PAYLOAD__: {
-      mode: 'demo',
-      generatedAt: '2026-10-17T00:00:00.000Z',
-      complete: true,
-      permissions: { canViewFinancials: options.canViewFinancials !== false },
-      sources: [],
-      records
-    }
-  };
+  const window = { print: () => { printCount += 1; } };
   vm.runInNewContext(client, {
     Date,
     Intl,
@@ -267,13 +266,18 @@ function clientHarness(records, options = {}) {
     console: silentConsole,
     document,
     window,
-    google: options.deferLoad ? { script: { run: runner } } : undefined,
+    google: { script: { run: runner } },
     setTimeout(handler, delay) {
       timerId += 1;
       timers.set(timerId, { handler, delay });
       return timerId;
     },
     clearTimeout(id) { timers.delete(id); }
+  });
+  if (!options.deferLoad) successHandler({
+    mode: 'live', generatedAt: '2026-10-17T00:00:00.000Z', complete: true,
+    permissions: { canViewFinancials: options.canViewFinancials !== false },
+    sources: [], records
   });
   elements.__runTimersThrough = delay => {
     [...timers.entries()]
@@ -595,14 +599,14 @@ test('actieve filterteller herkent leerlingbereiken en herstelt na Filters wisse
   assert.equal(elements.activeFilterCount.hidden, true);
 });
 
-test('demo blijft werken en de browser ontvangt alleen de veilige stap-8-velden', () => {
-  const payload = context().getDashboardData();
-  assert.equal(payload.mode, 'demo');
+test('browser ontvangt alleen de toegestane dashboardvelden', () => {
+  const payload = fixtureContext().getDashboardData();
+  assert.equal(payload.mode, 'live');
   assert.equal(payload.complete, true);
   assert.equal(payload.records.length, 10);
   assert.deepEqual(JSON.parse(JSON.stringify(payload.sources.map(source => [source.name, source.status, source.recordCount]))), [
-    ['Tech-hub A', 'demo', 5],
-    ['Tech-hub B', 'demo', 5]
+    ['Tech-hub A', 'ok', 5],
+    ['Tech-hub B', 'ok', 5]
   ]);
   assert.deepEqual([...new Set(payload.records.map(record => record.source))].sort(), ['Tech-hub A', 'Tech-hub B']);
   assert.equal(payload.records.filter(record => !record.scheduledDate).length, 1);
@@ -759,8 +763,8 @@ test('lang laden geeft stapsgewijze feedback en herstelt de bediening na succes'
   assert.equal(elements.message.textContent, 'Brongegevens worden vernieuwd…');
 });
 
-test('demodata levert de gedocumenteerde stap-6-kerncijfers op', () => {
-  const payload = JSON.parse(JSON.stringify(context().getDashboardData()));
+test('testgegevens leveren de gedocumenteerde stap-6-kerncijfers op', () => {
+  const payload = JSON.parse(JSON.stringify(fixtureContext().getDashboardData()));
   const elements = clientHarness(payload.records);
   const kpis = Object.fromEntries(elements.kpis.children.map(card => [
     card.children[0].textContent,
@@ -784,8 +788,8 @@ test('demodata levert de gedocumenteerde stap-6-kerncijfers op', () => {
   ]);
 });
 
-test('demodata levert de gedocumenteerde stap-8-financiële totalen op', () => {
-  const payload = JSON.parse(JSON.stringify(context().getDashboardData()));
+test('testgegevens leveren de gedocumenteerde stap-8-financiële totalen op', () => {
+  const payload = JSON.parse(JSON.stringify(fixtureContext().getDashboardData()));
   const elements = clientHarness(payload.records);
   const readable = value => value.replace(/\s/g, ' ');
   const financial = Object.fromEntries(elements.financialKpis.children.map(card => [
@@ -878,8 +882,8 @@ test('financiële totalen gebruiken bekende bedragen en marge alleen uit complet
   assert.match(elements.financialNote.textContent, /Marge blijft daarom onbekend/);
 });
 
-test('demodata levert alle stap-7-verdelingen en gewogen leerjaren op', () => {
-  const payload = JSON.parse(JSON.stringify(context().getDashboardData()));
+test('testgegevens leveren alle stap-7-verdelingen en gewogen leerjaren op', () => {
+  const payload = JSON.parse(JSON.stringify(fixtureContext().getDashboardData()));
   const elements = clientHarness(payload.records);
   const rows = id => elements[id].children.map(row => row.children.map(cell => cell.textContent));
 
@@ -1011,20 +1015,11 @@ test('ontbrekende en niet-toegestane identiteiten ontvangen geen dashboarddata',
   }
 });
 
-test('demomodus omzeilt de toegangscontrole niet', () => {
-  const config = fs.readFileSync('src/Config.gs', 'utf8');
-  assert.match(config, /demoMode:\s*true/);
-  assert.throws(
-    () => context({ Session: session('niet-toegestaan@voorbeeld.nl') }).getDashboardData(),
-    /Geen toegang/
-  );
-});
-
 test('financiële browservelden vallen onder dezelfde verplichte toegangscontrole', () => {
   const denied = context({ Session: session('niet-toegestaan@voorbeeld.nl') });
   assert.throws(() => denied.getDashboardData(), /Geen toegang/);
 
-  const dashboardOnly = context({}, withFinancialEmails([])).getDashboardData();
+  const dashboardOnly = fixtureContext({}, withFinancialEmails([])).getDashboardData();
   assert.equal(dashboardOnly.permissions.canViewFinancials, false);
   assert.equal(Object.prototype.hasOwnProperty.call(dashboardOnly.records[0], 'providerTotalCosts'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(dashboardOnly.records[0], 'invoiceAmount'), false);
@@ -1032,7 +1027,7 @@ test('financiële browservelden vallen onder dezelfde verplichte toegangscontrol
   assert.equal(hiddenElements.financialOverview.hidden, true);
   assert.equal(hiddenElements.financialKpis.children.length, 0);
 
-  const allowed = context().getDashboardData();
+  const allowed = fixtureContext().getDashboardData();
   const allowedRecord = allowed.records[0];
   assert.equal(allowed.permissions.canViewFinancials, true);
   assert.equal(allowedRecord.providerTotalCosts, 450);
@@ -1796,8 +1791,8 @@ test('een mislukte bron blokkeert beschikbare live gegevens niet', () => {
   assert.ok(!json.includes('Voorbeeldschool'));
 });
 
-test('live-modus met ontbrekende configuratie valt niet terug op demo', () => {
-  const payload = context({}, source => source.replace('demoMode: true', 'demoMode: false')).getDashboardData();
+test('ontbrekende bronconfiguratie levert geen fictieve gegevens, ook met oude demoMode', () => {
+  const payload = context({}, source => source.replace("title: 'Workshopkompas',", "title: 'Workshopkompas', demoMode: true,")).getDashboardData();
 
   assert.equal(payload.mode, 'live');
   assert.equal(payload.complete, false);

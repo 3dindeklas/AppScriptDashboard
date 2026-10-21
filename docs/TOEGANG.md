@@ -48,13 +48,13 @@ Gebruik bij voorkeur een **apart Apps Script-project voor gastinzage**. Zo blijv
 
 1. Kopieer alle elf bestanden uit `src/`: vijf scripts en zes HTML-bestanden. Zie [INSTALLATIE.md](INSTALLATIE.md).
 2. Vul de bronbladen en je eigen Google-account in; zet de gewenste gastadressen in `emailAccess.allowedEmails` en `enabled` op `true`.
-3. Zet eerst `demoMode: true` om de volledige gastflow met fictieve gegevens te testen.
+3. Koppel een Google Sheet en controleer of de beheerder het bronblad kan lezen.
 4. Controleer in het Apps Script-manifest de gastinstellingen `USER_DEPLOYING / ANYONE_ANONYMOUS` en `script.send_mail`. Het huidige `src/appsscript.json` bevat deze al; **deploy/email-access/appsscript.json** is een alternatief met uitsluitend leesrechten voor Sheets.
 5. Voer als beheerder **checkEmailAccessSetup** vanuit de editor uit en verleen de gevraagde autorisaties. De beheerder moet in `allowedEmails` staan. Deze functie verstuurt geen mail; het uitvoeringslog toont of mailtoegang werkt, hoeveel dagquotum over is en of gasttoegang en de adreslijst zijn ingesteld.
 6. Maak een web-appdeployment: **Uitvoeren als: ik** en **Toegang: iedereen**. De beheerder moet de bron-Sheets kunnen lezen. Deel de bronbladen zelf niet met gasten.
 7. Open de gepubliceerde **/exec**-URL in een privévenster zonder Google-login. `/dev` is alleen toegankelijk voor projecteditors en test de gasttoegang dus niet.
 8. Controleer een toegestaan en een onbekend e-mailadres, een verkeerde code, opnieuw versturen, uitloggen, herladen en de financiële afscherming. Controleer ook daadwerkelijke bezorging bij Microsoft en de map ongewenste e-mail.
-9. Zet na de demoacceptatie `demoMode: false` en publiceer een nieuwe versie.
+9. Publiceer na acceptatie de gecontroleerde Apps Script-versie.
 
 Je kunt ook het bestaande project voor gasttoegang omzetten met hetzelfde gastmanifest en dezelfde instellingen. Buiten het domein kan Google dan geen actieve accountidentiteit leveren. Die gebruikers loggen met een code in en moeten daarvoor ook in `emailAccess.allowedEmails` staan. Dit verandert bovendien onder wiens rechten de bronbladen worden gelezen. Daarom is een apart gastproject de eenvoudigste manier om de bestaande Google-toegang intact te houden.
 

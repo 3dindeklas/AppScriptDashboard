@@ -246,6 +246,6 @@ function refreshDashboardSnapshot() {
   const email = effectiveUserEmail_();
   const allowedEmails = (APP_CONFIG.allowedEmails || []).map(normalizeEmail_);
   if (!email || allowedEmails.indexOf(email) === -1) throw new Error('Geen toegang.');
-  if (APP_CONFIG.demoMode || !snapshotCacheEnabled_()) return '';
+  if (!snapshotCacheEnabled_()) return '';
   return liveDashboardSnapshot_(true).snapshot.updatedAt;
 }

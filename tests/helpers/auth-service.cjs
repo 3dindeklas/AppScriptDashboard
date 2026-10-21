@@ -81,6 +81,11 @@ function setup(options = {}) {
         allowedEmails: ['gast@microsoft.example'], codeMinutes: 10, sessionHours: 8 }) + '),');
     vm.runInContext(source, ctx);
   }
+  vm.runInContext(fs.readFileSync('tests/helpers/workshop-fixture.gs', 'utf8'), ctx);
+  vm.runInContext(`liveDashboardSnapshot_ = function() {
+    const data = fixtureDashboardData_();
+    return { source: 'live', snapshot: { ...data, updatedAt: new Date().toISOString() } };
+  }; snapshotCacheEnabled_ = function() { return false; };`, ctx);
   return { ctx, values, mails, templates, logs, authorizationChecks, advance: ms => { now += ms; },
     code: () => mails[mails.length - 1].body.match(/\b\d{6}\b/)[0] };
 }

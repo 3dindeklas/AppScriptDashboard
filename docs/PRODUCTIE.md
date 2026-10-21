@@ -20,13 +20,11 @@ Leg buiten GitHub vast wie deze rollen heeft. Sla geen accounts, spreadsheet-ID'
    ```sh
    npm run check
    npm test
-   npm run preview:build
    ```
 
-3. Controleer de fictieve preview op telefoon-, tablet- en desktopbreedte.
+3. Controleer de Apps Script-web-app op telefoon-, tablet- en desktopbreedte.
 4. Kopieer alle gewijzigde bestanden uit `src/` naar het Apps Script-project.
 5. Controleer in `Config.gs`:
-   - `demoMode` staat in productie op `false`;
    - alleen volledige, bedoelde adressen staan in `allowedEmails`;
    - financiële kijkers staan óók in `allowedEmails`, of bij gastinzage in `emailAccess.allowedEmails`;
    - iedere Google-bron heeft de juiste spreadsheet-ID, tabbladnaam en kopregel;

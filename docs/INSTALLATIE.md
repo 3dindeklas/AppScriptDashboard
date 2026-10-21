@@ -53,37 +53,13 @@ Een Google-account in `financialAllowedEmails` moet ook in `allowedEmails` staan
 
 Zet geen wachtwoorden, tokens, spreadsheet-ID's of andere geheimen in deze lijst.
 
-## Stap 3 · Test eerst de demomodus
+## Stap 3 · Controleer de Apps Script-bestanden
 
-Laat in `Config.gs` dit staan:
+Sla alle bestanden op en koppel bij stap 4 minimaal één Google Sheet. Open daarna **Implementeren → Implementaties testen → Web-app**. De `/dev`-URL gebruikt de laatst opgeslagen code en is alleen toegankelijk voor projecteditors. Test gasttoegang via de gepubliceerde `/exec`-URL.
 
-```javascript
-demoMode: true,
-```
+De app heeft geen demomodus. Zonder ingestelde bron verschijnt een melding over de ontbrekende configuratie; er worden geen fictieve workshopgegevens geladen.
 
-Sla alle bestanden op. Kies daarna **Implementeren → Implementaties testen → Web-app** en open de `/dev`-URL. Deze test-URL gebruikt altijd de laatst opgeslagen code en is alleen toegankelijk voor projecteditors.
-
-Je hoort nu zonder verdere instellingen te zien:
-
-- de badge `Demogegevens`;
-- 10 workshops verdeeld over Tech-hub A en Tech-hub B;
-- negen werkende dropdownfilters;
-- een maandbereik en leerlingbereik met leesbare waarden;
-- zeven kerncijfers en een vergelijking tussen beide tech-hubs;
-- een standaard ingeklapt financieel overzicht;
-- een maandgrafiek met metriekkeuze;
-- verdelingen voor onderwijs, regio, statusgroep, workshop en aanbieder;
-- gewogen PO- en VO-leerjaren;
-- donuts voor PO/VO en statusgroepen, inclusief aantallen en percentages;
-- een gemeentekaart die 10 demoaanvragen aan 7 gemeenten koppelt;
-- een leesbare tabelweergave onder iedere grafiek en de recente-workshoptabel;
-- de paarse 3Dindeklas-header en een werkende knop **Afdrukken / PDF**.
-
-Werkt dit niet, koppel dan nog geen echte data. Controleer eerst of alle elf bestanden het juiste type en exact dezelfde naam hebben.
-
-Bij het bijwerken van een bestaand project: voeg **Municipalities** via **+ → HTML** toe en werk ook `Code.gs`, `Index.html`, `Styles.html` en `Client.html` samen bij. De gemeentekaart heeft geen API-sleutel of extra instelling nodig. Zie [Gemeentekaart](GEMEENTEKAART.md) voor uitleg over de koppeling van regio’s.
-
-Bijwerken vanaf PR 18: voeg **Auth** toe als script en **Access** en **AccessClient** als HTML. Werk `Code.gs`, `Index.html`, `Styles.html` en `Client.html` samen bij. Behoud je eigen Config.gs; zonder het optionele `emailAccess`-blok blijft gasttoegang uit. Zie [TOEGANG.md](TOEGANG.md) voor het inschakelen en deployen van e-mailcodes.
+Bij een bestaand project: werk `Code.gs`, `Data.gs`, `Cache.gs` en `Client.html` samen bij. Verwijder de vervallen eigenschap `demoMode` uit je eigen `Config.gs` en behoud je broninstellingen en toegangsadressen. Voeg zo nodig **Auth** als script en **Access**, **AccessClient** en **Municipalities** als HTML toe. Zie [TOEGANG.md](TOEGANG.md) voor gastinzage.
 
 ## Stap 4 · Koppel één Google Sheet
 
@@ -92,7 +68,6 @@ Vul eerst alleen Tech-hub A in:
 ```javascript
 const APP_CONFIG = Object.freeze({
   title: 'Workshopkompas',
-  demoMode: false,
   maxRowsPerSource: 5000,
   snapshotCache: Object.freeze({
     enabled: true,
@@ -147,11 +122,9 @@ Open **Filters** in de navigatie om de standaard ingeklapte zijbalk te tonen. De
 
 Onder de dropdowns kun je kiezen tussen **Definitieve datum** en **Datum aanvraag**. Stel daarna met de twee maandsliders een inclusieve periode in. `Definitieve datum` mag meerdere lesdagen bevatten, gescheiden door komma’s, puntkomma’s of nieuwe regels. Een workshop wordt opgenomen zodra minimaal één van die lesdagen binnen de gekozen periode valt; de tabel toont alle lesdagen. De leerling-sliders gebruiken automatisch het laagste en hoogste bekende aantal. De twee vinkjes bepalen expliciet of workshopregels zonder geldige datum of zonder leerlingaantal zichtbaar blijven. De sliders reageren direct, zijn met de pijltjestoetsen te bedienen en kunnen elkaar niet passeren.
 
-Met de volledige demoselectie tonen de kerncijfers 10 aanvragen/workshops, 204 leerlingdeelnames, 10 scholen, 22 lesmomenten en 4 uitgevoerde aanvragen. Het gemiddelde is 22,7 bekende leerlingen per aanvraag en er is één regel zonder leerlingaantal. De vergelijking toont dezelfde definities afzonderlijk voor Tech-hub A en Tech-hub B. Kies een tech-hub, regio of ander filter en controleer dat zowel de KPI’s als de vergelijkingstabel direct meeveranderen.
+Controleer de kerncijfers tegen je bronblad en kies daarna een tech-hub of periode. Alle cijfers en grafieken moeten dezelfde selectie volgen. Wissel de maandgrafiek tussen aanvragen, leerlingdeelnames en lesmomenten. Open de tabelweergaven en vergelijk de waarden met de grafieken.
 
-Controleer daarna de grafieken. In de demodata zijn 8 aanvragen voor PO en 2 voor VO. De PO-leerjaarverdeling toont onder andere 3,5 gewogen aanvragen voor groep 6; de VO-verdeling toont 1 aanvraag voor leerjaar 1 en 1 voor leerjaar 2. Wissel in de maandgrafiek tussen aanvragen/workshops, leerlingdeelnames en lesmomenten. De aanvraag met twee definitieve lesdagen wordt evenredig over september en oktober verdeeld. Open bij iedere grafiek **Bekijk cijfers als tabel** en controleer dat dezelfde waarden ook zonder de visuele staven leesbaar zijn.
-
-Open daarna als account uit `financialAllowedEmails` **Kosten, facturatie en marge**. Dit blok hoort bij het laden standaard dicht te staan. Met alle demogegevens zichtbaar zijn de verwachte waarden € 4.750,00 kosten, € 6.700,00 te factureren, € 1.450,00 marge, 25,0% gewogen marge, 8 complete regels en 2 onvolledige regels. Kies daarna één tech-hub of workshop en controleer dat alle financiële waarden direct dezelfde filters volgen. Test ook met een account dat alleen in `allowedEmails` staat: het financiële blok hoort dan volledig te ontbreken.
+Open als financieel toegestaan account **Kosten, facturatie en marge**. Dit blok begint ingeklapt. Controleer de totalen tegen het bronblad en test ook een account zonder financiële toegang: het blok en de financiële velden horen dan te ontbreken.
 
 De kosten- en facturatietotalen tellen ieder hun bekende bedragen. Marge wordt alleen berekend voor regels waarop beide bedragen aanwezig zijn. Controleer dit ook met één lege kostencel en één lege factuurcel: de lege cel mag niet als € 0,00 worden behandeld en de betreffende regel moet als onvolledig worden geteld.
 
@@ -161,7 +134,7 @@ Open **Data → Bronnen & datakwaliteit** om per tech-hub te zien of de bron gel
 
 Formules mogen onder de echte gegevens alvast zijn doorgetrokken. Rijen die uitsluitend formules bevatten worden niet geladen, tellen niet als workshop en verbruiken de rijlimiet niet. Test dit desgewenst door een formule enkele honderden rijen naar beneden door te trekken: het getoonde aantal workshops hoort gelijk te blijven. Een echte workshoprij met daarnaast berekende formulevelden blijft wel gewoon zichtbaar.
 
-Tijdens het ophalen blijft bovenaan een laadmelding met spinner zichtbaar. Na 1,5, 5 en 10 seconden verandert de tekst, zodat zichtbaar blijft dat de pagina nog op Apps Script en de Sheets wacht. Dit is geen geschat percentage. Na een succesvolle laadactie toont de pagina een korte **Bijgewerkt**-regel. Onder **Data** staan het volledige bijwerktijdstip, de herkomst (**Google Sheets**, **Snapshot** of **Demo**) en de gemeten laadtijd afzonderlijk. De knop **Brongegevens vernieuwen** staat ook onder Data en is tijdens het laden uitgeschakeld.
+Tijdens het ophalen blijft bovenaan een laadmelding met spinner zichtbaar. Na 1,5, 5 en 10 seconden verandert de tekst, zodat zichtbaar blijft dat de pagina nog op Apps Script en de Sheets wacht. Dit is geen geschat percentage. Na een succesvolle laadactie toont de pagina een korte **Bijgewerkt**-regel. Onder **Data** staan het volledige bijwerktijdstip, de herkomst (**Google Sheets** of **Snapshot**) en de gemeten laadtijd afzonderlijk. De knop **Brongegevens vernieuwen** staat ook onder Data en is tijdens het laden uitgeschakeld.
 
 Met **Weergave** zet je onderdelen afzonderlijk aan of uit voor een screenshot of afdruk. Gemeenten zijn één blok met de keuze **Kaart/Ranglijst** en PO- en VO-leerjaren staan in één gezamenlijk blok. De tech-hubvergelijking staat onderaan. Zie [Compact dashboard en screenshots](WEERGAVE.md).
 
@@ -197,7 +170,6 @@ De snapshot bevat nooit contactpersonen, e-mailadressen, telefoonnummers, notiti
 
 Wil je de snapshot ook zonder geopende browser actueel houden, maak dan één tijdtrigger aan:
 
-1. zet `demoMode` eerst op `false`;
 2. open links in Apps Script **Triggers**;
 3. kies **Trigger toevoegen**;
 4. selecteer de functie `refreshDashboardSnapshot`;
@@ -211,7 +183,7 @@ De trigger draait met het Google-account van de maker. Dit account moet in `allo
 
 Vul pas wanneer Tech-hub A werkt ook het `spreadsheetId` van Tech-hub B in. Beide sheets gebruiken dezelfde kopteksten en dezelfde kopregelinstelling.
 
-Als één bron niet bereikbaar is, blijven de gegevens van de andere bron zichtbaar. Het dashboard meldt dan dat het overzicht onvolledig is. Er wordt in live-modus nooit automatisch teruggevallen op demogegevens.
+Als één bron niet bereikbaar is, blijven de gegevens van de andere bron zichtbaar. Het dashboard meldt dan dat het overzicht onvolledig is. Er worden nooit fictieve gegevens als vervanging geladen.
 
 ## Stap 6 · Publiceer een versie
 
@@ -224,7 +196,7 @@ Wanneer de `/dev`-test werkt:
 5. controleer dat de beheerder de Google Sheets kan lezen en configureer de toegestane gastadressen;
 6. open de nieuwe `/exec`-URL.
 
-Het huidige manifest gebruikt `executeAs: USER_DEPLOYING`. De beheerder verleent de Sheet- en mailrechten; bezoekers verifiëren hun toegestane adres met een code. Volg [TOEGANG.md](TOEGANG.md) voor autoriseren en de gastacceptatietest. De allowlists blijven verplicht, ook wanneer `demoMode: true` staat.
+Het huidige manifest gebruikt `executeAs: USER_DEPLOYING`. De beheerder verleent de Sheet- en mailrechten; bezoekers verifiëren hun toegestane adres met een code. Volg [TOEGANG.md](TOEGANG.md) voor autoriseren en de gastacceptatietest. De allowlists blijven verplicht.
 
 Een bestaande Google-installatie mag `USER_ACCESSING` met toegang voor aangemelde gebruikers blijven gebruiken. In dat model verleent iedere gebruiker zelf toestemming en moeten de bronbladen voor die gebruiker toegankelijk zijn. `npm run check` ondersteunt beide modellen en controleert de bijbehorende toegangsinstellingen en scopes.
 

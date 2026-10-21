@@ -207,13 +207,12 @@ Iedere bron krijgt onafhankelijk één status:
 
 | Status | Betekenis |
 | --- | --- |
-| `demo` | fictieve gegevens voor veilig testen |
 | `ok` | bron volledig gelezen zonder datakwaliteitssignalen |
 | `warning` | bron gelezen, met één of meer getelde signalen |
 | `error` | bron kon niet worden gelezen; andere bronnen blijven beschikbaar |
 | `not-configured` | spreadsheet-ID of tabbladnaam ontbreekt |
 
-Het totale overzicht is compleet wanneer alle geconfigureerde live-bronnen `ok` of `warning` zijn. Een waarschuwing betekent dus dat de bron beschikbaar is, maar dat bepaalde rijen aandacht vragen. Bij `error` of `not-configured` wordt het overzicht als onvolledig gemarkeerd. Live-modus valt nooit terug op demogegevens.
+Het totale overzicht is compleet wanneer alle geconfigureerde live-bronnen `ok` of `warning` zijn. Een waarschuwing betekent dus dat de bron beschikbaar is, maar dat bepaalde rijen aandacht vragen. Bij `error` of `not-configured` wordt het overzicht als onvolledig gemarkeerd. Er worden nooit fictieve gegevens als vervanging geladen.
 
 Een bronfout bevat in de browser alleen een vaste foutcode en een willekeurige referentie. De technische fout en stacktrace zijn uitsluitend terug te vinden in de afgeschermde Apps Script-uitvoeringslog met dezelfde referentie.
 

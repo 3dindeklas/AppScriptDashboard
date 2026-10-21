@@ -5,9 +5,8 @@
     const state = {
       records: [],
       sources: [],
-      mode: 'demo',
       generatedAt: '',
-      snapshotSource: 'demo',
+      snapshotSource: 'live',
       complete: true,
       canViewFinancials: false,
       dateMonths: [],
@@ -60,7 +59,6 @@
     };
     const timelinePalette = ['#4c325b', '#5ab3b1', '#fbbd30', '#8c6b9f', '#33817f', '#c88529'];
     const sourceStatusLabels = {
-      demo: 'Demo',
       ok: 'Geladen',
       warning: 'Aandachtspunt',
       error: 'Niet geladen',
@@ -188,11 +186,6 @@
         return;
       }
 
-      if (window.__DEMO_PAYLOAD__) {
-        handleData(window.__DEMO_PAYLOAD__);
-        return;
-      }
-
       handleError(new Error('De Apps Script-verbinding is niet beschikbaar.'));
     }
 
@@ -207,7 +200,6 @@
 
       state.records = payload.records;
       state.sources = Array.isArray(payload.sources) ? payload.sources : [];
-      state.mode = payload.mode || 'live';
       state.generatedAt = payload.generatedAt || new Date().toISOString();
       state.snapshotSource = payload.snapshot && payload.snapshot.source
         ? payload.snapshot.source
@@ -225,7 +217,7 @@
       configureDateRange(true);
       configureStudentRange(true);
 
-      elements.mode.textContent = state.mode === 'demo' ? 'Demogegevens' : 'Live gegevens';
+      elements.mode.textContent = 'Live gegevens';
       elements.updated.textContent = 'Bijgewerkt ' + formatDateTime(state.generatedAt);
       elements.dataUpdated.textContent = formatDateTime(state.generatedAt);
       elements.dataOrigin.textContent = snapshotSourceLabel(state.snapshotSource);
@@ -276,7 +268,7 @@
 
     function renderSourceStatus() {
       elements.sourceCards.replaceChildren();
-      const loaded = state.sources.filter(source => ['demo', 'ok', 'warning'].includes(source.status)).length;
+      const loaded = state.sources.filter(source => ['ok', 'warning'].includes(source.status)).length;
       elements.sourceSummary.textContent = loaded + ' van ' + state.sources.length + ' bronnen beschikbaar';
 
       if (!state.sources.length) {
@@ -334,7 +326,7 @@
     }
 
     function safeStatus(status) {
-      return ['demo', 'ok', 'warning', 'error', 'not-configured'].includes(status) ? status : 'error';
+      return ['ok', 'warning', 'error', 'not-configured'].includes(status) ? status : 'error';
     }
 
     function setLoading(loading) {
@@ -389,7 +381,7 @@
     function snapshotSourceLabel(source) {
       if (source === 'cache') return 'Snapshot';
       if (source === 'live') return 'Google Sheets';
-      return 'Demo';
+      return 'Onbekend';
     }
 
     function printDashboard() {
