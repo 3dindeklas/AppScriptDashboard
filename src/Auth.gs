@@ -90,6 +90,8 @@ function requestEmailCode(address) {
 /** Voer als toegestane Google-beheerder uit in de editor; verstuurt geen mail. */
 function checkEmailAccessSetup() {
   requireAccess_();
+  // Double check authorization scope
+  ScriptApp.requireScopes(ScriptApp.AuthMode.FULL, ["https://www.googleapis.com/auth/script.send_mail"]);
   let remaining;
   try { remaining = remainingMailQuota_(); } catch (error) { throw emailMailFailure_(error, 'setup'); }
   const settings = emailAccessSettings_();
