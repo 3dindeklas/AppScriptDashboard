@@ -28,7 +28,7 @@ Leg buiten GitHub vast wie deze rollen heeft. Sla geen accounts, spreadsheet-ID'
 5. Controleer in `Config.gs`:
    - `demoMode` staat in productie op `false`;
    - alleen volledige, bedoelde adressen staan in `allowedEmails`;
-   - financiële kijkers staan óók in `allowedEmails`;
+   - financiële kijkers staan óók in `allowedEmails`, of bij gastinzage in `emailAccess.allowedEmails`;
    - iedere Google-bron heeft de juiste spreadsheet-ID, tabbladnaam en kopregel;
    - `snapshotCache.ttlSeconds` is maximaal 21.600 seconden.
 6. Sla alles op en test eerst de `/dev`-URL.
@@ -70,7 +70,7 @@ Herhaal de toegangscontrole met:
 1. Open **Implementeren → Implementaties beheren**.
 2. Bewerk de bestaande web-appimplementatie.
 3. Kies **Nieuwe versie** en noteer kort welke pull request wordt gepubliceerd.
-4. Behoud **Uitvoeren als gebruiker die de web-app opent**.
+4. Behoud voor de standaard Google-deployment **Uitvoeren als gebruiker die de web-app opent**. De optionele gastdeployment heeft andere uitvoeringsrechten en een eigen manifest; volg daarvoor [TOEGANG.md](TOEGANG.md).
 5. Behoud de bedoelde Google Workspace-doelgroep; maak de app niet publiek.
 6. Publiceer en open de `/exec`-URL in een nieuw venster.
 7. Herhaal minimaal laden, één filter, handmatig vernieuwen, financiële afscherming en afdrukweergave.
@@ -95,7 +95,7 @@ De knop **Brongegevens vernieuwen** is de juiste handmatige actie na een wijzigi
 1. Noteer tijdstip, zichtbare foutcode, foutreferentie en gebruikte `/dev`- of `/exec`-URL.
 2. Open Apps Script **Uitvoeringen** en zoek dezelfde uitvoering.
 3. Controleer eerst accounttoegang, Sheet-deelrechten, tabbladnaam en kopregel.
-4. Controleer daarna of alle acht Apps Script-bestanden uit dezelfde commit komen.
+4. Controleer daarna of alle elf Apps Script-bestanden uit dezelfde commit komen.
 5. Deel geen volledige logregels wanneer die broninformatie of IDs bevatten.
 
 Een fout in één bron hoort de andere bron niet te blokkeren. Een cacheprobleem hoort automatisch terug te vallen op live Sheet-data.

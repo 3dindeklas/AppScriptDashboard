@@ -68,7 +68,7 @@ function context(extra = {}, configTransform = source => source) {
     ...extra
   });
 
-  for (const file of ['Config.gs', 'Data.gs', 'Cache.gs', 'Code.gs']) {
+  for (const file of ['Config.gs', 'Data.gs', 'Cache.gs', 'Auth.gs', 'Code.gs']) {
     const source = fs.readFileSync('src/' + file, 'utf8');
     vm.runInContext(file === 'Config.gs' ? configTransform(source) : source, ctx);
   }
@@ -153,7 +153,7 @@ function clientHarness(records, options = {}) {
     'comparisonRows', 'financialOverview', 'financialKpis', 'financialCompleteness', 'financialNote',
     'timelineMetric', 'timelineSubtitle', 'timelineLegend',
     'timelineChart', 'timelineCaption', 'timelineTableHead', 'timelineTableRows',
-    'sectorChart', 'sectorTableRows', 'regionChart', 'regionTableRows',
+    'sectorChart', 'sectorTableRows', 'regionChart',
     'statusChart', 'statusTableRows', 'workshopChart', 'workshopTableRows',
     'providerChart', 'providerTableRows', 'poChart', 'poTableRows',
     'voChart', 'voTableRows', 'recentRows', 'recentDateHeading',
@@ -362,9 +362,10 @@ test('serverbestanden bevatten geen browser-API\'s', () => {
 
 test('Index gebruikt uitsluitend de officiële include-opzet', () => {
   const index = fs.readFileSync('src/Index.html', 'utf8');
-  assert.match(index, /<\?!= include\('Styles'\); \?>/);
-  assert.match(index, /<\?!= include\('Municipalities'\); \?>/);
-  assert.match(index, /<\?!= include\('Client'\); \?>/);
+  assert.match(index, /<\?!= include\('Styles', accessToken\); \?>/);
+  assert.match(index, /<\?!= include\('Municipalities', accessToken\); \?>/);
+  assert.match(index, /<\?!= include\('AccessClient', accessToken\); \?>/);
+  assert.match(index, /<\?!= include\('Client', accessToken\); \?>/);
   assert.doesNotMatch(index, /include_/);
 });
 
@@ -434,12 +435,12 @@ test('iedere stap-7-grafiek heeft een leesbare tabelweergave zonder externe graf
   assert.match(index, /id="timelineTableRows"/);
 
   for (const id of [
-    'sectorTableRows', 'regionTableRows', 'statusTableRows', 'workshopTableRows',
+    'sectorTableRows', 'mapTableRows', 'statusTableRows', 'workshopTableRows',
     'providerTableRows', 'poTableRows', 'voTableRows'
   ]) {
     assert.match(index, new RegExp('<tbody id="' + id + '">'));
   }
-  assert.equal((index.match(/<details class="chart-data">/g) || []).length, 8);
+  assert.equal((index.match(/<details class="chart-data">/g) || []).length, 5);
   assert.doesNotMatch(index, /<script[^>]+src=/i);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
 });
@@ -534,7 +535,7 @@ test('kaart en gemeentestaven volgen samen de filters en kaartgebied verandert g
   elements.mapScope.value = 'netherlands';
   elements.mapScope.trigger('change');
   assert.equal(elements.mapCoverage.textContent, '1 van 1 aanvragen gekoppeld aan 1 gemeente.');
-  assert.deepEqual(elements.regionTableRows.children[0].children.map(cell => cell.textContent), ['Gorinchem', '1']);
+  assert.deepEqual(elements.regionChart.children[0].children[0].children.map(cell => cell.textContent), ['Gorinchem', '1']);
   assert.equal(elements.resultCount.textContent, total);
 });
 
@@ -1888,11 +1889,12 @@ test('doGet en include volgen rechtstreeks de HtmlService-methoden', () => {
   assert.throws(() => ctx.include('Onbekend'), /Bestand niet beschikbaar/);
 });
 
-test('doGet toont een vaste veilige pagina aan geweigerde accounts', () => {
+test('doGet probeert uitsluitend de toegangspagina voor geweigerde accounts en valt veilig terug', () => {
   let templateCalls = 0;
   const htmlService = {
-    createTemplateFromFile() {
+    createTemplateFromFile(name) {
       templateCalls += 1;
+      assert.equal(name, 'Access');
       throw new Error('mag niet worden aangeroepen');
     },
     createHtmlOutput(content) {
@@ -1909,9 +1911,9 @@ test('doGet toont een vaste veilige pagina aan geweigerde accounts', () => {
   });
   const output = ctx.doGet();
 
-  assert.equal(templateCalls, 0);
+  assert.equal(templateCalls, 1);
   assert.equal(output.title, 'Geen toegang');
-  assert.match(output.content, /Config\.gs/);
+  assert.match(output.content, /toegestaan Google-account/);
   assert.doesNotMatch(output.content, /niet-toegestaan@voorbeeld\.nl/);
 });
 

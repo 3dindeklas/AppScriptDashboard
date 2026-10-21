@@ -10,6 +10,7 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - standaard publieke `include(filename)` voor `Styles.html` en `Client.html`;
 - één account-allowlist voor het dashboard en een aparte financiële allowlist in `Config.gs`;
 - toegangscontrole bij de pagina, HTML-includes en iedere data-aanvraag;
+- een aparte toegangspagina zonder dashboardblokken en optionele e-mailcodes voor vooraf toegestane gastadressen;
 - onafhankelijke laadstatus en datakwaliteit per Google-bron;
 - beschikbare data blijft zichtbaar wanneer één bron uitvalt;
 - maximaal 5.000 regels per bron, configureerbaar tot een harde grens van 10.000;
@@ -39,7 +40,7 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - uitsluitend centraal toegestane analysevelden naar de browser; geen namen van contactpersonen, e-mailadressen, telefoonnummers, notities of technische ID's;
 - demomodus zonder databronnen, maar nooit zonder toegangscontrole.
 
-Microsoft 365 en verschillende rollen zijn bewust nog niet opgenomen. Microsoft volgt als stap 10 zodra de koppeling met een testaccount gecontroleerd kan worden.
+Microsoft 365 als databron volgt als stap 10 zodra de Graph-koppeling met een testaccount gecontroleerd kan worden. Toegang voor een Microsoft-e-mailadres kan al via de optionele e-mailcodefunctie.
 
 ## Bestanden
 
@@ -49,10 +50,13 @@ Microsoft 365 en verschillende rollen zijn bewust nog niet opgenomen. Microsoft 
 | `Code.gs` | server | toegang, `doGet`, `include` en `getDashboardData` |
 | `Data.gs` | server | Google Sheets lezen, normaliseren en browservelden toestaan |
 | `Cache.gs` | server | privacyveilige snapshots, compressie, locking en herstel bij een cache-miss |
+| `Auth.gs` | server | eenmalige e-mailcodes, verzendbegrenzing en gastsessies |
 | `Index.html` | browser | paginastructuur |
 | `Styles.html` | browser | CSS binnen een `<style>`-tag |
 | `Municipalities.html` | browser | openbare, vereenvoudigde gemeentegrenzen als JSON; bevat geen workshopgegevens |
 | `Client.html` | browser | browser-JavaScript binnen een `<script>`-tag |
+| `Access.html` | browser | toegangspagina zonder dashboardgegevens |
+| `AccessClient.html` | browser | inloggen, sessieherstel, automatisch verlopen en uitloggen |
 
 Browserobjecten zoals `document` en `window` mogen alleen in de HTML-bestanden staan.
 
@@ -77,6 +81,8 @@ Gebruik voor publicatie, acceptatietest, beheer en rollback de [productie- en be
 De [kaarthandleiding](docs/GEMEENTEKAART.md) beschrijft gemeentekoppeling, bronvermelding en het bijwerken van de openbare kaartasset. Kaart en donuts volgen dezelfde actieve filters als de rest van het dashboard.
 
 Zie [Compact dashboard en screenshots](docs/WEERGAVE.md) voor de navigatie, zijbalk en weergavekeuze.
+
+Voor toegang met een Microsoft-adres of ander adres zonder Google-account: zie [Toegang met e-mailcode](docs/TOEGANG.md). Deze functie staat standaard uit; de handleiding bevat een gastmanifest en de aparte deploymentstappen.
 
 ## Stapsgewijs uitbreiden
 

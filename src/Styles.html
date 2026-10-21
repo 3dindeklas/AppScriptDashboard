@@ -211,10 +211,11 @@
 
   .financial-panel { overflow: hidden; padding: 0; }
   .financial-panel[hidden] { display: none; }
-  .financial-panel > summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.35rem 1.4rem; cursor: pointer; list-style: none; }
+  .financial-panel > summary { display: flex; align-items: center; gap: 1rem; padding: 1.35rem 1.4rem; cursor: pointer; list-style: none; }
   .financial-panel > summary::-webkit-details-marker { display: none; }
-  .financial-panel > summary::after { content: "⌄"; color: var(--purple); font-size: 1.25rem; font-weight: 800; transition: transform 180ms ease; }
-  .financial-panel[open] > summary::after { transform: rotate(180deg); }
+  .financial-panel > summary::after { content: ""; flex: 0 0 auto; width: 0.5rem; height: 0.5rem; margin: -0.25rem 0.15rem 0 0; border-right: 2px solid var(--purple); border-bottom: 2px solid var(--purple); transform: rotate(45deg); transition: transform 180ms ease; }
+  .financial-panel[open] > summary::after { transform: translateY(0.25rem) rotate(225deg); }
+  .financial-panel > summary > span:first-child { min-width: 0; margin-right: auto; }
   .financial-panel .eyebrow { display: block; }
   .financial-title { display: block; font-size: 1.1rem; font-weight: 750; letter-spacing: -0.02em; }
   .financial-toggle { margin-left: auto; color: var(--purple); font-size: 0.74rem; font-weight: 750; }
@@ -242,8 +243,8 @@
   .chart-card { display: flex; min-width: 0; flex-direction: column; }
   .chart-card .panel-heading { margin-bottom: 1rem; }
   .chart-subtitle { margin-top: 0.45rem; color: var(--muted); font-size: 0.76rem; line-height: 1.45; }
-  .metric-select { width: min(14rem, 100%); }
-  .metric-select select { min-width: 12rem; }
+  .metric-select { display: block; flex: 0 1 14rem; min-width: 0; width: min(14rem, 100%); }
+  .metric-select select { min-width: 0; max-width: 100%; }
   .bar-chart { display: grid; gap: 0.9rem; min-height: 8rem; }
   .bar-row { display: grid; gap: 0.38rem; }
   .bar-label { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.78rem; }
@@ -267,8 +268,10 @@
   .chart-table th:not(:first-child), .chart-table td:not(:first-child) { text-align: right; }
   .chart-note { margin: 1rem 0 0; color: var(--muted); font-size: 0.76rem; }
   .grades-panel { grid-column: 1 / -1; }
-  .grades-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; }
-  .grades-grid > section { min-width: 0; }
+  .grades-grid, .grade-tables { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; }
+  .grades-grid > section { display: grid; grid-template-rows: auto auto 1fr; min-width: 0; }
+  .grades-grid .pie-chart { min-height: 13rem; }
+  .grade-tables caption { margin: 0 0 0.6rem; color: var(--purple); font-weight: 750; text-align: left; }
   .grades-grid h3 { margin-bottom: 0.35rem; }
   .grades-grid .chart-subtitle { margin-bottom: 1rem; }
 
@@ -283,7 +286,7 @@
   .municipality-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(17rem, 1fr); gap: 1.5rem; }
   .municipality-panel > .panel-heading { flex-wrap: wrap; }
   .municipality-panel > .panel-heading > div { flex: 1; }
-  .municipality-panel .metric-select { width: min(11rem, 100%); }
+  .municipality-panel .metric-select { flex-basis: 11rem; width: min(11rem, 100%); }
   .map-visual { display: flex; flex-direction: column; min-width: 0; }
   .municipality-map { position: relative; flex: 1; min-width: 0; min-height: 21rem; overflow: hidden; border: 1px solid var(--line); border-radius: var(--button-radius); background: #f1f8fa; }
   .municipality-svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; overflow: hidden; }
@@ -310,6 +313,20 @@
   tbody tr:hover { background: var(--teal-pale); }
   th:last-child, td:last-child { text-align: right; }
   .empty { padding: 2rem 0.5rem; color: var(--muted); text-align: center; }
+
+  .access-body { min-height: 100dvh; background: linear-gradient(135deg, var(--paper), var(--teal-pale)); }
+  .access-page { width: min(32rem, 100%); margin: 0 auto; padding: max(8vh, 2rem) 1.25rem 2rem; }
+  .access-card { padding: clamp(1.5rem, 4vw, 2.5rem); border: 1px solid var(--line); border-radius: 1.5rem; background: var(--white); box-shadow: var(--shadow); }
+  .access-card h1 { margin-bottom: 0.75rem; }
+  .access-card > p:not(.eyebrow) { color: var(--muted); font-size: 0.9rem; }
+  .access-message { margin-top: 1.25rem; padding: 1rem; border-radius: var(--button-radius); background: var(--teal-pale); }
+  .access-card .access-message.error { color: var(--error); background: #fff1f2; }
+  .access-form { display: grid; gap: 0.75rem; margin-top: 1.5rem; }
+  .access-form input { width: 100%; min-height: 2.75rem; padding: 0.7rem 0.8rem; border: 1px solid var(--line); border-radius: var(--button-radius); font-size: 1rem; }
+  #accessCode { font-size: 1.5rem; letter-spacing: 0.3em; text-align: center; }
+  .access-google { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+  .access-help, .access-footer { color: var(--muted); font-size: 0.75rem; }
+  .access-footer { margin-top: 1rem; text-align: center; }
 
   footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1.25rem 0 max(1rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); color: var(--muted); font-size: 0.72rem; }
   footer strong { color: var(--purple); }
@@ -350,15 +367,16 @@
     .intro { grid-template-columns: minmax(0, 1fr); }
     footer { flex-direction: column; }
     .filter-grid, .range-filter-grid, .kpi-grid, .financial-grid, .financial-completeness, .chart-grid, .source-grid { grid-template-columns: 1fr; }
-    .financial-panel > summary { align-items: start; }
+    .financial-panel > summary { align-items: center; }
     .financial-toggle { display: none; }
     .analytics-heading, .timeline-panel .panel-heading { align-items: start; flex-direction: column; }
     .analytics-heading > p, .source-summary, .comparison-summary { text-align: left; }
-    .metric-select { width: 100%; }
+    .metric-select { flex: none; width: 100%; }
+    .municipality-panel .metric-select { flex-basis: auto; width: 100%; }
     .metric-select select { min-width: 0; }
     .municipality-layout { grid-template-columns: 1fr; }
     .municipality-map { min-height: 20rem; }
-    .grades-grid { grid-template-columns: 1fr; }
+    .grades-grid, .grade-tables { grid-template-columns: 1fr; }
     .filter-sidebar .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 

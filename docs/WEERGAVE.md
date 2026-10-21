@@ -47,6 +47,8 @@ De keuze blijft behouden tijdens filteren en handmatig vernieuwen. Ze geldt alle
 
 **Bereik in PO en VO** combineert twee taartdiagrammen: PO-groepen en VO-leerjaren, met vaste heldere kleuren per leerjaar, gewogen aanvragen en percentages. De uitleg over combinatiegroepen staat onderaan datzelfde blok. De PO/VO-sectorverdeling blijft een afzonderlijke donut.
 
+De twee leerjaargrafieken hebben op desktop dezelfde hoogte en delen één **Bekijk cijfers als tabel**-knop voor beide tabellen. Het gemeentevak heeft één tabelknop voor alle gemeenteaantallen. Laad- en foutmeldingen staan boven het introductieblok.
+
 **Tech-hubs naast elkaar** staat onderaan de pagina en kan ook via Weergave verborgen worden.
 
 ## Toetsenbord

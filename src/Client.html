@@ -132,7 +132,6 @@
       sectorChart: document.getElementById('sectorChart'),
       sectorTableRows: document.getElementById('sectorTableRows'),
       regionChart: document.getElementById('regionChart'),
-      regionTableRows: document.getElementById('regionTableRows'),
       map: document.getElementById('municipalityMap'),
       mapScope: document.getElementById('mapScope'),
       mapMunicipality: document.getElementById('mapMunicipality'),
@@ -176,14 +175,16 @@
       financial: pair[1] === 'financialOverview' }));
 
     function loadDashboard(forceRefresh) {
+      if (state.locked) return;
       beginLoadingFeedback(forceRefresh === true);
 
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         const request = google.script.run
           .withSuccessHandler(handleData)
           .withFailureHandler(handleError);
-        if (forceRefresh === true) request.refreshDashboardData();
-        else request.getDashboardData();
+        const token = window.WorkshopAccess ? window.WorkshopAccess.token() : '';
+        if (forceRefresh === true) request.refreshDashboardData(token);
+        else request.getDashboardData(token);
         return;
       }
 
@@ -196,6 +197,7 @@
     }
 
     function handleData(payload) {
+      if (state.locked) return;
       if (!payload || !Array.isArray(payload.records)) {
         handleError(new Error('De server gaf geen geldige dashboardgegevens terug.'));
         return;
@@ -234,7 +236,12 @@
     }
 
     function handleError(error) {
+      if (state.locked) return;
       stopLoadingFeedback();
+      if (error && /ACCESS_REQUIRED|Geen toegang/.test(error.message || '') && window.WorkshopAccess) {
+        window.WorkshopAccess.lock('Je sessie is verlopen of je hebt geen toegang. Meld je opnieuw aan.');
+        return;
+      }
       elements.message.hidden = false;
       elements.message.classList.remove('warning');
       elements.message.classList.add('error');
@@ -886,9 +893,7 @@
         elements.sectorChart, elements.sectorTableRows, countBy(records, 'sector'), 8, 'donut'
       );
       renderMunicipalityMap(records);
-      renderCategoryChart(
-        elements.regionChart, elements.regionTableRows, countBy(records, 'region'), 8
-      );
+      renderBars(elements.regionChart, countBy(records, 'region'), 8);
       renderCategoryChart(
         elements.statusChart, elements.statusTableRows, countBy(records, 'statusGroup'), 8, 'donut'
       );
@@ -1580,12 +1585,12 @@
     elements.displayMenu.addEventListener('toggle', () => {
       if (elements.displayMenu.open) elements.dataMenu.open = false;
     });
-    document.addEventListener('click', event => {
+    function onDocumentClick(event) {
       if (event.target.closest('.nav-menu')) return;
       elements.dataMenu.open = false;
       elements.displayMenu.open = false;
-    });
-    document.addEventListener('keydown', event => {
+    }
+    function onDocumentKeydown(event) {
       if (event.key !== 'Escape') return;
       const dataWasOpen = elements.dataMenu.open;
       const displayWasOpen = elements.displayMenu.open;
@@ -1596,7 +1601,9 @@
       if (dataWasOpen) document.getElementById('dataMenuButton').focus();
       else if (displayWasOpen) document.getElementById('displayMenuButton').focus();
       else if (filtersWereOpen) elements.filterToggle.focus();
-    });
+    }
+    document.addEventListener('click', onDocumentClick);
+    document.addEventListener('keydown', onDocumentKeydown);
     elements.refresh.addEventListener('click', () => loadDashboard(true));
     elements.print.addEventListener('click', printDashboard);
     elements.reset.addEventListener('click', () => {
@@ -1612,6 +1619,21 @@
       render();
     });
 
+    if (window.WorkshopAccess) {
+      const logout = document.getElementById('logoutButton');
+      logout.hidden = !window.WorkshopAccess.token();
+      logout.addEventListener('click', window.WorkshopAccess.signOut);
+      window.WorkshopAccess.onLock(() => {
+        state.locked = true;
+        stopLoadingFeedback();
+        state.records = [];
+        state.sources = [];
+        mapCounts.clear();
+        mapPaths.clear();
+        document.removeEventListener('click', onDocumentClick);
+        document.removeEventListener('keydown', onDocumentKeydown);
+      });
+    }
     setFilterSidebar(false);
     applyPanelVisibility();
     loadDashboard(false);

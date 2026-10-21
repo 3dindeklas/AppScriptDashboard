@@ -13,7 +13,7 @@ for (const name of sourceFiles) {
     }
   }
 
-  if (name === 'Client.html') {
+  if (['Client.html', 'AccessClient.html'].includes(name)) {
     new vm.Script(source.replace(/^<script>\s*|\s*<\/script>\s*$/g, ''), { filename: name });
   }
 }
@@ -26,9 +26,14 @@ if (manifest.webapp?.executeAs !== 'USER_ACCESSING') {
 if (!manifest.oauthScopes?.includes('https://www.googleapis.com/auth/userinfo.email')) {
   throw new Error('De userinfo.email-scope ontbreekt voor de accountcontrole.');
 }
+const guestManifest = JSON.parse(fs.readFileSync('deploy/email-access/appsscript.json', 'utf8'));
+if (guestManifest.webapp?.executeAs !== 'USER_DEPLOYING' || guestManifest.webapp?.access !== 'ANYONE_ANONYMOUS' ||
+    !guestManifest.oauthScopes?.includes('https://www.googleapis.com/auth/script.send_mail')) {
+  throw new Error('Het optionele gastmanifest mist uitvoeringsidentiteit, anonieme toegang of mailrecht.');
+}
 
 const index = fs.readFileSync('src/Index.html', 'utf8');
-for (const include of ["include('Styles')", "include('Municipalities')", "include('Client')"]) {
+for (const include of ["include('Styles', accessToken)", "include('Municipalities', accessToken)", "include('AccessClient', accessToken)", "include('Client', accessToken)"]) {
   if (!index.includes(include)) throw new Error('Index.html mist ' + include + '.');
 }
 const asset = fs.readFileSync('src/Municipalities.html', 'utf8');
