@@ -2,14 +2,17 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { setup, SOURCE, HEADERS, ROW } = require('./helpers/excel-import-service.cjs');
 
-test('URL-import maakt een tabblad met alleen analysekolommen en bewaart meerdere lesdagen en bedragen', () => {
+test('URL-import behoudt bronkolommen en waarden en gebruikt dezelfde dashboardnormalisatie', () => {
   const { ctx, target, removedFiles, invalidations } = setup();
   const result = ctx.refreshExcelImports();
   assert.equal(result[0].status, 'ok');
   const sheet = target.getSheetByName(SOURCE.sheetName);
   assert.ok(sheet);
   assert.equal(sheet.matrix.length, 2);
-  assert.doesNotMatch(JSON.stringify(sheet.matrix), /prive@example|Niet kopiëren|E-mailadres|Notities/);
+  assert.deepEqual(Array.from(sheet.matrix[0]), HEADERS);
+  assert.deepEqual(Array.from(sheet.matrix[1]), ROW);
+  assert.match(JSON.stringify(sheet.matrix), /prive@example/);
+  assert.doesNotMatch(JSON.stringify(ctx.getDashboardData()), /prive@example|Niet kopiëren/);
   assert.deepEqual(removedFiles, ['temporary-id']);
   assert.equal(invalidations.length, 1);
   const source = ctx.readSource_(SOURCE);
@@ -310,4 +313,62 @@ test('samengevoegde Set-Cookie met Expires, ongeldige headers en cookiegrenzen w
   const header=ctx.excelImportCookieHeader_(current,jar);
   assert.ok(header.length<=8192);
   assert.ok(header.split('; ').every(pair=>pair.split('=')[1].length===3000));
+});
+
+test('afgesproken i_lab-kolommen inclusief lege tussenkolommen blijven exact behouden', () => {
+  const { ctx, convertedSheet, target } = setup();
+  const columns = ['#', '  Aanvraag ID  ', 'Datum aanvraag', 'Schoolnaam', 'Contactpersoon', 'E-mailadres',
+    'Telefoon', 'Gemeente / Regio', '', 'Workshopnaam', 'Aanbieder', 'Lesmomenten', 'Aantal leerlingen',
+    'Groep / leerjaar', 'PO / VO', 'Gewenste periode', 'Definitieve datum', 'Locatie', 'Type', '',
+    'Punten per workshop', '', 'Status', 'Actie nodig', 'Notities'];
+  const values = { '#': 17, 'Aanvraag ID': 'REQ-17', 'Datum aanvraag': '01-09-2026', 'Schoolnaam': 'Testschool',
+    'Contactpersoon': 'Prive contactnaam', 'E-mailadres': 'contact@example.nl', 'Telefoon': '0612345678',
+    'Gemeente / Regio': 'Gorinchem', 'Workshopnaam': 'Paper Circuits', 'Aanbieder': '3Dindeklas',
+    'Lesmomenten': 2, 'Aantal leerlingen': 24, 'Groep / leerjaar': 'groep 7/8', 'PO / VO': 'PO',
+    'Gewenste periode': 'najaar', 'Definitieve datum': '03-09-2026; 10-09-2026', 'Locatie': 'Lokaal 2',
+    'Type': 'Workshop', 'Punten per workshop': 350, 'Status': 'Bevestiging', 'Actie nodig': 'Bellen',
+    'Notities': 'Prive bronnotitie' };
+  const originalRow = columns.map(column => values[column.trim()] ?? '');
+  convertedSheet.matrix = [[], columns, originalRow];
+  const normal = ctx.readGoogleSheet_({ spreadsheetId: 'temporary-id', sheetName: 'Aanvragen', headerRow: 2, name: SOURCE.name });
+  assert.equal(ctx.refreshExcelImports()[0].status, 'ok');
+  const imported = target.getSheetByName(SOURCE.sheetName);
+  assert.deepEqual(Array.from(imported.matrix[0]), columns);
+  assert.deepEqual(Array.from(imported.matrix[1]), originalRow);
+  assert.equal(imported.matrix[0].includes('Totale kosten aanbieder'), false);
+  assert.equal(imported.matrix[0].includes('Te factureren i_lab'), false);
+  const records = ctx.readSource_(SOURCE).records;
+  assert.deepEqual(JSON.parse(JSON.stringify(records)), JSON.parse(JSON.stringify(normal.records)));
+  assert.equal(records[0].desiredPeriod, 'najaar');
+  assert.equal(records[0].actionRequired, 'Bellen');
+  assert.equal(records[0].location, 'Lokaal 2');
+  const browser = JSON.stringify(ctx.getDashboardData());
+  assert.doesNotMatch(browser, /Prive contactnaam|contact@example.nl|0612345678|Prive bronnotitie|Bellen|Lokaal 2/);
+});
+
+test('ruwe celwaarden en waarschuwingen volgen dezelfde lezer zonder voorafgaande normalisatie', () => {
+  const { ctx, convertedSheet, target } = setup();
+  const date = new Date('2026-09-01T00:00:00Z');
+  convertedSheet.matrix[2][1] = date;
+  convertedSheet.matrix[2][4] = 'onbekend';
+  convertedSheet.matrix[2][8] = '03-09-2026, 10-09-2026';
+  ctx.refreshExcelImports();
+  const copied = target.sheets[0].matrix;
+  assert.equal(copied[1][1], date);
+  assert.equal(copied[1][4], 'onbekend');
+  assert.equal(copied[1][8], '03-09-2026, 10-09-2026');
+  assert.equal(ctx.readSource_(SOURCE).warnings.invalidStudentCounts, 1);
+  assert.equal(ctx.readSource_(SOURCE).records[0].students, null);
+});
+
+test('gedeelde rijselectie behoudt kolommen en slaat formulerijen vóór de rijlimiet over', () => {
+  const { ctx, convertedSheet } = setup();
+  convertedSheet.matrix = [[], HEADERS, ROW, ROW, ROW];
+  convertedSheet.formulas[3] = ROW.map(() => '=generated()');
+  ctx.sourceRowLimit_ = () => 1;
+  const rows = ctx.readGoogleSheetRows_({ spreadsheetId:'temporary-id', sheetName:'Aanvragen', headerRow:2, name:'Bron' });
+  assert.equal(rows.values.length, 2);
+  assert.deepEqual(Array.from(rows.values[0]), HEADERS);
+  assert.deepEqual(Array.from(rows.values[1]), ROW);
+  assert.equal(rows.rowsTruncated, 1);
 });

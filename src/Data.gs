@@ -120,7 +120,17 @@ function sourceResult_(name, status, records, warnings, message, errorCode, erro
   };
 }
 
+/** Gedeeld analysepad voor gewone Google-bronnen en geïmporteerde brontabbladen. */
 function readGoogleSheet_(source) {
+  const rows = readGoogleSheetRows_(source);
+  if (!rows.values.length) return { records: [], warnings: emptyWarnings_() };
+  const result = normalizeSheet_(rows.values, source.name);
+  result.warnings.rowsTruncated = rows.rowsTruncated;
+  return result;
+}
+
+/** Leest bronwaarden met originele kolommen; dezelfde ankerscan en rijlimiet voor alle bronnen. */
+function readGoogleSheetRows_(source) {
   const spreadsheet = SpreadsheetApp.openById(source.spreadsheetId);
   const sheet = spreadsheet.getSheetByName(source.sheetName);
 
@@ -133,14 +143,14 @@ function readGoogleSheet_(source) {
   const lastColumn = sheet.getLastColumn();
 
   if (lastRow <= headerRow || lastColumn === 0) {
-    return { records: [], warnings: emptyWarnings_() };
+    return { values: [], rowsTruncated: 0 };
   }
 
   const headerValues = sheet.getRange(headerRow, 1, 1, lastColumn).getValues()[0];
   const header = headerMap_(headerValues, source.name);
   const dataRowOffsets = dataRowOffsets_(sheet, headerRow, lastRow, header);
   if (!dataRowOffsets.length) {
-    return { records: [], warnings: emptyWarnings_() };
+    return { values: [], rowsTruncated: 0 };
   }
 
   const recordsToRead = Math.min(dataRowOffsets.length, sourceRowLimit_());
@@ -154,9 +164,10 @@ function readGoogleSheet_(source) {
   );
   const values = dataRange.getValues();
 
-  const result = normalizeSheet_(values, source.name, null, includedRowOffsets);
-  result.warnings.rowsTruncated = dataRowOffsets.length - recordsToRead;
-  return result;
+  return {
+    values: [values[0]].concat(includedRowOffsets.map(function(offset) { return values[offset + 1]; })),
+    rowsTruncated: dataRowOffsets.length - recordsToRead
+  };
 }
 
 /**
