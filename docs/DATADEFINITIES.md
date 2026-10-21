@@ -210,7 +210,7 @@ Iedere bron krijgt onafhankelijk één status:
 | `ok` | bron volledig gelezen zonder datakwaliteitssignalen |
 | `warning` | bron gelezen, met één of meer getelde signalen |
 | `error` | bron kon niet worden gelezen; andere bronnen blijven beschikbaar |
-| `not-configured` | spreadsheet-ID of tabbladnaam ontbreekt |
+| `not-configured` | bronlocatie ontbreekt of brontype is onbekend |
 
 Het totale overzicht is compleet wanneer alle geconfigureerde live-bronnen `ok` of `warning` zijn. Een waarschuwing betekent dus dat de bron beschikbaar is, maar dat bepaalde rijen aandacht vragen. Bij `error` of `not-configured` wordt het overzicht als onvolledig gemarkeerd. Er worden nooit fictieve gegevens als vervanging geladen.
 
@@ -236,3 +236,13 @@ Bij het eenduidig tellen van scholen worden hoofdletters, accenten en overtollig
 Een leerlingaantal van nul is een bekende waarde en telt mee in som en gemiddelde. Ontbrekende leerlingaantallen blijven onbekend, worden nooit als nul geïnterpreteerd en worden onder de KPI’s en per tech-hub apart gemeld. Gemiddelden worden met één decimaal getoond; als er geen geldige deler is, verschijnt `—`.
 
 De tech-hubvergelijking herhaalt dezelfde definities per bron. Ook wanneer het tech-hubfilter actief is blijven beide tech-hubs als rij zichtbaar; een door het filter uitgesloten tech-hub toont dan nulwaarden. Zo is direct zichtbaar dat de tabel dezelfde filters volgt.
+
+## Microsoft 365 Excel-tabellen
+
+`type: 'microsoft'` leest een benoemde Excel-tabel uit OneDrive for Business of SharePoint. De tabelkop en rijwaarden gaan door dezelfde `normalizeSheet_` als Google Sheets. Excel-datumgetallen en meerdere definitieve lesdagen volgen dus dezelfde definities. Iedere rij blijft één aanvraag; er vindt geen automatische deduplicatie tussen tech-hubs plaats.
+
+De adapter leest maximaal 500 fysieke rijen per aanvraag en scant maximaal 20.000 fysieke rijen. Rijen zonder workshopankers worden overgeslagen vóór toepassing van de normale workshoprijlimiet. Graph-tabelrijen geven celwaarden terug, geen formuleherkomst: een formule die een niet-leeg workshopanker oplevert kan niet als formule-only worden herkend. Houd de Excel-tabel begrensd tot echte workshopregels.
+
+Bij de Microsoft-rijlimiet of fysieke scanlimiet is `rowsTruncated: 1` een **ondergrens** (minstens één rij mogelijk niet meegenomen), geen exact restant. De bron krijgt status `warning`; verklein/splits de tabel voor een volledig overzicht. Bestaande Google-bronnen behouden hun exacte aantal overgeslagen rijen.
+
+OAuth-tokens, drive-/bestand-ID's en Graph-foutbodies komen niet in de snapshot of browser. De adapter logt alleen vaste technische foutcodes met de bestaande foutreferentie. Een Microsoft-fout blokkeert andere bronnen niet. De snapshot bevat voor beide brontypes dezelfde toegestane analysevelden.

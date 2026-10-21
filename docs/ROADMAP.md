@@ -2,6 +2,8 @@
 
 De minimale dashboardbasis uit PR #4 is het vaste vertrekpunt. We bouwen de oorspronkelijke visie terug in kleine pull requests. Iedere PR moet zelfstandig te beoordelen, te testen en terug te draaien zijn.
 
+De [implementatiestatus](STATUS.md) maakt onderscheid tussen aanwezige code, review/merge en praktijkacceptatie. Een geïmplementeerde stap is niet automatisch in productie getest.
+
 ## Werkwijze per stap
 
 Voor iedere stap gebruiken we dezelfde volgorde:
@@ -15,7 +17,7 @@ Voor iedere stap gebruiken we dezelfde volgorde:
 7. Zet de testuitkomst in de PR; merge pas na review.
 8. Maak indien nodig een nieuwe Apps Script-versie en controleer de `/exec`-URL.
 
-We starten geen volgende featurebranch voordat de voorgaande PR is gemerged. Daardoor ontstaan geen gestapelde PR's en blijft elke wijziging overzichtelijk.
+We starten de volgende featurebranch na de vorige merge. Stap 10 bouwt voort op de gemergede demo-opruiming (PR #20). Iedere PR richt zich op main.
 
 ## Vaste grenzen
 
@@ -278,12 +280,15 @@ Acceptatie: categorieaantallen blijven gelijk aan de tabellen, meerdere lesdagen
 
 ## Stap 10 · Microsoft 365-bron
 
-Doel: Microsoft aansluiten zodra de Graph-koppeling met een testaccount kan worden gecontroleerd.
+Status: **geïmplementeerd in deze PR; review/merge en Microsoft-praktijkacceptatie staan open**. Zie [MICROSOFT.md](MICROSOFT.md) voor de inrichting en [STATUS.md](STATUS.md) voor de acceptatiechecklist.
+
+Doel: een Microsoft 365 Excel-tabel naast Google Sheets aansluiten via hetzelfde datacontract.
 
 In deze PR:
 
 - Excel-tabel via Microsoft Graph uitlezen;
-- OAuth-tokens uitsluitend server-side bewaren;
+- eenmalige device-code-aanmelding door de beheerder vanuit de Apps Script-editor;
+- OAuth-tokens uitsluitend server-side bewaren in Script Properties;
 - tokenvernieuwing met locking;
 - paginering van tabelrijen;
 - Graph-data door exact dezelfde normalisatiefunctie sturen;

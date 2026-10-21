@@ -341,7 +341,7 @@
       setLoading(true);
       elements.mode.textContent = 'Laden…';
       elements.updated.textContent = forceRefresh
-        ? 'Google Sheets worden opnieuw ingelezen'
+        ? 'Brongegevens worden opnieuw ingelezen'
         : 'Snelle snapshot wordt gecontroleerd';
       elements.message.hidden = false;
       elements.message.classList.remove('error', 'warning');
@@ -351,9 +351,9 @@
         : 'Dashboardgegevens worden geladen…';
 
       [
-        [1500, 'De Google Sheets worden gecontroleerd…'],
+        [1500, 'De databronnen worden gecontroleerd…'],
         [5000, 'De workshopregels van alle tech-hubs worden samengevoegd…'],
-        [10000, 'Het laden duurt langer dan normaal. Grote Sheets en veel formules kunnen extra tijd kosten.']
+        [10000, 'Het laden duurt langer dan normaal. Grote bronnen en veel formules kunnen extra tijd kosten.']
       ].forEach(step => {
         state.loadingTimers.push(setTimeout(() => {
           elements.message.textContent = step[1];
@@ -380,7 +380,7 @@
 
     function snapshotSourceLabel(source) {
       if (source === 'cache') return 'Snapshot';
-      if (source === 'live') return 'Google Sheets';
+      if (source === 'live') return 'Brongegevens';
       return 'Onbekend';
     }
 

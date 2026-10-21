@@ -51,7 +51,7 @@ const PUBLIC_WARNING_FIELDS_ = Object.freeze([
   'unknownSectors'
 ]);
 
-/** Leest iedere Google-bron onafhankelijk en combineert wat wel beschikbaar is. */
+/** Leest iedere bron onafhankelijk en combineert wat wel beschikbaar is. */
 function readConfiguredSheets_() {
   const sourceResults = (APP_CONFIG.sources || []).map(function(source) {
     return readSource_(source);
@@ -72,7 +72,9 @@ function readConfiguredSheets_() {
 function readSource_(source) {
   const name = textValue_(source && source.name) || 'Naamloze bron';
 
-  if (!source || !source.spreadsheetId || !source.sheetName) {
+  const microsoft = source && source.type === 'microsoft';
+  const knownType = !source || !source.type || source.type === 'google' || microsoft;
+  if (!source || !knownType || (microsoft ? !microsoftSourceConfigured_(source) : !source.spreadsheetId || !source.sheetName)) {
     return sourceResult_(
       name, 'not-configured', [], emptyWarnings_(),
       'Bron is nog niet geconfigureerd.', 'SOURCE_NOT_CONFIGURED', ''
@@ -80,7 +82,7 @@ function readSource_(source) {
   }
 
   try {
-    const result = readGoogleSheet_(source);
+    const result = microsoft ? readMicrosoftTable_(source) : readGoogleSheet_(source);
     const warningCount = warningCount_(result.warnings);
     return sourceResult_(
       name,
@@ -95,7 +97,8 @@ function readSource_(source) {
     const reference = logServerError_('readSource: ' + name, error);
     return sourceResult_(
       name, 'error', [], emptyWarnings_(),
-      'Controleer de tabbladnaam en of dit account toegang heeft.',
+      microsoft ? 'Controleer de Microsoft-koppeling en de Excel-tabel. Zie de beheerhandleiding.' :
+        'Controleer de tabbladnaam en of dit account toegang heeft.',
       'SOURCE_READ_FAILED',
       reference
     );

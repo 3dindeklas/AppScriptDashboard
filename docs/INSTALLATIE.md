@@ -2,15 +2,16 @@
 
 Gebruik bij voorkeur een **nieuw leeg Apps Script-project**. Zo blijven oude `.gs`-bestanden, foutcodes en verkeerd aangemaakte HTML-bestanden niet onzichtbaar meedraaien.
 
-## Stap 1 · Maak exact elf bestanden
+## Stap 1 · Maak de Apps Script-bestanden
 
-Maak in Apps Script vijf scriptbestanden via **+ → Script**:
+Maak in Apps Script zes scriptbestanden via **+ → Script**:
 
 1. `Config`
 2. `Code`
 3. `Data`
 4. `Cache`
 5. `Auth`
+6. `Microsoft`
 
 Maak daarna zes HTML-bestanden via **+ → HTML**:
 
@@ -134,7 +135,7 @@ Open **Data → Bronnen & datakwaliteit** om per tech-hub te zien of de bron gel
 
 Formules mogen onder de echte gegevens alvast zijn doorgetrokken. Rijen die uitsluitend formules bevatten worden niet geladen, tellen niet als workshop en verbruiken de rijlimiet niet. Test dit desgewenst door een formule enkele honderden rijen naar beneden door te trekken: het getoonde aantal workshops hoort gelijk te blijven. Een echte workshoprij met daarnaast berekende formulevelden blijft wel gewoon zichtbaar.
 
-Tijdens het ophalen blijft bovenaan een laadmelding met spinner zichtbaar. Na 1,5, 5 en 10 seconden verandert de tekst, zodat zichtbaar blijft dat de pagina nog op Apps Script en de Sheets wacht. Dit is geen geschat percentage. Na een succesvolle laadactie toont de pagina een korte **Bijgewerkt**-regel. Onder **Data** staan het volledige bijwerktijdstip, de herkomst (**Google Sheets** of **Snapshot**) en de gemeten laadtijd afzonderlijk. De knop **Brongegevens vernieuwen** staat ook onder Data en is tijdens het laden uitgeschakeld.
+Tijdens het ophalen blijft bovenaan een laadmelding met spinner zichtbaar. Na 1,5, 5 en 10 seconden verandert de tekst, zodat zichtbaar blijft dat de pagina nog op Apps Script en de Sheets wacht. Dit is geen geschat percentage. Na een succesvolle laadactie toont de pagina een korte **Bijgewerkt**-regel. Onder **Data** staan het volledige bijwerktijdstip, de herkomst (**Brongegevens** of **Snapshot**) en de gemeten laadtijd afzonderlijk. De knop **Brongegevens vernieuwen** staat ook onder Data en is tijdens het laden uitgeschakeld.
 
 Met **Weergave** zet je onderdelen afzonderlijk aan of uit voor een screenshot of afdruk. Gemeenten zijn één blok met de keuze **Kaart/Ranglijst** en PO- en VO-leerjaren staan in één gezamenlijk blok. De tech-hubvergelijking staat onderaan. Zie [Compact dashboard en screenshots](WEERGAVE.md).
 
@@ -142,7 +143,7 @@ De bronimport leest per Sheet eerst de kopregel, daarna één compact ankerberei
 
 ## Stap 4a · Gebruik de snelle snapshot
 
-In live-modus probeert het dashboard eerst de gedeelde Apps Script-snapshot. De eerste aanvraag zonder geldige snapshot leest beide Google Sheets en slaat daarna een gecomprimeerde, privacyveilige kopie op. Volgende aanvragen gebruiken die kopie en hoeven de bronbladen niet opnieuw te scannen.
+In live-modus probeert het dashboard eerst de gedeelde Apps Script-snapshot. De eerste aanvraag zonder geldige snapshot leest de ingestelde databronnen en slaat daarna een gecomprimeerde, privacyveilige kopie op. Volgende aanvragen gebruiken die kopie en hoeven de bronbladen niet opnieuw te scannen.
 
 De standaardinstelling is:
 
@@ -157,7 +158,7 @@ snapshotCache: Object.freeze({
 
 De knop **Brongegevens vernieuwen** omzeilt de bestaande snapshot, leest beide Sheets opnieuw en vervangt de snapshot. Een gewone herlaadactie gebruikt juist de bestaande snapshot. Test dit als volgt:
 
-1. open de live app en controleer onder **Data** de herkomst `Google Sheets`;
+1. open de live app en controleer onder **Data** de herkomst `Brongegevens`;
 2. herlaad de pagina en controleer dat de herkomst `Snapshot` wordt getoond;
 3. wijzig een herkenbare testwaarde in een bronblad;
 4. herlaad normaal en controleer dat de snapshot nog wordt gebruikt;
@@ -223,8 +224,8 @@ Technische details worden niet in het dashboard getoond. Bij een onverwachte fou
 
 De server logt alleen wanneer iets mislukt. Providerdetails blijven in de afgeschermde Apps Script-uitvoeringslog en worden niet naar de browser gestuurd.
 
-Een ontbrekende, verlopen of onvolledige snapshot krijgt geen aparte foutcode: de app valt dan automatisch terug op de live Google Sheets. Cacheproblemen zijn alleen als `[snapshot-cache:...]` in de afgeschermde serverlog herkenbaar.
+Een ontbrekende, verlopen of onvolledige snapshot krijgt geen aparte foutcode: de app valt dan automatisch terug op de actuele databronnen. Cacheproblemen zijn alleen als `[snapshot-cache:...]` in de afgeschermde serverlog herkenbaar.
 
-## Waarom Microsoft 365 nog ontbreekt
+## Microsoft 365 toevoegen
 
-Microsoft 365 vereist Microsoft Graph, OAuth-tokens, tokenvernieuwing en extra foutafhandeling. Deze koppeling staat daarom als afzonderlijke stap 10 gepland zodra hij met een Microsoft-testaccount gecontroleerd kan worden, zonder de werkende Google-versie om te bouwen.
+Volg [MICROSOFT.md](MICROSOFT.md). Voeg Microsoft.gs toe, werk Data.gs, Cache.gs en Client.html samen bij en voeg script.external_request toe aan je bestaande manifest. Behoud je overige rechten en eigen Config. Autoriseer als beheerder opnieuw en publiceer een nieuwe versie. De koppeling vereist uitvoering als eigenaar en de eenmalige Microsoft-toestemming; gastlogin verandert hierdoor niet.

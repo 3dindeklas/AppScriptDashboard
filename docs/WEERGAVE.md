@@ -17,7 +17,7 @@ Filteren werkt direct. Sluiten of inklappen met Escape verandert de selectie nie
 Open **Data** voor het brede bronoverzicht. Daar staan:
 
 - het tijdstip waarop de brongegevens zijn ingelezen;
-- de herkomst: **Google Sheets** of **Snapshot**;
+- de herkomst: **Brongegevens** of **Snapshot**;
 - de gemeten laadtijd;
 - de status en datakwaliteit per tech-hub;
 - **Brongegevens vernieuwen** om de snapshot bewust te vervangen;
@@ -54,3 +54,5 @@ De twee leerjaargrafieken hebben op desktop dezelfde hoogte en delen één **Bek
 ## Toetsenbord
 
 De menu’s gebruiken native details/summary en de keuzelijsten en vinkjes blijven native invoervelden. Tab beweegt tussen de bedieningselementen; Enter opent een menu. Escape sluit menu’s en filters en brengt de focus terug naar de betreffende knop.
+
+Voor Microsoft-bronnen: volg de inrichting en acceptatiechecklist in [MICROSOFT.md](MICROSOFT.md). De actuele status staat in [STATUS.md](STATUS.md).

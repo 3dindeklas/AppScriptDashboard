@@ -195,9 +195,16 @@ function snapshotCacheTtlSeconds_() {
 /** Verandert de cache automatisch wanneer een relevante broninstelling wijzigt. */
 function snapshotConfigVersion_() {
   const sourceConfig = (APP_CONFIG.sources || []).map(function(source) {
-    return [source.name, source.spreadsheetId, source.sheetName, source.headerRow];
+    return [source.name, source.type || 'google', source.spreadsheetId, source.sheetName, source.headerRow,
+      source.driveId, source.itemId, source.tableName];
   });
-  const text = JSON.stringify([APP_CONFIG.maxRowsPerSource, sourceConfig]);
+  let microsoftIdentity = '';
+  if ((APP_CONFIG.sources || []).some(function(source) { return source.type === 'microsoft'; })) {
+    const props = PropertiesService.getScriptProperties();
+    microsoftIdentity = [props.getProperty('MS_TENANT_ID'), props.getProperty('MS_CLIENT_ID'),
+      props.getProperty('MS_GOOGLE_OWNER_EMAIL')];
+  }
+  const text = JSON.stringify([APP_CONFIG.maxRowsPerSource, sourceConfig, microsoftIdentity]);
   let hash = 2166136261;
   for (let index = 0; index < text.length; index += 1) {
     hash ^= text.charCodeAt(index);

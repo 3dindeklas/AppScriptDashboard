@@ -732,7 +732,7 @@ test('lang laden geeft stapsgewijze feedback en herstelt de bediening na succes'
   assert.equal(elements.message.classList.contains('loading'), true);
 
   elements.__runTimersThrough(1500);
-  assert.equal(elements.message.textContent, 'De Google Sheets worden gecontroleerd…');
+  assert.equal(elements.message.textContent, 'De databronnen worden gecontroleerd…');
   elements.__runTimersThrough(5000);
   assert.equal(elements.message.textContent, 'De workshopregels van alle tech-hubs worden samengevoegd…');
   elements.__runTimersThrough(10000);

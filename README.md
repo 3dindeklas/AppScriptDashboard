@@ -1,8 +1,8 @@
 # Workshopkompas · Google Apps Script-dashboard
 
-Workshopkompas combineert de workshopgegevens van alle tech-hubs in één afgeschermd, filterbaar dashboard. De app draait uitsluitend via Google Apps Script en leest Google Sheets met dezelfde kolomstructuur.
+Workshopkompas combineert de workshopgegevens van alle tech-hubs in één afgeschermd, filterbaar dashboard. De app draait uitsluitend via Google Apps Script en leest Google Sheets en optioneel Microsoft 365 Excel-tabellen met dezelfde kolomstructuur.
 
-De server normaliseert de volledige analysekolomstructuur naar één intern workshopmodel. Alleen de velden voor de huidige interface en filters worden via een vaste allowlist doorgestuurd; uitgebreidere cijfers volgen per roadmapstap.
+De server normaliseert de volledige analysekolomstructuur naar één intern workshopmodel. Alleen de velden voor de huidige interface en filters worden via een vaste allowlist doorgestuurd; de financiële velden hebben een extra toegangscontrole.
 
 ## Wat het dashboard doet
 
@@ -11,11 +11,11 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - één account-allowlist voor het dashboard en een aparte financiële allowlist in `Config.gs`;
 - toegangscontrole bij de pagina, HTML-includes en iedere data-aanvraag;
 - een aparte toegangspagina zonder dashboardblokken en optionele e-mailcodes voor vooraf toegestane gastadressen;
-- onafhankelijke laadstatus en datakwaliteit per Google-bron;
+- onafhankelijke laadstatus en datakwaliteit per bron;
 - beschikbare data blijft zichtbaar wanneer één bron uitvalt;
 - maximaal 5.000 regels per bron, configureerbaar tot een harde grens van 10.000;
-- formule-only rijen worden via één compacte ankerscan vóór de brede data-import genegeerd en verbruiken de rijlimiet niet;
-- een gecomprimeerde, server-side snapshot voorkomt dat beide Sheets bij iedere opening opnieuw worden gescand;
+- Google Sheets: formule-only rijen worden via één compacte ankerscan vóór de brede data-import genegeerd en verbruiken de rijlimiet niet;
+- een gecomprimeerde, server-side snapshot voorkomt dat de databronnen bij iedere opening opnieuw worden gescand;
 - handmatig vernieuwen en een optionele tijdtrigger vervangen de snapshot bewust;
 - gegevens asynchroon ophalen met `google.script.run`;
 - zichtbare laadstatus met spinner, stapsgewijze feedback en de werkelijk gemeten laadtijd;
@@ -39,7 +39,7 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - een afdruk- en PDF-weergave voor een compact A4-landscapeoverzicht;
 - uitsluitend centraal toegestane analysevelden naar de browser; geen namen van contactpersonen, e-mailadressen, telefoonnummers, notities of technische ID's;
 
-Microsoft 365 als databron volgt als stap 10 zodra de Graph-koppeling met een testaccount gecontroleerd kan worden. Toegang voor een Microsoft-e-mailadres kan al via de optionele e-mailcodefunctie.
+De Microsoft-adapter is geïmplementeerd; praktijkacceptatie met een echte tenant staat nog open. Zie [Microsoft 365 instellen](docs/MICROSOFT.md) en de [implementatiestatus](docs/STATUS.md). Toegang met een Microsoft-e-mailadres via een e-mailcode staat los van deze databronkoppeling.
 
 ## Bestanden
 
@@ -47,7 +47,8 @@ Microsoft 365 als databron volgt als stap 10 zodra de Graph-koppeling met een te
 | --- | --- | --- |
 | `Config.gs` | server | enige configuratieplek, inclusief toegestane accounts |
 | `Code.gs` | server | toegang, `doGet`, `include` en `getDashboardData` |
-| `Data.gs` | server | Google Sheets lezen, normaliseren en browservelden toestaan |
+| `Data.gs` | server | bronnen routeren, Google Sheets lezen, normaliseren en browservelden toestaan |
+| `Microsoft.gs` | server | Microsoft Graph lezen en private beheerfuncties voor de OAuth-koppeling |
 | `Cache.gs` | server | privacyveilige snapshots, compressie, locking en herstel bij een cache-miss |
 | `Auth.gs` | server | eenmalige e-mailcodes, verzendbegrenzing en gastsessies |
 | `Index.html` | browser | paginastructuur |

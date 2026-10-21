@@ -36,7 +36,7 @@ Leg buiten GitHub vast wie deze rollen heeft. Sla geen accounts, spreadsheet-ID'
 Test met een toegestaan account:
 
 - de pagina toont de paarse 3Dindeklas-header en laadt zonder consolefout;
-- onder **Data** staat na een eerste live laadactie **Google Sheets** en na een volgende laadactie **Snapshot**;
+- onder **Data** staat na een eerste live laadactie **Brongegevens** en na een volgende laadactie **Snapshot**;
 - **Brongegevens vernieuwen** leest de bron opnieuw en herstelt daarna de knop;
 - beide bronnen tonen een begrijpelijke status en het verwachte aantal regels;
 - filters, datumsliders, leerlingensliders en **Filters wissen** werken samen;
@@ -77,7 +77,7 @@ Alleen code opslaan vernieuwt de `/exec`-versie niet.
 
 ## Snapshot en geplande verversing
 
-De snapshot is een tijdelijke, gedeelde Apps Script-cache. Een cache-miss is normaal: de app leest dan opnieuw de Google Sheets. Gebruik maximaal één tijdgestuurde trigger voor `refreshDashboardSnapshot`.
+De snapshot is een tijdelijke, gedeelde Apps Script-cache. Een cache-miss is normaal: de app leest dan opnieuw de ingestelde databronnen. Gebruik maximaal één tijdgestuurde trigger voor `refreshDashboardSnapshot`.
 
 Controleer bij een trigger:
 
@@ -122,3 +122,5 @@ Controleer maandelijks:
 - of de officiële Foundation-stijl of het logo is bijgewerkt.
 
 Microsoft 365 valt buiten stap 9. Die koppeling wordt als afzonderlijke stap 10 toegevoegd zodra een testaccount beschikbaar is.
+
+Voor Microsoft-bronnen: volg de inrichting en acceptatiechecklist in [MICROSOFT.md](MICROSOFT.md). De actuele status staat in [STATUS.md](STATUS.md).

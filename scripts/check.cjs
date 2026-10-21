@@ -24,6 +24,12 @@ validateManifest(manifest, 'src/appsscript.json');
 const guestManifest = JSON.parse(fs.readFileSync('deploy/email-access/appsscript.json', 'utf8'));
 validateManifest(guestManifest, 'deploy/email-access/appsscript.json', { guestOnly: true });
 
+for (const [filename, value] of [['src/appsscript.json', manifest], ['deploy/email-access/appsscript.json', guestManifest]]) {
+  if (!value.oauthScopes.includes('https://www.googleapis.com/auth/script.external_request')) {
+    throw new Error(filename + ': Microsoft-adapter vereist script.external_request.');
+  }
+}
+
 const index = fs.readFileSync('src/Index.html', 'utf8');
 for (const include of ["include('Styles', accessToken)", "include('Municipalities', accessToken)", "include('AccessClient', accessToken)", "include('Client', accessToken)"]) {
   if (!index.includes(include)) throw new Error('Index.html mist ' + include + '.');
