@@ -45,7 +45,7 @@ function getDashboardData(accessToken) {
   return dashboardDataResponse_(false, accessToken);
 }
 
-/** Haalt de Google-bronnen bewust opnieuw op en vervangt de gedeelde snapshot. */
+/** Importeert Excel en haalt de Google-bronnen bewust opnieuw op en vervangt de gedeelde snapshot. */
 function refreshDashboardData(accessToken) {
   return dashboardDataResponse_(true, accessToken);
 }
@@ -55,6 +55,12 @@ function dashboardDataResponse_(forceRefresh, accessToken) {
   const canViewFinancials = canViewFinancials_(email);
 
   try {
+    if (forceRefresh === true && (APP_CONFIG.sources || []).some(function(source) {
+      return source && source.type === 'excel-import';
+    })) {
+      // De import beheert zelf zijn lock; neem pas daarna de snapshotlock.
+      refreshExcelImports_();
+    }
     const delivery = liveDashboardSnapshot_(forceRefresh === true);
 
     const snapshot = delivery.snapshot;
@@ -65,6 +71,7 @@ function dashboardDataResponse_(forceRefresh, accessToken) {
       complete: snapshot.complete,
       snapshot: {
         source: delivery.source,
+        storage: delivery.storage,
         cacheEnabled: snapshotCacheEnabled_()
       },
       permissions: {

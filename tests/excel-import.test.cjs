@@ -372,3 +372,40 @@ test('gedeelde rijselectie behoudt kolommen en slaat formulerijen vóór de rijl
   assert.deepEqual(Array.from(rows.values[1]), ROW);
   assert.equal(rows.rowsTruncated, 1);
 });
+
+test('dashboardvernieuwing importeert Excel vóór snapshotopbouw zonder geneste locks', () => {
+  const { ctx, fetches, convertedSheet, held } = setup();
+  const getLock = ctx.LockService.getScriptLock;
+  ctx.LockService.getScriptLock = () => {
+    assert.equal(held(), false);
+    return getLock();
+  };
+  const result = ctx.refreshDashboardData();
+  assert.equal(result.records[0].workshop, 'Robot');
+  assert.ok(fetches.length > 0);
+  convertedSheet.matrix[2] = [...ROW];
+  convertedSheet.matrix[2][3] = 'Nieuwe import';
+  const count = fetches.length;
+  assert.equal(ctx.getDashboardData().records[0].workshop, 'Robot');
+  assert.equal(fetches.length, count);
+  assert.equal(ctx.refreshDashboardData().records[0].workshop, 'Nieuwe import');
+  assert.equal(held(), false);
+});
+
+test('mislukte import bij dashboardvernieuwing bewaart oude data met waarschuwing', () => {
+  const { ctx, flags } = setup();
+  ctx.refreshDashboardData();
+  flags.status = 401;
+  const result = ctx.refreshDashboardData();
+  assert.equal(result.complete, false);
+  assert.equal(result.records[0].workshop, 'Robot');
+  assert.equal(result.sources[0].errorCode, 'IMPORT_LOGIN_REQUIRED');
+});
+
+test('subtitel blijft bronmetadata en verandert de tech-hubgroepering niet', () => {
+  const { ctx, configure } = setup();
+  configure([{ ...SOURCE, subtitle: 'jaar 25/26' }]);
+  const result = ctx.refreshDashboardData();
+  assert.equal(result.sources[0].subtitle, 'jaar 25/26');
+  assert.equal(result.records[0].source, SOURCE.name);
+});

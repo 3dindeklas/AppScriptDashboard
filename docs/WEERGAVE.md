@@ -54,3 +54,9 @@ De twee leerjaargrafieken hebben op desktop dezelfde hoogte en delen één **Bek
 ## Toetsenbord
 
 De menu’s gebruiken native details/summary en de keuzelijsten en vinkjes blijven native invoervelden. Tab beweegt tussen de bedieningselementen; Enter opent een menu. Escape sluit menu’s en filters en brengt de focus terug naar de betreffende knop.
+
+### Laadstatus en herkomst
+
+Tijdens laden vervagen de dashboardblokken; na succes of een fout worden ze weer volledig zichtbaar. Bij verminderde beweging vervalt de overgang. De badge toont **Snapshot gebruikt** wanneer de gedeelde cache is gelezen. Onder Data staat dan dat de bronnen niet opnieuw zijn ingelezen. Na opnieuw inlezen vermeldt Herkomst of de snapshot is opgeslagen, uitgeschakeld, bezet of mislukt. Bij een gedeeltelijk resultaat kan een vorige volledige snapshot behouden blijven. Een cache is tijdelijk: een volgende opening kan de bronnen opnieuw moeten lezen.
+
+Met `sources[].subtitle` (bijvoorbeeld `jaar 25/26`) onderscheid je bronkaarten. De naam van de tech-hub en de filtergroepering blijven gelijk.

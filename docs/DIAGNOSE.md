@@ -74,7 +74,7 @@ Selecteer nu **refreshExcelImports → Uitvoeren**. Dit is de gewone editorfunct
 
 `IMPORT_NO_SOURCES` betekent dat in `APP_CONFIG.sources` nog geen bron met exact `type: 'excel-import'` staat. Een bron met alleen een URL en zonder dat type blijft een gewone Google-bron.
 
-Na een geslaagde import: controleer het nieuwe tabblad in het Google-bestand. Open of herlaad daarna het dashboard. **Brongegevens vernieuwen** in het dashboard vernieuwt de Google-snapshot; het start geen Excel-import. Voor automatisch importeren kies je de private functie `refreshExcelImports_` als tijdtrigger; de gewone editorroute blijft `refreshExcelImports`.
+Na een geslaagde import: controleer het nieuwe tabblad in het Google-bestand. Open of herlaad daarna het dashboard. **Brongegevens vernieuwen** in het dashboard voert eerst de Excel-imports uit en vernieuwt daarna de snapshot. Gewoon openen voert geen import uit. Voor automatisch importeren kies je de private functie `refreshExcelImports_` als tijdtrigger; de gewone editorroute blijft `refreshExcelImports`.
 
 ## Bij “Er is een onbekende fout opgetreden”
 

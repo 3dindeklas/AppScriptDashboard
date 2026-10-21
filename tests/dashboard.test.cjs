@@ -752,10 +752,10 @@ test('lang laden geeft stapsgewijze feedback en herstelt de bediening na succes'
   assert.equal(elements.refreshButton.textContent, 'Brongegevens vernieuwen');
   assert.equal(elements.message.classList.contains('loading'), false);
   assert.equal(elements.message.hidden, true);
-  assert.equal(elements.modeBadge.textContent, 'Live gegevens');
+  assert.equal(elements.modeBadge.textContent, 'Snapshot gebruikt');
   assert.match(elements.updatedAt.textContent, /^Bijgewerkt /);
   assert.doesNotMatch(elements.updatedAt.textContent, /geladen in|snapshot/);
-  assert.equal(elements.dataOrigin.textContent, 'Snapshot');
+  assert.equal(elements.dataOrigin.textContent, 'Snapshot gebruikt — bronnen niet opnieuw ingelezen');
   assert.match(elements.dataDuration.textContent, /^\d+,\d s$/);
 
   elements.refreshButton.trigger('click');
@@ -1639,7 +1639,9 @@ test('een live snapshot voorkomt dat dezelfde Google Sheets bij iedere opening o
   const second = ctx.getDashboardData();
 
   assert.equal(first.snapshot.source, 'live');
+  assert.equal(first.snapshot.storage, 'saved');
   assert.equal(second.snapshot.source, 'cache');
+  assert.equal(second.snapshot.storage, 'used');
   assert.equal(second.generatedAt, first.generatedAt);
   assert.equal(second.records[0].workshop, 'Snapshot workshop');
   assert.equal(opened, 2);
@@ -1947,4 +1949,17 @@ test('huidig manifest gebruikt de e-maildeployment met identiteit en mailrecht',
   assert.equal(manifest.webapp.access, 'ANYONE_ANONYMOUS');
   assert.ok(manifest.oauthScopes.includes('https://www.googleapis.com/auth/userinfo.email'));
   assert.ok(manifest.oauthScopes.includes('https://www.googleapis.com/auth/script.send_mail'));
+});
+
+
+test('snapshotopslagfout wordt zichtbaar terwijl de brongegevens beschikbaar blijven', () => {
+  const stored = memoryCache();
+  const service = { getScriptCache: () => ({
+    ...stored.service.getScriptCache(), putAll() { throw new Error('cache unavailable'); }
+  }) };
+  const ctx = liveContext({ CacheService: service, LockService: immediateLockService(),
+    SpreadsheetApp: { openById: () => ({ getSheetByName: () => googleSheet([row()]) }) } });
+  const result = ctx.getDashboardData();
+  assert.equal(result.snapshot.storage, 'failed');
+  assert.ok(result.records.length > 0);
 });

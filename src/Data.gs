@@ -70,6 +70,12 @@ function readConfiguredSheets_() {
 }
 
 function readSource_(source) {
+  const result = readSourceData_(source);
+  result.subtitle = textValue_(source && source.subtitle);
+  return result;
+}
+
+function readSourceData_(source) {
   const name = textValue_(source && source.name) || 'Naamloze bron';
 
   const excelImport = source && source.type === 'excel-import';
@@ -362,6 +368,7 @@ function publicNumber_(value) {
 function publicSourceStatus_(source) {
   return {
     name: source.name,
+    subtitle: textValue_(source.subtitle),
     status: source.status,
     recordCount: source.recordCount,
     warningCount: source.warningCount,

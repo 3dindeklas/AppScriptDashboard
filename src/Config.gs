@@ -32,18 +32,20 @@ const APP_CONFIG = Object.freeze({
     sessionHours: 8
   }),
   // Voorbeeld extra importbron (niet tegelijk dezelfde doelnaam als een Google-bron gebruiken):
-  // { name: 'Tech-hub import', type: 'excel-import', url: '', driveFileId: '',
+  // { name: 'Tech-hub import', subtitle: 'jaar 25/26', type: 'excel-import', url: '', driveFileId: '',
   //   sourceSheetName: 'Workshops', headerRow: 8, spreadsheetId: 'GOOGLE_BESTAND_ID', sheetName: 'Import_Microsoft' },
   // url: downloadbare .xlsx-link. driveFileId: Excel-export in Google Drive (heeft voorrang).
   sources: [
     {
       name: 'Tech-hub A',
+      subtitle: '', // Bijvoorbeeld 'jaar 25/26'; alleen zichtbaar bij de bronstatus.
       spreadsheetId: '',
       sheetName: 'Workshops',
       headerRow: 8
     },
     {
       name: 'Tech-hub B',
+      subtitle: '',
       spreadsheetId: '',
       sheetName: 'Workshops',
       headerRow: 8

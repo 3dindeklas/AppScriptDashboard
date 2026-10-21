@@ -14,12 +14,12 @@ const SNAPSHOT_CACHE_MAX_CHUNKS_ = 250;
 /** Levert een bestaande snapshot of bouwt één nieuwe vanuit de Google Sheets. */
 function liveDashboardSnapshot_(forceRefresh) {
   if (!snapshotCacheEnabled_()) {
-    return { snapshot: buildDashboardSnapshot_(), source: 'live' };
+    return { snapshot: buildDashboardSnapshot_(), source: 'live', storage: 'disabled' };
   }
 
   const beforeRefresh = readDashboardSnapshot_();
   if (!forceRefresh && beforeRefresh) {
-    return { snapshot: beforeRefresh, source: 'cache' };
+    return { snapshot: beforeRefresh, source: 'cache', storage: 'used' };
   }
 
   const lock = scriptLock_();
@@ -29,24 +29,25 @@ function liveDashboardSnapshot_(forceRefresh) {
     hasLock = !lock || lock.tryLock(30000);
     if (!hasLock) {
       const available = readDashboardSnapshot_();
-      if (available) return { snapshot: available, source: 'cache' };
-      return { snapshot: buildDashboardSnapshot_(), source: 'live' };
+      if (available) return { snapshot: available, source: 'cache', storage: 'used' };
+      return { snapshot: buildDashboardSnapshot_(), source: 'live', storage: 'busy' };
     }
 
     const afterLock = readDashboardSnapshot_();
     if (!forceRefresh && afterLock) {
-      return { snapshot: afterLock, source: 'cache' };
+      return { snapshot: afterLock, source: 'cache', storage: 'used' };
     }
     if (forceRefresh && afterLock && snapshotChanged_(beforeRefresh, afterLock)) {
-      return { snapshot: afterLock, source: 'cache' };
+      return { snapshot: afterLock, source: 'cache', storage: 'used' };
     }
 
     const snapshot = buildDashboardSnapshot_();
     const preserveCompleteSnapshot = beforeRefresh &&
       beforeRefresh.complete === true &&
       snapshot.complete !== true;
-    if (!preserveCompleteSnapshot) writeDashboardSnapshot_(snapshot);
-    return { snapshot: snapshot, source: 'live' };
+    const stored = !preserveCompleteSnapshot && writeDashboardSnapshot_(snapshot);
+    return { snapshot: snapshot, source: 'live',
+      storage: preserveCompleteSnapshot ? 'preserved' : (stored ? 'saved' : 'failed') };
   } finally {
     if (lock && hasLock) lock.releaseLock();
   }
@@ -195,7 +196,7 @@ function snapshotCacheTtlSeconds_() {
 /** Verandert de cache automatisch wanneer een relevante broninstelling wijzigt. */
 function snapshotConfigVersion_() {
   const sourceConfig = (APP_CONFIG.sources || []).map(function(source) {
-    return [source.name, source.type || 'google', source.spreadsheetId, source.sheetName, source.headerRow,
+    return [source.name, source.subtitle || '', source.type || 'google', source.spreadsheetId, source.sheetName, source.headerRow,
       source.url, source.driveFileId, source.sourceSheetName];
   });
   const text = JSON.stringify([APP_CONFIG.maxRowsPerSource, sourceConfig]);
