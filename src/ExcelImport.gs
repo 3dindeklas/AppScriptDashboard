@@ -246,6 +246,9 @@ function excelImportUrl_(url) {
 }
 
 function downloadExcelImport_(configuredUrl) {
+  // Publieke OneDrive-links kunnen een anonieme sessiecookie vereisen bij redirects.
+  // Alleen binnen deze download bewaren; nooit browsercookies, opslag of logs gebruiken.
+  const cookies = [];
   let current = excelImportUrl_(configuredUrl);
   // SharePoint kan een downloadvariant leveren; dit verleent geen extra toegangsrechten.
   if (/(?:\.sharepoint\.com|\/\/1drv\.ms|\/\/onedrive\.live\.com)$/i.test(current.origin) && !/[?&]download=/i.test(current.url)) {
@@ -253,22 +256,95 @@ function downloadExcelImport_(configuredUrl) {
   }
   for (let redirects = 0; redirects < 6; redirects += 1) {
     let response;
-    try { response = UrlFetchApp.fetch(current.url, { muteHttpExceptions: true, followRedirects: false }); }
+    try {
+      const cookie = excelImportCookieHeader_(current, cookies);
+      response = UrlFetchApp.fetch(current.url, { muteHttpExceptions: true, followRedirects: false,
+        headers: cookie ? { Cookie: cookie } : {} });
+    }
     catch (ignored) { throw new Error('IMPORT_DOWNLOAD_FAILED'); }
     const code = response.getResponseCode();
+    const headers = response.getAllHeaders();
+    excelImportRememberCookies_(headers, current, cookies);
     if (code === 401 || code === 403) throw new Error('IMPORT_LOGIN_REQUIRED');
     if ([301, 302, 303, 307, 308].indexOf(code) !== -1) {
-      const headers = response.getAllHeaders();
       const location = headers.Location || headers.location || '';
       if (/^https:\/\/(?:login\.|login\.microsoftonline\.)/i.test(location)) throw new Error('IMPORT_LOGIN_REQUIRED');
       current = excelImportUrl_(location.charAt(0) === '/' && location.charAt(1) !== '/' ? current.origin + location : location);
       continue;
     }
     if (code !== 200) throw new Error('IMPORT_DOWNLOAD_FAILED');
-    const headers = response.getAllHeaders();
     const mime = String(headers['Content-Type'] || headers['content-type'] || '');
     if (/text\/html/i.test(mime)) throw new Error('IMPORT_VIEWER_LINK');
     return response.getBlob();
   }
   throw new Error('IMPORT_TOO_MANY_REDIRECTS');
+}
+
+/** Minimale, begrensde cookiejar voor publieke Microsoft-downloads; geen login- of browseropslag. */
+function excelImportCookieLocation_(current) {
+  const host = current.origin.slice(8).toLowerCase();
+  const match = current.url.match(/^https:\/\/[^/]+(\/[^?#]*)/i);
+  const path = match ? match[1] : '/';
+  return { host: host, path: path };
+}
+
+function excelImportRememberCookies_(headers, current, cookies) {
+  const location = excelImportCookieLocation_(current);
+  const key = Object.keys(headers).find(function(name) { return name.toLowerCase() === 'set-cookie'; });
+  if (!key) return;
+  const raw = Array.isArray(headers[key]) ? headers[key] : [headers[key]];
+  raw.forEach(function(value) {
+    // Sommige HTTP-clients combineren meerdere cookies; Expires bevat zelf ook een komma.
+    String(value).split(/,(?=\s*[^;,=\s]+=)/).forEach(function(line) {
+      if (line.length > 4096 || /[\r\n]/.test(line)) return;
+      const parts = line.split(';');
+      const pair = parts.shift();
+      const equals = pair.indexOf('=');
+      if (equals < 1) return;
+      const name = pair.slice(0, equals).trim();
+      const cookieValue = pair.slice(equals + 1).trim();
+      if (!/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name) || /[\x00-\x20\x7f]/.test(cookieValue)) return;
+      let domain = location.host;
+      let hostOnly = true;
+      let path = location.path.lastIndexOf('/') > 0 ? location.path.slice(0, location.path.lastIndexOf('/')) : '/';
+      let expiresAt = null;
+      let maxAge = null;
+      let rejected = false;
+      parts.forEach(function(part) {
+        const index = part.indexOf('=');
+        const attribute = (index < 0 ? part : part.slice(0, index)).trim().toLowerCase();
+        const attributeValue = index < 0 ? '' : part.slice(index + 1).trim();
+        if (attribute === 'domain') {
+          const candidate = attributeValue.replace(/^\./, '').toLowerCase();
+          // Geen cookies overnemen voor een andere host, tenant of publieke domeinsuffix.
+          if (candidate !== location.host && !(location.host === 'onedrive.live.com' && candidate === 'live.com')) rejected = true;
+          else { domain = candidate; hostOnly = false; }
+        }
+        if (attribute === 'path' && attributeValue.charAt(0) === '/') path = attributeValue;
+        if (attribute === 'expires' && isFinite(Date.parse(attributeValue))) expiresAt = Date.parse(attributeValue);
+        if (attribute === 'max-age' && /^-?\d+$/.test(attributeValue)) maxAge = Number(attributeValue);
+      });
+      if (rejected) return;
+      if (maxAge !== null) expiresAt = Date.now() + maxAge * 1000;
+      const existing = cookies.findIndex(function(cookie) { return cookie.name === name && cookie.domain === domain && cookie.path === path; });
+      if (existing !== -1) cookies.splice(existing, 1);
+      if (expiresAt !== null && expiresAt <= Date.now()) return;
+      cookies.push({ name: name, value: cookieValue, domain: domain, hostOnly: hostOnly, path: path, expiresAt: expiresAt });
+      if (cookies.length > 24) cookies.shift();
+    });
+  });
+}
+
+function excelImportCookieHeader_(current, cookies) {
+  const location = excelImportCookieLocation_(current);
+  return cookies.filter(function(cookie) {
+    const domainMatches = location.host === cookie.domain || (!cookie.hostOnly && location.host.endsWith('.' + cookie.domain));
+    const pathMatches = location.path === cookie.path || (location.path.indexOf(cookie.path) === 0 &&
+      (cookie.path.endsWith('/') || location.path.charAt(cookie.path.length) === '/'));
+    return domainMatches && pathMatches && (cookie.expiresAt === null || cookie.expiresAt > Date.now());
+  }).sort(function(a, b) { return b.path.length - a.path.length; })
+    .reduce(function(header, cookie) {
+      const next = (header ? header + '; ' : '') + cookie.name + '=' + cookie.value;
+      return next.length <= 8192 ? next : header;
+    }, '');
 }

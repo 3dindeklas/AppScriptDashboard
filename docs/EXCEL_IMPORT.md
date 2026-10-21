@@ -76,6 +76,8 @@ De doelkopie bevat geen contactpersonen, e-mailadressen, telefoonnummers of noti
 
 De importer ondersteunt HTTPS op Microsoft-bestandshosts: SharePoint, OneDrive/1drv, korte 1drv.ms-links en exact `my.microsoftpersonalcontent.com` als OneDrive-bestandshost. Hij probeert bij SharePoint-, 1drv.ms- en onedrive.live.com-links `download=1` toe te voegen, zonder de bestaande linkparameters te verwijderen. Dat is alleen een downloadvariant, geen garantie dat elke deel-URL werkt. Redirects worden maximaal zes keer en alleen naar toegestane Microsoft-bestandshosts gevolgd. Aanmeldredirects en 401/403 worden afgewezen.
 
+Publieke OneDrive-links kunnen tijdens redirects een anonieme sessiecookie meegeven. Die wordt alleen binnen dezelfde download en met host-/padbinding doorgegeven, niet opgeslagen of gelogd. Hiervoor worden geen browsercookies of Microsoft-aanmeldgegevens gebruikt.
+
 Een link moet uiteindelijk een `.xlsx`-bestand opleveren. HTML, een loginpagina, een ander bestandstype en een download groter dan 5 MB worden geweigerd. Legacy `.xls`, wachtwoordbeveiligde bestanden en conversies die Google niet ondersteunt vallen buiten deze stap. De API-conversie kan anders reageren op niet-ondersteunde Excel-formules; vergelijk de uitkomst met Excel bij acceptatie.
 
 Voor je eigen demo kun je desgewenst in OneDrive een **alleen-lezenlink zonder aanmeldplicht en met downloaden toegestaan** maken. Iedereen met die link kan het bestand lezen/downloaden. Gebruik daarom alleen fictieve of expliciet voor delen bedoelde data. Een link kopiëren uit de adresbalk van de geopende Excel-app is niet voldoende.

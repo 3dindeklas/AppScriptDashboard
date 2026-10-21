@@ -243,3 +243,71 @@ test('importfouten tonen fase en een aparte code voor ontbrekende Google-rechten
   assert.match(logs.join(''), /phase=conversion/);
   assert.doesNotMatch(logs.join(''), /private.example/);
 });
+
+test('publieke OneDrive-download neemt anonieme redirectcookie mee en slaat hem nergens op', () => {
+  const { ctx, props, logs } = setup();
+  let calls = 0;
+  ctx.UrlFetchApp.fetch = (url, opts) => {
+    calls++;
+    if (calls === 1) {
+      assert.equal(opts.headers.Cookie, undefined);
+      return { getResponseCode: () => 302, getAllHeaders: () => ({
+        Location: '/public-download.xlsx', 'Set-Cookie': ['anonymous=private-cookie; Path=/; Secure; HttpOnly']
+      }) };
+    }
+    assert.equal(opts.headers.Cookie, 'anonymous=private-cookie');
+    return { getResponseCode: () => 200, getAllHeaders: () => ({'Content-Type': 'application/octet-stream'}),
+      getBlob: () => ({ valid: true }) };
+  };
+  assert.equal(ctx.downloadExcelImport_('https://onedrive.live.com/:x:/g/personal/demo/link?download=1').valid, true);
+  assert.equal(calls, 2);
+  assert.equal(props.size, 0);
+  assert.doesNotMatch(logs.join(''), /private-cookie/);
+});
+
+test('cookies blijven per download geïsoleerd en worden niet naar andere hosts gestuurd', () => {
+  const { ctx } = setup();
+  let calls=0;
+  ctx.UrlFetchApp.fetch = (url, opts) => {
+    calls++;
+    assert.equal(opts.headers.Cookie, undefined);
+    if (calls === 1) return { getResponseCode: () => 302, getAllHeaders: () => ({
+      Location: 'https://my.microsoftpersonalcontent.com/public.xlsx', 'Set-Cookie': 'anonymous=private; Path=/' }) };
+    return { getResponseCode: () => 200, getAllHeaders: () => ({}), getBlob: () => ({ valid:true }) };
+  };
+  ctx.downloadExcelImport_('https://onedrive.live.com/public?download=1');
+  ctx.downloadExcelImport_('https://onedrive.live.com/second?download=1');
+  assert.equal(calls,3);
+});
+
+test('cookiepad, domein, vervanging en verwijderen worden gerespecteerd', () => {
+  const { ctx } = setup();
+  const jar=[];
+  const current=ctx.excelImportUrl_('https://onedrive.live.com/personal/demo/view');
+  ctx.excelImportRememberCookies_({'set-cookie':[
+    'pathcookie=one; Path=/personal/demo', 'rootcookie=two; Domain=.live.com; Path=/',
+    'bad=three; Domain=evil.example; Path=/', 'publicsuffix=four; Domain=com', 'hostonly=five; Path=/'
+  ]},current,jar);
+  assert.match(ctx.excelImportCookieHeader_(current,jar), /pathcookie=one/);
+  assert.doesNotMatch(ctx.excelImportCookieHeader_(ctx.excelImportUrl_('https://onedrive.live.com/personal/demonstration/view'),jar), /pathcookie/);
+  assert.doesNotMatch(ctx.excelImportCookieHeader_(ctx.excelImportUrl_('https://other.sharepoint.com/view'),jar), /cookie|hostonly/);
+  assert.equal(jar.some(cookie=>cookie.name==='bad'||cookie.name==='publicsuffix'),false);
+  ctx.excelImportRememberCookies_({'Set-Cookie':'pathcookie=new; Path=/personal/demo'},current,jar);
+  assert.match(ctx.excelImportCookieHeader_(current,jar),/pathcookie=new/);
+  ctx.excelImportRememberCookies_({'Set-Cookie':'pathcookie=; Path=/personal/demo; Max-Age=0'},current,jar);
+  assert.doesNotMatch(ctx.excelImportCookieHeader_(current,jar),/pathcookie/);
+});
+
+test('samengevoegde Set-Cookie met Expires, ongeldige headers en cookiegrenzen worden veilig verwerkt', () => {
+  const { ctx }=setup(); const jar=[];
+  const current=ctx.excelImportUrl_('https://onedrive.live.com/public');
+  ctx.excelImportRememberCookies_({'Set-Cookie':'first=one; Expires=Wed, 01 Jan 2099 00:00:00 GMT; Path=/, second=two; Path=/'},current,jar);
+  assert.match(ctx.excelImportCookieHeader_(current,jar),/first=one; second=two/);
+  ctx.excelImportRememberCookies_({'Set-Cookie':['bad=value\r\nInjected: secret','old=value; Expires=Wed, 01 Jan 2000 00:00:00 GMT']},current,jar);
+  assert.equal(jar.length,2);
+  ctx.excelImportRememberCookies_({'Set-Cookie':Array.from({length:30},(_,i)=>'cookie'+i+'='+('x'.repeat(3000))+'; Path=/')},current,jar);
+  assert.ok(jar.length<=24);
+  const header=ctx.excelImportCookieHeader_(current,jar);
+  assert.ok(header.length<=8192);
+  assert.ok(header.split('; ').every(pair=>pair.split('=')[1].length===3000));
+});

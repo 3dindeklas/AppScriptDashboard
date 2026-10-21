@@ -91,7 +91,11 @@ Die algemene Google-melding bewijst niet welke scope of functie fout gaat. Kijk 
 
 Een korte `https://1drv.ms/x/...`-link is een Excel-deellink, geen CSV-URL. De importer probeert die met behoud van de linkparameters als download via `download=1`. OneDrive kan doorverwijzen naar `my.microsoftpersonalcontent.com`; exact die host wordt nu ook geaccepteerd. Er worden geen browsercookies of extra aanmeldrechten toegevoegd.
 
-De recent aangeleverde deellink en de downloadvariant eindigden bij onze controle zonder aanmelding op HTTP 401. Daarom is die link nog **niet als werkende downloadbron geaccepteerd**. De diagnose controleert de bereikbaarheid opnieuw vanuit Apps Script. Blijft de fout bestaan, gebruik dan de Excel-export in Drive of controleer in je eigen OneDrive of lezen én downloaden zonder aanmelden is toegestaan. Voor het organisatiebestand kunnen zulke deelinstellingen alleen door de organisatie worden bepaald.
+De recente publieke OneDrive-link werkte wel in een privévenster maar gaf met de eerdere downloader HTTP 401. Oorzaak: OneDrive gaf bij de eerste redirect een anonieme sessiecookie mee die onze handmatige redirectafhandeling niet doorgaf. De downloader bewaart zulke cookies nu alleen voor deze ene download, met host-/padbinding, vervaltijd en begrensde omvang. De cookies worden niet gelogd, niet opgeslagen en nooit uit je browser overgenomen.
+
+Bij de controle met deze correctie volgde op HTTP 302 een HTTP 200 met Excel-contenttype en de XLSX/ZIP-bestandskop. Dit bevestigt de downloadroute; het gekozen Excel-tabblad, de daadwerkelijke Google-conversie en publicatie blijven via refreshExcelImports te testen. De bestaande Config-URL kan blijven staan. Werk ExcelImport.gs bij en start refreshExcelImports opnieuw. Er zijn geen nieuwe Google-scopes nodig.
+
+Een beschermde organisatiebron kan nog steeds Microsoft-aanmelding vereisen. De sessieafhandeling maakt een privébestand niet publiek; bij blijvende 401/403 blijft de Drive-export een alternatief.
 
 ## Google-documentatie
 

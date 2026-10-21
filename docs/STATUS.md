@@ -20,9 +20,9 @@ Voor de beschermde organisatiebron is een in Google Drive geplaatste Excel-expor
 | --- | --- | --- |
 | URL-import, conversie, staging, behoud bij fouten en rechten | Geautomatiseerde tests met gesimuleerde Google-services | Implementatie gecontroleerd; platformtest open |
 | Organisatie-export in Drive | Nog niet uitgevoerd | Open |
-| Downloadbare demo-URL | Nog niet beschikbaar/geaccepteerd | Open |
+| Publieke OneDrive-downloadroute | Redirectcookie-afhandeling gecontroleerd; HTTP 200 met Excel-bestandskop | Download bevestigd; conversie/import nog open |
 | Gepubliceerde Apps Script-versie, gastlogin en tijdtrigger | Nog niet uitgevoerd voor importversie | Open |
 
 Na een geslaagde praktijkcontrole: noteer versie, datum en resultaat in deze tabel. Pas daarna is stap 10 afgerond. Nieuwe wensen kunnen vervolgens als afzonderlijke issues/PR's worden uitgewerkt.
 
-PR #22 bevat ook de editorhulpen authorizeApp en checkAppSetup, met aparte tests voor scopes, services, schrijftest, opruimen en bronbereikbaarheid. De algemene Apps Script-melding zonder eigen startlog kan niet door de functie worden afgevangen. De nieuw opgegeven OneDrive-deellink eindigde anoniem eveneens op HTTP 401; er is geen daadwerkelijke Excel-import met die link bewezen.
+PR #22 bevat ook de editorhulpen authorizeApp en checkAppSetup, met aparte tests voor scopes, services, schrijftest, opruimen en bronbereikbaarheid. De algemene Apps Script-melding zonder eigen startlog kan niet door de functie worden afgevangen. De publieke OneDrive-link gaf aanvankelijk HTTP 401 door ontbrekende redirectcookie-afhandeling. Na correctie is de downloadroute met HTTP 302 → 200 en Excel-bestandskop bevestigd; een volledige Google-import met deze bron is nog niet uitgevoerd.
