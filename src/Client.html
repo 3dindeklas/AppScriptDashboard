@@ -203,7 +203,7 @@
       state.generatedAt = payload.generatedAt || new Date().toISOString();
       state.snapshotSource = payload.snapshot && payload.snapshot.source
         ? payload.snapshot.source
-        : state.mode;
+        : 'live';
       state.complete = payload.complete !== false;
       state.canViewFinancials = Boolean(
         payload.permissions && payload.permissions.canViewFinancials === true
@@ -217,10 +217,10 @@
       configureDateRange(true);
       configureStudentRange(true);
 
-      elements.mode.textContent = 'Live gegevens';
+      elements.mode.textContent = state.snapshotSource === 'cache' ? 'Snapshot gebruikt' : 'Actuele gegevens';
       elements.updated.textContent = 'Bijgewerkt ' + formatDateTime(state.generatedAt);
       elements.dataUpdated.textContent = formatDateTime(state.generatedAt);
-      elements.dataOrigin.textContent = snapshotSourceLabel(state.snapshotSource);
+      elements.dataOrigin.textContent = snapshotSourceLabel(state.snapshotSource, payload.snapshot);
       elements.dataDuration.textContent = formatLoadDuration(loadDuration);
       renderSourceStatus();
       renderLoadMessage();
@@ -292,7 +292,14 @@
         const count = document.createElement('p');
         count.className = 'source-count';
         count.textContent = numberFormat.format(Number(source.recordCount) || 0) + ' workshopregels';
-        card.append(heading, count);
+        card.appendChild(heading);
+        if (source.subtitle) {
+          const subtitle = document.createElement('p');
+          subtitle.className = 'source-subtitle';
+          subtitle.textContent = source.subtitle;
+          card.appendChild(subtitle);
+        }
+        card.appendChild(count);
 
         if (source.message) {
           const message = document.createElement('p');
@@ -341,7 +348,7 @@
       setLoading(true);
       elements.mode.textContent = 'Laden…';
       elements.updated.textContent = forceRefresh
-        ? 'Google Sheets worden opnieuw ingelezen'
+        ? 'Excel-imports en Google-bronnen worden vernieuwd'
         : 'Snelle snapshot wordt gecontroleerd';
       elements.message.hidden = false;
       elements.message.classList.remove('error', 'warning');
@@ -351,7 +358,7 @@
         : 'Dashboardgegevens worden geladen…';
 
       [
-        [1500, 'De Google Sheets worden gecontroleerd…'],
+        [1500, forceRefresh ? 'Excel-imports en Google-bronnen worden vernieuwd…' : 'De Google Sheets worden gecontroleerd…'],
         [5000, 'De workshopregels van alle tech-hubs worden samengevoegd…'],
         [10000, 'Het laden duurt langer dan normaal. Grote Sheets en veel formules kunnen extra tijd kosten.']
       ].forEach(step => {
@@ -378,9 +385,17 @@
       }).format(milliseconds / 1000) + ' s';
     }
 
-    function snapshotSourceLabel(source) {
-      if (source === 'cache') return 'Snapshot';
-      if (source === 'live') return 'Google Sheets';
+    function snapshotSourceLabel(source, snapshot) {
+      if (source === 'cache') return 'Snapshot gebruikt';
+      const storage = snapshot && snapshot.storage;
+      if (storage === 'saved') return 'Snapshot opgeslagen';
+      if (storage === 'preserved') return 'Vorige snapshot behouden';
+      if (storage === 'failed') return 'Opslaan mislukt';
+      if (storage === 'busy') return 'Snapshot bezet';
+      if (storage === 'disabled' || (snapshot && snapshot.cacheEnabled === false)) {
+        return 'Snapshot uitgeschakeld';
+      }
+      if (source === 'live') return 'Zonder snapshot';
       return 'Onbekend';
     }
 

@@ -36,6 +36,7 @@ Voeg een importbron toe aan `APP_CONFIG.sources`, of vervang de tweede Google-br
 ```javascript
 {
   name: 'Tech-hub i_lab',
+  subtitle: 'jaar 25/26', // Optioneel; zichtbaar bij Bronnen & datakwaliteit.
   type: 'excel-import',
   url: 'https://voorbeeld.sharepoint.com/downloadbaar-bestand.xlsx',
   driveFileId: '',
@@ -98,7 +99,7 @@ Voor je eigen demo kun je desgewenst in OneDrive een **alleen-lezenlink zonder a
 - Een optionele tijdtrigger voor **refreshExcelImports_** kan bijvoorbeeld ieder uur draaien, onder hetzelfde toegestane Google-beheerdersaccount. De private functie is niet via `google.script.run` beschikbaar.
 - De import neemt dezelfde ScriptLock als de snapshotverversing. Twee imports of een import en snapshotopbouw publiceren niet tegelijk.
 - Na een importpoging wordt de snapshotmanifest verwijderd. De volgende dashboardopening of **Brongegevens vernieuwen** bouwt een snapshot uit de actuele Google-tabbladen en importmeldingen.
-- **Brongegevens vernieuwen** in het dashboard leest alleen de Google-bronnen/snapshot opnieuw. Het start geen Excel-download of wijziging aan het importtabblad. Zo blijft een pagina-opening snel en kan een gast geen bestanden importeren.
+- **Brongegevens vernieuwen** start eerst alle geconfigureerde Excel-imports en bouwt daarna de dashboard-snapshot. Dit geldt ook voor toegestane e-mailgasten; de import draait met de uitvoeringsrechten van de web-app. Iedere aanvraag wordt eerst op toegang gecontroleerd. Gewoon openen of herladen downloadt Excel niet opnieuw. Bij een mislukte import blijven eerdere gegevens met een bronwaarschuwing zichtbaar.
 
 Onder **Data → Bronnen & datakwaliteit** staat bij een importbron de laatste geslaagde importtijd. Dat is de actualiteit van de Excel-kopie; de algemene bijwerktijd bovenaan hoort bij de dashboard-snapshot en kan recenter zijn.
 

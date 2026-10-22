@@ -144,7 +144,12 @@
   .panel-heading { display: flex; align-items: start; justify-content: space-between; gap: 0.85rem; margin-bottom: 0.85rem; }
   .dashboard-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-items: start; }
   .dashboard-layout.has-filters { grid-template-columns: 18rem minmax(0, 1fr); }
-  .dashboard-content { min-width: 0; }
+  .dashboard-content { min-width: 0; transition: opacity 180ms ease; }
+  #dashboard[aria-busy="true"] .dashboard-content { opacity: 0.4; pointer-events: none; }
+  .source-subtitle { margin: 0.25rem 0 0; color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) {
+    .dashboard-content { transition: none; }
+  }
   .filter-sidebar { position: sticky; top: 6rem; max-height: calc(100dvh - 7rem); overflow-y: auto; border-radius: var(--card-radius); scrollbar-width: thin; }
   .filter-sidebar .panel { margin-bottom: 0; padding: 1rem; box-shadow: none; }
   .filters .filter-grid, .filters .range-filter-grid { grid-template-columns: 1fr; gap: 0.65rem; }
