@@ -1,5 +1,7 @@
 # Gefaseerde uitbreidingsroadmap
 
+De nieuwe uitbreidingen staan in de [vervolgroadmap: planning, inzicht en rapportage](ROADMAP_VERVOLG.md), met de aparte kalenderweergave als eerste stap. Deze oorspronkelijke roadmap blijft als bouwgeschiedenis behouden.
+
 De minimale dashboardbasis uit PR #4 is het vaste vertrekpunt. We bouwen de oorspronkelijke visie terug in kleine pull requests. Iedere PR moet zelfstandig te beoordelen, te testen en terug te draaien zijn.
 
 De [implementatiestatus](STATUS.md) houdt code, review/merge en praktijkacceptatie apart. Geïmplementeerd betekent niet automatisch getest in de echte omgeving.
