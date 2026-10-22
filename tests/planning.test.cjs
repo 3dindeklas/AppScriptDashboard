@@ -74,3 +74,19 @@ test('aanbiederkleur is stabiel bij sorteren en filteren', () => {
   assert.equal(m.providerColor('3Dindeklas'), m.providerColor('3Dindeklas'));
   assert.match(m.providerColor('Onbekend'), /^#[a-f0-9]{6}$/);
 });
+
+
+test('inactieve aanvragen zijn standaard verborgen ongeacht statusgroepering of schrijfwijze', () => {
+  const m = model();
+  const inactive = [
+    { status: 'Geen Reactie', statusGroup: 'Overig' },
+    { status: '  GEEN   REACTIE  ', statusGroup: 'Overig' },
+    { status: 'Volgend schooljaar', statusGroup: 'Volgend schooljaar' },
+    { status: 'Afgezegd', statusGroup: 'Geannuleerd' }
+  ];
+  const active = { status: 'Bevestiging', statusGroup: 'Ingepland' };
+  assert.equal(m.select([...inactive, active], {}, false).length, 1);
+  assert.equal(m.select([...inactive, active], {}, true).length, 5);
+  assert.equal(m.select(inactive, { statusGroup: 'Overig' }, false).length, 0);
+  assert.equal(m.select(inactive, { statusGroup: 'Overig' }, true).length, 2);
+});

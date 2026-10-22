@@ -38,8 +38,12 @@
         return date.toISOString().slice(0, 10);
       });
     }
-    function select(records, filters, includeCancelled) {
-      return records.filter(record => (includeCancelled || record.statusGroup !== 'Geannuleerd') &&
+    function inactive(record) {
+      return [record.status, record.statusGroup].some(value =>
+        ['geen reactie', 'volgend schooljaar', 'geannuleerd', 'afgezegd'].includes(String(value || '').trim().replace(/\s+/g, ' ').toLowerCase()));
+    }
+    function select(records, filters, includeInactive) {
+      return records.filter(record => (includeInactive || !inactive(record)) &&
         fields.every(([field]) => !filters[field] || record[field] === filters[field]));
     }
     function events(records, month) {
@@ -92,7 +96,7 @@
         if (pinned) return;
         clearTimeout(closeTimer);
         closeTimer = setTimeout(() => {
-          if (!popup.matches(':hover') && !popup.contains(document.activeElement) &&
+          if (!popup.matches(':hover') && !(popupAnchor && popupAnchor.matches(':hover')) && !popup.contains(document.activeElement) &&
               !(popupAnchor && popupAnchor === document.activeElement)) closePopup(false);
         }, 220);
       }
@@ -133,7 +137,7 @@
       // Delegatie houdt het aantal handlers constant, ook bij duizenden lessen.
       function lessonButton(event) {
         const record = event.record;
-        const button = node('button', 'calendar-event' + (record.statusGroup === 'Geannuleerd' ? ' is-cancelled' : ''));
+        const button = node('button', 'calendar-event' + (inactive(record) ? ' is-cancelled' : ''));
         button.type = 'button'; button.dataset.lesson = event.key;
         button.style.setProperty('--provider-color', providerColor(record.provider));
         button.setAttribute('aria-haspopup', 'dialog'); button.setAttribute('aria-expanded', 'false');
@@ -187,7 +191,7 @@
           currentEvents.length + (currentEvents.length === 1 ? ' lesvermelding' : ' lesvermeldingen');
         const selectedLabels = fields.filter(([field]) => filters[field]).map(([field, label]) => label + ': ' + filters[field]);
         byId('calendarSelection').textContent = (selectedLabels.length ? selectedLabels.join(' · ') : 'Alle tech-hubs') +
-          (byId('calendarCancelled').checked ? ' · Inclusief geannuleerd' : ' · Geannuleerd verborgen');
+          (byId('calendarCancelled').checked ? ' · Inclusief inactief' : ' · Inactief verborgen');
         byId('calendarEmpty').hidden = !loaded || currentEvents.length > 0;
         const grid = document.createDocumentFragment(), mobile = document.createDocumentFragment();
         const currentDay = today();
@@ -256,7 +260,10 @@
         if (byId('calendarUnscheduled').open) render();
       });
       listen(view, 'mouseover', event => { const found = findEvent(event.target); if (found && !found.anchor.contains(event.relatedTarget)) showPopup(found.anchor, found.event, false); });
-      listen(view, 'mouseout', event => { if (findEvent(event.target)) deferClose(); });
+      listen(view, 'mouseout', event => {
+        const found = findEvent(event.target);
+        if (found && !found.anchor.contains(event.relatedTarget)) deferClose();
+      });
       listen(view, 'focusin', event => { if (suppressFocus) return; const found = findEvent(event.target); if (found) showPopup(found.anchor, found.event, false); });
       listen(view, 'focusout', deferClose);
       listen(view, 'click', event => {
@@ -279,7 +286,7 @@
       listen(document, 'click', event => { if (!popup.hidden && !popup.contains(event.target) && !(popupAnchor && popupAnchor.contains(event.target))) closePopup(false); });
       listen(document, 'keydown', event => { if (event.key === 'Escape' && !popup.hidden) { event.preventDefault(); closePopup(true); } });
       listen(window, 'resize', positionPopup);
-      listen(window, 'scroll', () => { if (!pinned) closePopup(false); else positionPopup(); });
+      listen(window, 'scroll', () => { positionPopup(); deferClose(); });
       const hashChange = () => applyRoute(window.location.hash, false);
       if (script && script.history && script.history.setChangeHandler) {
         script.history.setChangeHandler(event => { userNavigated = true; if (!locked) applyRoute(event.location.hash, true); });
@@ -318,6 +325,6 @@
         }
       };
     }
-    window.WorkshopPlanning = { create, model: { validDate, dates, today, shiftMonth, monthDays, select, events, providerColor } };
+    window.WorkshopPlanning = { create, model: { validDate, dates, today, shiftMonth, monthDays, inactive, select, events, providerColor } };
   })();
 </script>

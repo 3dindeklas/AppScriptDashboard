@@ -256,7 +256,7 @@ De kalender gebruikt alleen de geldige definitieve datums. Binnen één aanvraag
 - **Lesvermeldingen**: aantal aanvraag-datumcombinaties in de maand binnen die filters. Dit is niet de kolom Lesmomenten.
 - **Deelnemers in lesdetails**: het geregistreerde leerlingaantal van de aanvraag, herhaald als context bij iedere lesdag. Niet optellen tot unieke leerlingen of nieuw bereik. Onbekend is geen nul.
 - **Nog te plannen**: aanvragen zonder geldige definitieve datum, over alle geladen jaren binnen de kalenderfilters. Een geldig gedateerde aanvraag met een onbekende status blijft op de geregistreerde datum zichtbaar.
-- **Geannuleerd**: standaard verborgen in kalender én Nog te plannen; via een expliciete optie zichtbaar. Het tekstlabel blijft herkenbaar.
+- **Inactief**: Geannuleerd, Geen Reactie en Volgend schooljaar zijn standaard verborgen in kalender én Nog te plannen; via **Inactieve aanvragen tonen** zichtbaar. Het tekstlabel blijft herkenbaar.
 
 De kalender gebruikt eigen categorie-filters en een zichtbare maand; de dashboarddatumslider, schooljaarselectie, leerlingrange en aanvraagdatumkeuze werken hier niet door. Datums blijven datumstrings en worden voor raster/labels in UTC verwerkt; vandaag wordt expliciet in Europe/Amsterdam bepaald. Er zijn geen begin-/eindtijden geregistreerd.
 

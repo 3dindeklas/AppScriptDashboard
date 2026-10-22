@@ -75,7 +75,7 @@ De huidige browserdata bevat geen locatie, begin-/eindtijd of contactgegevens. D
 - Eenzelfde datum die binnen één aanvraag dubbel voorkomt levert één vermelding op die dag op. Verschillende aanvragen op dezelfde dag blijven afzonderlijk zichtbaar, ook bij dezelfde school en workshop.
 - Datums worden als kalenderdatum verwerkt, zonder tijdzoneverschuiving naar de vorige of volgende dag. De Nederlandse kalender en Europe/Amsterdam bepalen vandaag.
 - Een aanvraag zonder geldige definitieve datum verschijnt niet op een willekeurige dag. Een aparte melding/lijst **Nog te plannen** toont die aanvragen binnen de overige kalenderfilters.
-- Geannuleerde aanvragen zijn standaard verborgen, met een expliciete optie om ze herkenbaar te tonen. Open, ingeplande en uitgevoerde aanvragen met een definitieve datum blijven zichtbaar en herkenbaar naar status.
+- Geannuleerd, Geen Reactie en Volgend schooljaar zijn standaard verborgen, met een expliciete optie om inactieve aanvragen herkenbaar te tonen. Open, ingeplande en uitgevoerde aanvragen met een definitieve datum blijven zichtbaar en herkenbaar naar status.
 - **Lesdagen** telt verschillende datums met een zichtbare les. **Lesvermeldingen** telt aanvraag-datumcombinaties. Beide verschillen van de geregistreerde kolom **Lesmomenten**.
 - Het leerlingaantal hoort bij de aanvraag. Het bij elke lesdatum tonen betekent niet dat bij een reeks telkens andere leerlingen worden bereikt. De eerste kalender telt deze aantallen niet op tot unieke leerlingen of een nieuw bereikcijfer.
 - De volgorde in een lesreeks volgt alle geldige definitieve datums van die aanvraag, niet alleen de datums in de zichtbare maand.
