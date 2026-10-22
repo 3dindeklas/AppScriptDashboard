@@ -15,6 +15,10 @@
         </a>
         <div class="header-title"><span>LEREN DOOR CREËREN</span><strong>Workshopkompas</strong></div>
         <nav class="dashboard-nav" aria-label="Dashboardbediening">
+          <div class="view-switch" role="group" aria-label="Weergave">
+            <button id="dashboardNav" class="nav-button" type="button" aria-pressed="true">Dashboard</button>
+            <button id="planningNav" class="nav-button" type="button" aria-pressed="false">Planning</button>
+          </div>
           <button id="filterToggle" class="nav-button" type="button" aria-expanded="false" aria-controls="filterSidebar">Filters <span id="activeFilterCount" class="nav-count" hidden>0</span></button>
           <details id="dataMenu" class="nav-menu">
             <summary id="dataMenuButton">Data</summary>
@@ -75,7 +79,7 @@
       <section class="intro" aria-labelledby="pageTitle">
         <div class="intro-copy"><p class="eyebrow">WORKSHOPS IN BEELD</p><h1 id="pageTitle">Grip op bereik, planning en impact.</h1><p>De workshopgegevens van alle tech-hubs in één veilig en filterbaar overzicht.</p></div>
         <div class="load-meta"><span id="modeBadge" class="badge">Laden…</span><span id="updatedAt">Even geduld</span></div>
-        <div class="intro-selection">
+        <div id="dashboardSelection" class="intro-selection">
           <div><p id="schoolYearSwitchLabel" class="selection-label">Schooljaar</p><div id="schoolYearSwitch" class="school-year-switch" role="group" aria-labelledby="schoolYearSwitchLabel"></div></div>
           <div class="dashboard-summary"><div><p class="selection-label">Actieve selectie</p><p id="filterSummary">Alle tech-hubs · Alle gegevens</p></div><p id="resultCount" class="result-count" aria-live="polite"></p></div>
         </div>
@@ -365,10 +369,41 @@
       </section>
         </div>
       </div>
+      <section id="planningView" class="planning-view" aria-labelledby="planningTitle" hidden>
+        <div class="panel calendar-toolbar">
+          <div class="calendar-heading"><div><p class="eyebrow">ALLE DEFINITIEVE LESDAGEN</p><h2 id="planningTitle">Planning</h2></div><p id="planningSummary" role="status" aria-live="polite">Gegevens worden geladen…</p></div>
+          <div class="calendar-controls">
+            <div class="calendar-month-controls" role="group" aria-label="Kalendermaand">
+              <button id="calendarPrevious" class="text-button" type="button" aria-label="Vorige maand">← Vorige</button>
+              <button id="calendarToday" class="text-button" type="button">Vandaag</button>
+              <button id="calendarNext" class="text-button" type="button" aria-label="Volgende maand">Volgende →</button>
+            </div>
+            <label class="calendar-month-label" for="calendarMonth">Ga naar maand<input id="calendarMonth" type="month" min="1900-01" max="2100-12"></label>
+          </div>
+          <details id="calendarFilters" class="calendar-filter-box"><summary>Kalenderfilters</summary><div id="calendarFilterFields" class="calendar-filter-fields"></div>
+            <label class="calendar-cancelled"><input id="calendarCancelled" type="checkbox"> Geannuleerde aanvragen tonen</label>
+            <button id="calendarReset" class="text-button" type="button">Filters wissen</button>
+          </details>
+          <p id="calendarSelection" class="calendar-selection">Alle tech-hubs · Geannuleerd verborgen</p>
+          <p class="calendar-help">Iedere vermelding is één lesdag. Ga met de muis over een les of klik/tik voor details. Lesdatums bevatten geen begin- of eindtijd.</p>
+        </div>
+        <div id="calendarContent" class="calendar-content">
+          <div class="calendar-weekdays" aria-hidden="true"><span>Ma</span><span>Di</span><span>Wo</span><span>Do</span><span>Vr</span><span>Za</span><span>Zo</span></div>
+          <div id="calendarGrid" class="calendar-grid" aria-label="Lessen per dag"></div>
+          <div id="calendarList" class="calendar-list" aria-label="Lessen in deze maand"></div>
+          <p id="calendarEmpty" class="panel" hidden>Geen lessen in deze maand binnen de kalenderfilters.</p>
+        </div>
+        <details id="calendarUnscheduled" class="panel calendar-unscheduled"><summary id="calendarUnscheduledTitle">Nog te plannen</summary><p>Deze aanvragen hebben geen geldige definitieve datum. De lijst volgt de kalenderfilters, over alle geladen jaren.</p><div id="calendarUnscheduledRows"></div></details>
+      </section>
+      <aside id="lessonPopup" class="lesson-popup" role="dialog" aria-modal="false" aria-labelledby="lessonPopupTitle" hidden>
+        <div class="calendar-heading"><h2 id="lessonPopupTitle">Lesdetails</h2><button id="lessonPopupClose" class="text-button" type="button" aria-label="Lesdetails sluiten">Sluiten ×</button></div>
+        <div id="lessonPopupContent"></div>
+      </aside>
       <footer><span><strong>Workshopkompas</strong> · 3Dindeklas</span></footer>
     </main>
     <?!= include('Municipalities', accessToken); ?>
     <?!= include('AccessClient', accessToken); ?>
+    <?!= include('Planning', accessToken); ?>
     <?!= include('Client', accessToken); ?>
   </body>
 </html>

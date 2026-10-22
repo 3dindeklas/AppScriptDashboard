@@ -28,3 +28,13 @@ Na een geslaagde praktijkcontrole: noteer versie, datum en resultaat in deze tab
 PR #22 bevat ook de editorhulpen authorizeApp en checkAppSetup, met aparte tests voor scopes, services, schrijftest, opruimen en bronbereikbaarheid. De algemene Apps Script-melding zonder eigen startlog kan niet door de functie worden afgevangen. De publieke OneDrive-link gaf aanvankelijk HTTP 401 door ontbrekende redirectcookie-afhandeling. Na correctie is de downloadroute met HTTP 302 → 200 en Excel-bestandskop bevestigd; een volledige Google-import met deze bron is nog niet uitgevoerd.
 
 De correctie voor kolombehoud kopieert bronkolommen en celwaarden via dezelfde rijselectie als gewone Google-bronnen. De basisimport heeft bij de gebruiker het doeltabblad bereikt; de nieuwe kolomindeling moet na herimport nog in de echte omgeving worden gecontroleerd. Contactgegevens/notities blijven in de bronkopie, maar niet in browser of snapshot.
+
+
+## Vervolgroadmap
+
+| Onderdeel | Implementatie | Review/merge | Praktijkacceptatie |
+| --- | --- | --- | --- |
+| Stap 1: Planning/kalender | Aanwezig in de kalender-featurebranch: eigen weergave, filters, maandraster/daglijst, lesdetails en gedeelde dataset | Zie kalender-PR; pas na review mergen | Open: Apps Script `/dev` en nieuwe `/exec`, directe `#planning`-link, iPad/touch, gastvergrendeling en echte lesreeksen controleren |
+| Stap 2–7 | Gepland in [ROADMAP_VERVOLG.md](ROADMAP_VERVOLG.md) | Nog geen implementatie | Niet uitgevoerd |
+
+De kalender heeft aanvullende geautomatiseerde datum-/filtertests en browsercontrole met testrecords. De echte platformacceptatie blijft apart; nieuwe velden of datums worden niet als praktijk-geaccepteerd aangemerkt op basis van simulaties.

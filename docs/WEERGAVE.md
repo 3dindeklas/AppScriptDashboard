@@ -60,3 +60,16 @@ De menu’s gebruiken native details/summary en de keuzelijsten en vinkjes blijv
 Tijdens laden vervagen de dashboardblokken; na succes of een fout worden ze weer volledig zichtbaar. Bij verminderde beweging vervalt de overgang. De badge toont **Snapshot gebruikt** wanneer de gedeelde cache is gelezen. Onder Data staat dan **Snapshot gebruikt**. **Snapshot opgeslagen** betekent dat deze laadbeurt nieuwe gegevens heeft opgehaald en opgeslagen; het is geen cache-hit. Gewoon openen of de browserpagina herladen vraagt eerst de snapshot op. De knop **Brongegevens vernieuwen** slaat die bestaande snapshot bewust over, importeert Excel en haalt de actuele gegevens op. Na opnieuw inlezen vermeldt Herkomst of de snapshot is opgeslagen, uitgeschakeld, bezet of mislukt. Bij een gedeeltelijk resultaat kan een vorige volledige snapshot behouden blijven. Een cache is tijdelijk: een volgende opening kan de bronnen opnieuw moeten lezen.
 
 Met `sources[].subtitle` (bijvoorbeeld `jaar 25/26`) onderscheid je bronkaarten. De naam van de tech-hub en de filtergroepering blijven gelijk.
+
+
+## Planning
+
+**Dashboard** en **Planning** wisselen binnen de geladen web-app. Planning toont geen dashboardgrafieken. De maandknoppen, Vandaag en de maandkeuze navigeren tussen januari 1900 en december 2100 zonder gegevens opnieuw te laden. Er staat een maandraster op desktop en een chronologische daglijst op schermen tot 760 px. De kalenderfilters en geselecteerde maand blijven tijdens de sessie bewaard, onafhankelijk van dashboardfilters.
+
+Een les toont school, workshop, aanbieder en status. Een vaste kleur per aanbieder helpt herkennen. Bij meer dan drie vermeldingen op een dag opent **+ n meer** de rest binnen die dag; verschillende aanvragen blijven afzonderlijk zichtbaar. Geannuleerd is standaard verborgen. **Nog te plannen** toont ongedateerde aanvragen over alle geladen jaren.
+
+Hover of toetsenbordfocus toont lesdetails; klikken/tikken zet de popup vast en brengt focus naar Sluiten. Escape of Sluiten sluit en brengt focus terug. Buiten klikken sluit zonder focus te verplaatsen. De popup toont ook tech-hub/subtitel, leerlingen, onderwijs, regio en lesreeks, maar geen contactgegevens, bronnotities of bedragen. Tijdens opnieuw laden sluit de popup en vervaagt de kalender. Bij uitloggen/vergrendelen worden handlers en geladen kalendergegevens verwijderd.
+
+Bij een afdruk wordt de zichtbare maand als daglijst getoond. Uitgebreidere rapportage volgt in stap 7; de eerste kalenderprint is een eenvoudige leesbare lijst met dezelfde selectie en de gedeelde bijwerkdatum.
+
+Apps Script-navigatie volgt de officiële [history-API](https://developers.google.com/apps-script/guides/html/reference/history) en [url-API](https://developers.google.com/apps-script/guides/html/reference/url), zodat ook een directe `#planning`-link en terug/vooruit bruikbaar zijn zonder nieuw dataverzoek.

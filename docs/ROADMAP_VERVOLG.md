@@ -1,8 +1,8 @@
 # Vervolgroadmap: planning, inzicht en rapportage
 
-Status: voorgesteld op 22 oktober 2026; de onderstaande stappen zijn nog niet geïmplementeerd. Dit document volgt op de [oorspronkelijke roadmap](ROADMAP.md). De bestaande [implementatiestatus](STATUS.md) blijft het overzicht van eerder gerealiseerde onderdelen; een roadmapitem is geen bewijs van implementatie of praktijkacceptatie.
+Status: roadmap vastgelegd op 22 oktober 2026. Stap 1 is uitgewerkt in de kalender-featurebranch; review/merge en praktijkacceptatie staan in [STATUS.md](STATUS.md). Stap 2–7 zijn nog niet geïmplementeerd. Dit document volgt op de [oorspronkelijke roadmap](ROADMAP.md). De bestaande [implementatiestatus](STATUS.md) blijft het overzicht van eerder gerealiseerde onderdelen; een roadmapitem is geen bewijs van implementatie of praktijkacceptatie.
 
-Doel: eerst een praktisch planningsoverzicht maken, daarna groei, schoolbereik en opvolging inzichtelijk maken. De bestaande dashboardpagina blijft compact. Elke stap krijgt een eigen pull request, review en handmatige controle door Mathijs. Deze documentatie-PR bouwt nog geen functionaliteit.
+Doel: eerst een praktisch planningsoverzicht maken, daarna groei, schoolbereik en opvolging inzichtelijk maken. De bestaande dashboardpagina blijft compact. Elke stap krijgt een eigen pull request, review en handmatige controle door Mathijs. De oorspronkelijke roadmap-PR bevatte alleen documentatie; de kalenderimplementatie en acceptatie worden afzonderlijk bijgehouden.
 
 ## Volgorde en resultaten
 

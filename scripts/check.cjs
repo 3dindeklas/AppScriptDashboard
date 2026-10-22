@@ -14,7 +14,7 @@ for (const name of sourceFiles) {
     }
   }
 
-  if (['Client.html', 'AccessClient.html'].includes(name)) {
+  if (['Client.html', 'AccessClient.html', 'Planning.html'].includes(name)) {
     new vm.Script(source.replace(/^<script>\s*|\s*<\/script>\s*$/g, ''), { filename: name });
   }
 }
@@ -36,7 +36,7 @@ for (const [filename, value] of [['src/appsscript.json', manifest], ['deploy/ema
 }
 
 const index = fs.readFileSync('src/Index.html', 'utf8');
-for (const include of ["include('Styles', accessToken)", "include('Municipalities', accessToken)", "include('AccessClient', accessToken)", "include('Client', accessToken)"]) {
+for (const include of ["include('Styles', accessToken)", "include('Municipalities', accessToken)", "include('AccessClient', accessToken)", "include('Planning', accessToken)", "include('Client', accessToken)"]) {
   if (!index.includes(include)) throw new Error('Index.html mist ' + include + '.');
 }
 const asset = fs.readFileSync('src/Municipalities.html', 'utf8');

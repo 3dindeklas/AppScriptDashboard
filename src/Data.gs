@@ -16,6 +16,7 @@ const STATUS_GROUPS_ = Object.freeze({
 /** Enige centrale allowlist van recordvelden die de browser mag ontvangen. */
 const PUBLIC_RECORD_FIELDS_ = Object.freeze([
   'source',
+  'sourceSubtitle',
   'requestedDate',
   'scheduledDate',
   'scheduledDates',
@@ -72,6 +73,7 @@ function readConfiguredSheets_() {
 function readSource_(source) {
   const result = readSourceData_(source);
   result.subtitle = textValue_(source && source.subtitle);
+  result.records.forEach(function(record) { record.sourceSubtitle = result.subtitle; });
   return result;
 }
 
@@ -329,6 +331,7 @@ function publicRecord_(record, includeFinancials) {
   const invoiceAmount = publicNumber_(record.invoiceAmount);
   const prepared = {
     source: record.source,
+    sourceSubtitle: textValue_(record.sourceSubtitle),
     requestedDate: record.requestedDate || '',
     scheduledDate: record.scheduledDate || '',
     scheduledDates: Array.isArray(record.scheduledDates)

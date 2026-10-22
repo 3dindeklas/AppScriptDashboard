@@ -27,7 +27,7 @@ function doGet() {
  */
 function include(filename, accessToken) {
   requireAccess_(accessToken);
-  if (['Styles', 'Municipalities', 'AccessClient', 'Client'].indexOf(filename) === -1) {
+  if (['Styles', 'Municipalities', 'AccessClient', 'Planning', 'Client'].indexOf(filename) === -1) {
     throw new Error('Bestand niet beschikbaar.');
   }
   try {
