@@ -28,7 +28,7 @@ Kopieer de inhoud uit de gelijknamige bestanden in `src/`.
 Controleer de bestandstypen goed:
 
 - `Config`, `Code`, `Data`, `Cache` en `Auth` krijgen in Apps Script de extensie `.gs`;
-- `Index`, `Styles`, `Municipalities`, `Client`, `Access` en `AccessClient` krijgen de extensie `.html`;
+- `Index`, `Styles`, `Municipalities`, `Planning`, `Client`, `Access` en `AccessClient` krijgen de extensie `.html`;
 - `document` en `window` mogen nergens in een `.gs`-bestand staan.
 
 ## Stap 2 · Sta je Google-account toe
@@ -234,3 +234,10 @@ Volg [EXCEL_IMPORT.md](EXCEL_IMPORT.md). De app importeert een downloadbaar Exce
 Voeg ExcelImport.gs toe, werk Data.gs en Cache.gs samen bij en neem de aanvullende scopes en Advanced Drive v3 uit het manifest over. Behoud je bestaande toegangsadressen en broninstellingen. De beheerder autoriseert de Google-rechten opnieuw. Controleer de nieuwe Apps Script-publicatie na merge; zie STATUS.md voor de nog openstaande praktijkacceptatie.
 
 Voor het controleren van scopes, services en bronrechten en het starten van de import: zie [DIAGNOSE.md](DIAGNOSE.md). Gebruik in de editor eerst authorizeApp, daarna checkAppSetup en vervolgens refreshExcelImports.
+
+
+## Planning bijwerken
+
+Voeg bij de kalenderrelease het HTML-bestand **Planning** toe (Planning.html in de repository). Werk Index, Styles, Client, Code, Data en Cache samen bij. Behoud je eigen broninstellingen. De snapshotversie verandert eenmalig omdat bron-subtitels voortaan ook per toegestaan record meegaan. Na publicatie kan de eerste opening daarom opnieuw bronnen lezen; volgende openingen gebruiken weer de beschikbare snapshot.
+
+Dashboard en Planning delen daarna één geladen dataset. Maandwissels en navigeren vernieuwen de gegevens niet; gebruik daarvoor **Data → Brongegevens vernieuwen**. Een directe link met `#planning` opent de kalender via de Apps Script history/url-API. Controleer deze navigatie ook op de gepubliceerde `/exec`-URL.

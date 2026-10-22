@@ -102,3 +102,8 @@ De pagina gebruikt de [3Dindeklas Foundation](https://3dindeklas.github.io/Found
 - [Cache Service](https://developers.google.com/apps-script/reference/cache/cache-service)
 - [Lock Service](https://developers.google.com/apps-script/reference/lock)
 - [Installable Triggers](https://developers.google.com/apps-script/guides/triggers/installable)
+
+
+### Planning / kalender
+
+De app bevat naast Dashboard een aparte Planning-weergave op dezelfde geladen dataset. Voeg bij installatie ook **Planning.html** toe; werk de overige gewijzigde bestanden samen bij volgens [INSTALLATIE.md](docs/INSTALLATIE.md#planning-bijwerken). Maandnavigatie haalt geen data op. Kalenderfilters staan los van dashboardfilters. [Weergave](docs/WEERGAVE.md#planning), [telregels](docs/DATADEFINITIES.md#planning-en-kalender-vervolgroadmap-stap-1) en [acceptatiestatus](docs/STATUS.md#vervolgroadmap) beschrijven de werking.

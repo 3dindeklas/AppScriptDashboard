@@ -1,0 +1,330 @@
+<script>
+  (() => {
+    'use strict';
+    const fields = [
+      ['source', 'Tech-hub'], ['provider', 'Aanbieder'], ['school', 'School'],
+      ['region', 'Gemeente / regio'], ['sector', 'PO / VO'], ['workshop', 'Workshop'], ['statusGroup', 'Statusgroep']
+    ];
+    const monthFormat = new Intl.DateTimeFormat('nl-NL', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    const dayFormat = new Intl.DateTimeFormat('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+    const palette = ['#6366f1', '#0891b2', '#d97706', '#db2777', '#059669', '#9333ea', '#2563eb', '#c2410c'];
+    function validDate(value) {
+      if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+      const date = new Date(value + 'T12:00:00Z');
+      return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+    }
+    function dates(record) {
+      const values = Array.isArray(record.scheduledDates) && record.scheduledDates.length
+        ? record.scheduledDates : [record.scheduledDate];
+      return [...new Set(values.filter(validDate))].sort();
+    }
+    function today() {
+      const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+      const part = type => parts.find(item => item.type === type).value;
+      return part('year') + '-' + part('month') + '-' + part('day');
+    }
+    function shiftMonth(month, delta) {
+      const date = new Date(month + '-01T12:00:00Z');
+      date.setUTCMonth(date.getUTCMonth() + delta);
+      return date.toISOString().slice(0, 7);
+    }
+    function monthDays(month) {
+      const start = new Date(month + '-01T12:00:00Z');
+      const offset = (start.getUTCDay() + 6) % 7;
+      const end = new Date(start); end.setUTCMonth(end.getUTCMonth() + 1); end.setUTCDate(0);
+      const size = Math.ceil((offset + end.getUTCDate()) / 7) * 7;
+      return Array.from({ length: size }, (_, i) => {
+        const date = new Date(start); date.setUTCDate(1 - offset + i);
+        return date.toISOString().slice(0, 10);
+      });
+    }
+    function inactive(record) {
+      return [record.status, record.statusGroup].some(value =>
+        ['geen reactie', 'volgend schooljaar', 'geannuleerd', 'afgezegd'].includes(String(value || '').trim().replace(/\s+/g, ' ').toLowerCase()));
+    }
+    function select(records, filters, includeInactive) {
+      return records.filter(record => (includeInactive || !inactive(record)) &&
+        fields.every(([field]) => !filters[field] || record[field] === filters[field]));
+    }
+    function events(records, month) {
+      const result = [];
+      records.forEach((record, index) => {
+        const allDates = dates(record);
+        allDates.forEach((date, ordinal) => {
+          if (date.slice(0, 7) === month) result.push({ key: index + ':' + date, record, date, ordinal: ordinal + 1, allDates });
+        });
+      });
+      return result.sort((a, b) => a.date.localeCompare(b.date) ||
+        String(a.record.school || '').localeCompare(String(b.record.school || ''), 'nl') ||
+        String(a.record.workshop || '').localeCompare(String(b.record.workshop || ''), 'nl') || a.key.localeCompare(b.key));
+    }
+    function providerColor(provider) {
+      let hash = 0;
+      for (const char of String(provider || 'Onbekend')) hash = ((hash * 31) + char.charCodeAt(0)) >>> 0;
+      return palette[hash % palette.length];
+    }
+    function node(tag, className, text) {
+      const element = document.createElement(tag);
+      if (className) element.className = className;
+      if (text !== undefined) element.textContent = text;
+      return element;
+    }
+    function create() {
+      const byId = id => document.getElementById(id);
+      const view = byId('planningView');
+      let records = [], loaded = false, locked = false, busy = false;
+      let month = today().slice(0, 7), route = '', userNavigated = false;
+      let popupAnchor = null, pinned = false, closeTimer = null, suppressFocus = false;
+      let currentEvents = [], dayExpanded = new Set();
+      const filters = {}, selects = {}, cleanup = [];
+      const popup = byId('lessonPopup');
+      const script = typeof google !== 'undefined' && google.script ? google.script : null;
+      function listen(target, type, handler) {
+        target.addEventListener(type, handler);
+        cleanup.push(() => target.removeEventListener(type, handler));
+      }
+      function closePopup(restoreFocus) {
+        clearTimeout(closeTimer);
+        const anchor = popupAnchor;
+        popup.hidden = true; pinned = false; popupAnchor = null;
+        if (anchor) { anchor.setAttribute('aria-expanded', 'false'); anchor.removeAttribute('aria-controls'); }
+        if (restoreFocus && anchor && anchor.isConnected) {
+          suppressFocus = true; anchor.focus({ preventScroll: true }); suppressFocus = false;
+        }
+      }
+      function deferClose() {
+        if (pinned) return;
+        clearTimeout(closeTimer);
+        closeTimer = setTimeout(() => {
+          if (!popup.matches(':hover') && !(popupAnchor && popupAnchor.matches(':hover')) && !popup.contains(document.activeElement) &&
+              !(popupAnchor && popupAnchor === document.activeElement)) closePopup(false);
+        }, 220);
+      }
+      function positionPopup() {
+        if (!popupAnchor || popup.hidden) return;
+        const rect = popupAnchor.getBoundingClientRect();
+        const box = popup.getBoundingClientRect();
+        const top = rect.bottom + 8 + box.height <= window.innerHeight - 12
+          ? rect.bottom + 8 : Math.max(12, rect.top - box.height - 8);
+        popup.style.top = top + 'px';
+        popup.style.left = Math.max(12, Math.min(rect.left, window.innerWidth - box.width - 12)) + 'px';
+      }
+      function showPopup(anchor, event, pin) {
+        if (locked || busy) return;
+        if (pinned && !pin) return;
+        closePopup(false);
+        popupAnchor = anchor; pinned = pin;
+        anchor.setAttribute('aria-expanded', 'true'); anchor.setAttribute('aria-controls', 'lessonPopup');
+        const record = event.record;
+        byId('lessonPopupTitle').textContent = record.workshop || 'Onbekende workshop';
+        const list = node('dl', 'lesson-details');
+        const details = [
+          ['Lesdatum', event.date ? dayFormat.format(new Date(event.date + 'T12:00:00Z')) : 'Nog te plannen'],
+          ['School', record.school || 'Onbekend'], ['Aanbieder', record.provider || 'Onbekend'],
+          ['Deelnemers', typeof record.students === 'number' && Number.isFinite(record.students) ? record.students + ' leerlingen (aanvraag)' : 'Onbekend'],
+          ['Onderwijs', [record.sector, (record.grades || []).length ? 'Leerjaar ' + record.grades.join(', ') : 'Leerjaar onbekend'].filter(Boolean).join(' · ')],
+          ['Gemeente / regio', record.region || 'Onbekend'],
+          ['Tech-hub', [record.source, record.sourceSubtitle].filter(Boolean).join(' · ') || 'Onbekend'],
+          ['Status', record.status || record.statusGroup || 'Onbekend']
+        ];
+        if (event.allDates.length) details.push(['Lesreeks', 'Lesdag ' + event.ordinal + ' van ' + event.allDates.length],
+          ['Alle lesdatums', event.allDates.map(date => dayFormat.format(new Date(date + 'T12:00:00Z'))).join('; ')]);
+        details.forEach(([label, value]) => { list.append(node('dt', '', label), node('dd', '', value)); });
+        byId('lessonPopupContent').replaceChildren(list, node('p', 'calendar-help', 'Het leerlingaantal hoort bij de aanvraag. Leerlingen kunnen op meerdere lesdagen terugkomen.'));
+        popup.hidden = false;
+        positionPopup();
+      }
+      // Delegatie houdt het aantal handlers constant, ook bij duizenden lessen.
+      function lessonButton(event) {
+        const record = event.record;
+        const button = node('button', 'calendar-event' + (inactive(record) ? ' is-cancelled' : ''));
+        button.type = 'button'; button.dataset.lesson = event.key;
+        button.style.setProperty('--provider-color', providerColor(record.provider));
+        button.setAttribute('aria-haspopup', 'dialog'); button.setAttribute('aria-expanded', 'false');
+        button.append(node('strong', '', record.school || 'Onbekende school'),
+          node('span', '', record.workshop || 'Onbekende workshop'),
+          node('small', '', (record.provider || 'Onbekend') + ' · ' + (record.statusGroup || 'Overig')));
+        return button;
+      }
+      function applyRoute(value, focus) {
+        if (locked) return;
+        route = String(value || '').replace(/^#/, '') === 'planning' ? 'planning' : 'dashboard';
+        closePopup(false);
+        const planning = route === 'planning';
+        view.hidden = !planning;
+        byId('dashboardLayout').hidden = planning;
+        byId('dashboardSelection').hidden = planning;
+        byId('filterToggle').hidden = planning;
+        byId('displayMenu').hidden = planning;
+        byId('dashboardNav').setAttribute('aria-pressed', String(!planning));
+        byId('planningNav').setAttribute('aria-pressed', String(planning));
+        byId('displayMenu').open = false;
+        byId('pageTitle').textContent = planning ? 'Alle lesdagen in één overzicht.' : 'Grip op bereik, planning en impact.';
+        if (planning) render();
+        if (focus) { const title = byId(planning ? 'planningTitle' : 'pageTitle'); title.tabIndex = -1; title.focus({ preventScroll: true }); }
+      }
+      function navigate(value) {
+        if (value === route) return;
+        userNavigated = true;
+        applyRoute(value, true);
+        if (script && script.history && script.history.push) script.history.push({}, null, value);
+        else window.location.hash = value;
+      }
+      function changeMonth(value) {
+        if (!/^\d{4}-\d{2}$/.test(value) || value < '1900-01' || value > '2100-12' || !validDate(value + '-01')) return;
+        month = value; dayExpanded.clear(); render();
+      }
+      function render() {
+        if (locked) return;
+        closePopup(false);
+        byId('calendarMonth').value = month;
+        byId('calendarPrevious').disabled = month === '1900-01';
+        byId('calendarNext').disabled = month === '2100-12';
+        byId('planningTitle').textContent = monthFormat.format(new Date(month + '-01T12:00:00Z'));
+        const selected = select(records, filters, byId('calendarCancelled').checked);
+        currentEvents = events(selected, month);
+        const grouped = new Map();
+        currentEvents.forEach(event => { if (!grouped.has(event.date)) grouped.set(event.date, []); grouped.get(event.date).push(event); });
+        const unscheduled = selected.filter(record => !dates(record).length);
+        byId('planningSummary').textContent = !loaded ? (busy ? 'Gegevens worden geladen…' : 'Nog geen gegevens beschikbaar.') :
+          grouped.size + (grouped.size === 1 ? ' lesdag · ' : ' lesdagen · ') +
+          currentEvents.length + (currentEvents.length === 1 ? ' lesvermelding' : ' lesvermeldingen');
+        const selectedLabels = fields.filter(([field]) => filters[field]).map(([field, label]) => label + ': ' + filters[field]);
+        byId('calendarSelection').textContent = (selectedLabels.length ? selectedLabels.join(' · ') : 'Alle tech-hubs') +
+          (byId('calendarCancelled').checked ? ' · Inclusief inactief' : ' · Inactief verborgen');
+        byId('calendarEmpty').hidden = !loaded || currentEvents.length > 0;
+        const grid = document.createDocumentFragment(), mobile = document.createDocumentFragment();
+        const currentDay = today();
+        monthDays(month).forEach(date => {
+          const day = node('section', 'calendar-day' + (date.slice(0, 7) !== month ? ' outside-month' : '') + (date === currentDay ? ' is-today' : ''));
+          day.setAttribute('aria-label', dayFormat.format(new Date(date + 'T12:00:00Z')));
+          const time = node('time', 'calendar-day-number', String(Number(date.slice(8)))); time.dateTime = date;
+          if (date === currentDay) time.setAttribute('aria-current', 'date');
+          day.appendChild(time);
+          const lessons = grouped.get(date) || [];
+          const limit = dayExpanded.has(date) ? lessons.length : 3;
+          lessons.slice(0, limit).forEach(event => day.appendChild(lessonButton(event)));
+          if (lessons.length > 3) {
+            const more = node('button', 'text-button calendar-more', dayExpanded.has(date) ? 'Minder tonen' : '+ ' + (lessons.length - 3) + ' meer');
+            more.type = 'button'; more.dataset.expandDay = date; more.setAttribute('aria-expanded', String(dayExpanded.has(date)));
+            day.appendChild(more);
+          }
+          grid.appendChild(day);
+          if (lessons.length) {
+            const section = node('section', 'calendar-list-day');
+            section.appendChild(node('h3', '', dayFormat.format(new Date(date + 'T12:00:00Z'))));
+            lessons.forEach(event => section.appendChild(lessonButton(event)));
+            mobile.appendChild(section);
+          }
+        });
+        byId('calendarGrid').replaceChildren(grid); byId('calendarList').replaceChildren(mobile);
+        byId('calendarUnscheduledTitle').textContent = 'Nog te plannen (' + unscheduled.length + ')';
+        // Render de soms lange ongedateerde lijst pas als deze wordt geopend.
+        byId('calendarUnscheduledRows').replaceChildren();
+        if (byId('calendarUnscheduled').open) renderUnscheduled(unscheduled);
+      }
+      function renderUnscheduled(rows) {
+        const fragment = document.createDocumentFragment();
+        rows.forEach((record, index) => {
+          const event = { key: 'undated:' + index, record, date: '', allDates: [], ordinal: 0 };
+          currentEvents.push(event); fragment.appendChild(lessonButton(event));
+        });
+        if (!rows.length) fragment.appendChild(node('p', '', 'Geen ongedateerde aanvragen binnen de kalenderfilters.'));
+        byId('calendarUnscheduledRows').replaceChildren(fragment);
+      }
+      function findEvent(target) {
+        const anchor = target.closest('[data-lesson]');
+        if (!anchor || !view.contains(anchor)) return null;
+        const event = currentEvents.find(item => item.key === anchor.dataset.lesson);
+        return event ? { anchor, event } : null;
+      }
+      fields.forEach(([field, label]) => {
+        const wrapper = node('label', '', label);
+        const input = node('select'); input.id = 'calendarFilter-' + field;
+        wrapper.appendChild(input); selects[field] = input;
+        byId('calendarFilterFields').appendChild(wrapper);
+        listen(input, 'change', () => { filters[field] = input.value; dayExpanded.clear(); render(); });
+      });
+      listen(byId('dashboardNav'), 'click', () => navigate('dashboard'));
+      listen(byId('planningNav'), 'click', () => navigate('planning'));
+      listen(byId('calendarPrevious'), 'click', () => changeMonth(shiftMonth(month, -1)));
+      listen(byId('calendarNext'), 'click', () => changeMonth(shiftMonth(month, 1)));
+      listen(byId('calendarToday'), 'click', () => changeMonth(today().slice(0, 7)));
+      listen(byId('calendarMonth'), 'change', event => { changeMonth(event.target.value); byId('calendarMonth').value = month; });
+      listen(byId('calendarCancelled'), 'change', render);
+      listen(byId('calendarReset'), 'click', () => {
+        fields.forEach(([field]) => { filters[field] = ''; selects[field].value = ''; });
+        byId('calendarCancelled').checked = false; dayExpanded.clear(); render();
+      });
+      listen(byId('calendarUnscheduled'), 'toggle', () => {
+        if (byId('calendarUnscheduled').open) render();
+      });
+      listen(view, 'mouseover', event => { const found = findEvent(event.target); if (found && !found.anchor.contains(event.relatedTarget)) showPopup(found.anchor, found.event, false); });
+      listen(view, 'mouseout', event => {
+        const found = findEvent(event.target);
+        if (found && !found.anchor.contains(event.relatedTarget)) deferClose();
+      });
+      listen(view, 'focusin', event => { if (suppressFocus) return; const found = findEvent(event.target); if (found) showPopup(found.anchor, found.event, false); });
+      listen(view, 'focusout', deferClose);
+      listen(view, 'click', event => {
+        const expand = event.target.closest('[data-expand-day]');
+        if (expand) {
+          const date = expand.dataset.expandDay;
+          if (dayExpanded.has(date)) dayExpanded.delete(date); else dayExpanded.add(date);
+          render();
+          const replacement = view.querySelector('[data-expand-day="' + date + '"]');
+          if (replacement) replacement.focus({ preventScroll: true });
+          return;
+        }
+        const found = findEvent(event.target);
+        if (found) { showPopup(found.anchor, found.event, true); byId('lessonPopupClose').focus({ preventScroll: true }); }
+      });
+      listen(popup, 'mouseenter', () => clearTimeout(closeTimer));
+      listen(popup, 'mouseleave', deferClose);
+      listen(popup, 'focusout', deferClose);
+      listen(byId('lessonPopupClose'), 'click', () => closePopup(true));
+      listen(document, 'click', event => { if (!popup.hidden && !popup.contains(event.target) && !(popupAnchor && popupAnchor.contains(event.target))) closePopup(false); });
+      listen(document, 'keydown', event => { if (event.key === 'Escape' && !popup.hidden) { event.preventDefault(); closePopup(true); } });
+      listen(window, 'resize', positionPopup);
+      listen(window, 'scroll', () => { positionPopup(); deferClose(); });
+      const hashChange = () => applyRoute(window.location.hash, false);
+      if (script && script.history && script.history.setChangeHandler) {
+        script.history.setChangeHandler(event => { userNavigated = true; if (!locked) applyRoute(event.location.hash, true); });
+      } else listen(window, 'hashchange', hashChange);
+      applyRoute(window.location.hash, false);
+      if (script && script.url && script.url.getLocation) {
+        script.url.getLocation(location => { if (!locked && !userNavigated) applyRoute(location.hash, false); });
+      }
+      return {
+        setData(nextRecords) {
+          if (locked) return;
+          records = nextRecords; loaded = true;
+          fields.forEach(([field]) => {
+            const previous = filters[field] || '';
+            const values = [...new Set(records.map(record => record[field]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'nl'));
+            const all = node('option', '', 'Alle'); all.value = '';
+            const options = values.map(value => { const option = node('option', '', value); option.value = value; return option; });
+            selects[field].replaceChildren(all, ...options);
+            filters[field] = values.includes(previous) ? previous : '';
+            selects[field].value = filters[field];
+          });
+          dayExpanded.clear(); render();
+        },
+        setLoading(value) {
+          busy = value;
+          view.setAttribute('aria-busy', String(value));
+          if (value) closePopup(false);
+          if (!loaded) render();
+        },
+        destroy() {
+          locked = true; closePopup(false); records = []; currentEvents = [];
+          cleanup.forEach(remove => remove());
+          if (script && script.history && script.history.setChangeHandler) script.history.setChangeHandler(() => {});
+          byId('calendarGrid').replaceChildren(); byId('calendarList').replaceChildren();
+          byId('calendarUnscheduledRows').replaceChildren(); byId('lessonPopupContent').replaceChildren();
+        }
+      };
+    }
+    window.WorkshopPlanning = { create, model: { validDate, dates, today, shiftMonth, monthDays, inactive, select, events, providerColor } };
+  })();
+</script>

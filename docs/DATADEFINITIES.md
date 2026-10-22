@@ -246,3 +246,18 @@ Bij publicatie blijven alle oorspronkelijke kolomkoppen, hun volgorde, lege tuss
 `readGoogleSheetRows_` verzorgt de gedeelde rijselectie voor gewone bronnen en import. De ankerscan negeert formule-only rijen vóór toepassing van de rijlimiet. Alleen celwaarden, geen Excel-formules, worden gekopieerd. Normalisatie gebeurt via `readGoogleSheet_`/`normalizeSheet_` bij de analyse; bij import wordt diezelfde normalisatie ook gebruikt om de bron te valideren en waarschuwingen te tellen, zonder de te kopiëren waarden te veranderen. Oorspronkelijke kwaliteitswaarschuwingen en het aantal afgekapte rijen worden bij de import opgeslagen.
 
 Het Google-tabblad is alleen voor deze importer bedoeld. De stagingwissel behoudt de vaste tabbladnaam, maar vervangt het sheet-ID; maak geen handmatige formules, grafieken of externe verwijzingen naar dat tabblad. De dashboardbron zoekt bewust op naam. Bron-URL's, Drive-ID's en providerfoutdetails komen nooit in browserantwoord of importlog; alleen vaste foutcodes en referenties.
+
+
+## Planning en kalender (vervolgroadmap stap 1)
+
+De kalender gebruikt alleen de geldige definitieve datums. Binnen één aanvraag wordt iedere verschillende datum één vermelding. Verschillende bronregels blijven afzonderlijke aanvragen, ook bij dezelfde school, workshop en datum. Iedere lesreeks wordt over alle geldige datums gesorteerd; de popup toont de positie binnen de hele reeks, ook buiten de geselecteerde maand.
+
+- **Lesdagen**: aantal verschillende datums in de maand met minimaal één vermelding binnen de kalenderfilters.
+- **Lesvermeldingen**: aantal aanvraag-datumcombinaties in de maand binnen die filters. Dit is niet de kolom Lesmomenten.
+- **Deelnemers in lesdetails**: het geregistreerde leerlingaantal van de aanvraag, herhaald als context bij iedere lesdag. Niet optellen tot unieke leerlingen of nieuw bereik. Onbekend is geen nul.
+- **Nog te plannen**: aanvragen zonder geldige definitieve datum, over alle geladen jaren binnen de kalenderfilters. Een geldig gedateerde aanvraag met een onbekende status blijft op de geregistreerde datum zichtbaar.
+- **Inactief**: Geannuleerd, Geen Reactie en Volgend schooljaar zijn standaard verborgen in kalender én Nog te plannen; via **Inactieve aanvragen tonen** zichtbaar. Het tekstlabel blijft herkenbaar.
+
+De kalender gebruikt eigen categorie-filters en een zichtbare maand; de dashboarddatumslider, schooljaarselectie, leerlingrange en aanvraagdatumkeuze werken hier niet door. Datums blijven datumstrings en worden voor raster/labels in UTC verwerkt; vandaag wordt expliciet in Europe/Amsterdam bepaald. Er zijn geen begin-/eindtijden geregistreerd.
+
+`sourceSubtitle` is uitsluitend de configureerbare bronbeschrijving per record. Het verandert geen tech-hubgroeperingen en bevat geen spreadsheet-ID's. De browserprojectie en gedeelde snapshot nemen alleen dit extra toegestane veld mee; contactvelden, bronnotities en technische ID's blijven uitgesloten.

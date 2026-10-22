@@ -1,8 +1,8 @@
 # Vervolgroadmap: planning, inzicht en rapportage
 
-Status: voorgesteld op 22 oktober 2026; de onderstaande stappen zijn nog niet geïmplementeerd. Dit document volgt op de [oorspronkelijke roadmap](ROADMAP.md). De bestaande [implementatiestatus](STATUS.md) blijft het overzicht van eerder gerealiseerde onderdelen; een roadmapitem is geen bewijs van implementatie of praktijkacceptatie.
+Status: roadmap vastgelegd op 22 oktober 2026. Stap 1 is uitgewerkt in de kalender-featurebranch; review/merge en praktijkacceptatie staan in [STATUS.md](STATUS.md). Stap 2–7 zijn nog niet geïmplementeerd. Dit document volgt op de [oorspronkelijke roadmap](ROADMAP.md). De bestaande [implementatiestatus](STATUS.md) blijft het overzicht van eerder gerealiseerde onderdelen; een roadmapitem is geen bewijs van implementatie of praktijkacceptatie.
 
-Doel: eerst een praktisch planningsoverzicht maken, daarna groei, schoolbereik en opvolging inzichtelijk maken. De bestaande dashboardpagina blijft compact. Elke stap krijgt een eigen pull request, review en handmatige controle door Mathijs. Deze documentatie-PR bouwt nog geen functionaliteit.
+Doel: eerst een praktisch planningsoverzicht maken, daarna groei, schoolbereik en opvolging inzichtelijk maken. De bestaande dashboardpagina blijft compact. Elke stap krijgt een eigen pull request, review en handmatige controle door Mathijs. De oorspronkelijke roadmap-PR bevatte alleen documentatie; de kalenderimplementatie en acceptatie worden afzonderlijk bijgehouden.
 
 ## Volgorde en resultaten
 
@@ -75,7 +75,7 @@ De huidige browserdata bevat geen locatie, begin-/eindtijd of contactgegevens. D
 - Eenzelfde datum die binnen één aanvraag dubbel voorkomt levert één vermelding op die dag op. Verschillende aanvragen op dezelfde dag blijven afzonderlijk zichtbaar, ook bij dezelfde school en workshop.
 - Datums worden als kalenderdatum verwerkt, zonder tijdzoneverschuiving naar de vorige of volgende dag. De Nederlandse kalender en Europe/Amsterdam bepalen vandaag.
 - Een aanvraag zonder geldige definitieve datum verschijnt niet op een willekeurige dag. Een aparte melding/lijst **Nog te plannen** toont die aanvragen binnen de overige kalenderfilters.
-- Geannuleerde aanvragen zijn standaard verborgen, met een expliciete optie om ze herkenbaar te tonen. Open, ingeplande en uitgevoerde aanvragen met een definitieve datum blijven zichtbaar en herkenbaar naar status.
+- Geannuleerd, Geen Reactie en Volgend schooljaar zijn standaard verborgen, met een expliciete optie om inactieve aanvragen herkenbaar te tonen. Open, ingeplande en uitgevoerde aanvragen met een definitieve datum blijven zichtbaar en herkenbaar naar status.
 - **Lesdagen** telt verschillende datums met een zichtbare les. **Lesvermeldingen** telt aanvraag-datumcombinaties. Beide verschillen van de geregistreerde kolom **Lesmomenten**.
 - Het leerlingaantal hoort bij de aanvraag. Het bij elke lesdatum tonen betekent niet dat bij een reeks telkens andere leerlingen worden bereikt. De eerste kalender telt deze aantallen niet op tot unieke leerlingen of een nieuw bereikcijfer.
 - De volgorde in een lesreeks volgt alle geldige definitieve datums van die aanvraag, niet alleen de datums in de zichtbare maand.

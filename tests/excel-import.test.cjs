@@ -338,7 +338,7 @@ test('afgesproken i_lab-kolommen inclusief lege tussenkolommen blijven exact beh
   assert.equal(imported.matrix[0].includes('Totale kosten aanbieder'), false);
   assert.equal(imported.matrix[0].includes('Te factureren i_lab'), false);
   const records = ctx.readSource_(SOURCE).records;
-  assert.deepEqual(JSON.parse(JSON.stringify(records)), JSON.parse(JSON.stringify(normal.records)));
+  assert.deepEqual(JSON.parse(JSON.stringify(records)), JSON.parse(JSON.stringify(normal.records.map(record => ({ ...record, sourceSubtitle: '' })))));
   assert.equal(records[0].desiredPeriod, 'najaar');
   assert.equal(records[0].actionRequired, 'Bellen');
   assert.equal(records[0].location, 'Lokaal 2');
@@ -407,5 +407,6 @@ test('subtitel blijft bronmetadata en verandert de tech-hubgroepering niet', () 
   configure([{ ...SOURCE, subtitle: 'jaar 25/26' }]);
   const result = ctx.refreshDashboardData();
   assert.equal(result.sources[0].subtitle, 'jaar 25/26');
+  assert.equal(result.records[0].sourceSubtitle, 'jaar 25/26');
   assert.equal(result.records[0].source, SOURCE.name);
 });

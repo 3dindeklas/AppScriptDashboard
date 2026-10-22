@@ -620,7 +620,7 @@ test('browser ontvangt alleen de toegestane dashboardvelden', () => {
   assert.deepEqual(Object.keys(payload.records[0]).sort(), [
     'grades', 'invoiceAmount', 'provider', 'providerTotalCosts', 'region', 'requestedDate',
     'scheduledDate', 'scheduledDates', 'school', 'schoolYear', 'sector', 'sessions',
-    'source', 'status', 'statusGroup', 'students', 'type', 'workshop'
+    'source', 'sourceSubtitle', 'status', 'statusGroup', 'students', 'type', 'workshop'
   ]);
   assert.deepEqual(Array.from(payload.records[0].grades), [7, 8]);
   assert.equal(payload.records[0].providerTotalCosts, 450);
@@ -1196,7 +1196,7 @@ test('dashboardvelden verlaten gecontroleerd de server maar privacy- en detailve
   const json = JSON.stringify(publicRecord);
 
   assert.deepEqual(Object.keys(publicRecord), [
-    'source', 'requestedDate', 'scheduledDate', 'scheduledDates', 'schoolYear',
+    'source', 'sourceSubtitle', 'requestedDate', 'scheduledDate', 'scheduledDates', 'schoolYear',
     'school', 'workshop', 'provider', 'region', 'sector', 'grades', 'status',
     'statusGroup', 'type', 'sessions', 'students', 'providerTotalCosts',
     'invoiceAmount'
@@ -1885,6 +1885,7 @@ test('doGet en include volgen rechtstreeks de HtmlService-methoden', () => {
   assert.equal(ctx.doGet().viewport, 'viewport:width=device-width, initial-scale=1');
   assert.equal(ctx.include('Styles'), '<Styles>');
   assert.equal(ctx.include('Municipalities'), '<Municipalities>');
+  assert.equal(ctx.include('Planning'), '<Planning>');
   assert.throws(() => ctx.include('Onbekend'), /Bestand niet beschikbaar/);
 });
 

@@ -172,6 +172,8 @@
     ].map(pair => ({ control: document.getElementById(pair[0]), panel: document.getElementById(pair[1]),
       financial: pair[1] === 'financialOverview' }));
 
+    const planning = window.WorkshopPlanning ? window.WorkshopPlanning.create() : null;
+
     function loadDashboard(forceRefresh) {
       if (state.locked) return;
       beginLoadingFeedback(forceRefresh === true);
@@ -222,6 +224,7 @@
       elements.dataUpdated.textContent = formatDateTime(state.generatedAt);
       elements.dataOrigin.textContent = snapshotSourceLabel(state.snapshotSource, payload.snapshot);
       elements.dataDuration.textContent = formatLoadDuration(loadDuration);
+      if (planning) planning.setData(state.records);
       renderSourceStatus();
       renderLoadMessage();
       render();
@@ -337,6 +340,7 @@
     }
 
     function setLoading(loading) {
+      if (planning) planning.setLoading(loading);
       elements.refresh.disabled = loading;
       elements.refresh.textContent = loading ? 'Laden…' : 'Brongegevens vernieuwen';
       elements.dashboard.setAttribute('aria-busy', loading ? 'true' : 'false');
@@ -1632,6 +1636,7 @@
       logout.addEventListener('click', window.WorkshopAccess.signOut);
       window.WorkshopAccess.onLock(() => {
         state.locked = true;
+        if (planning) planning.destroy();
         stopLoadingFeedback();
         state.records = [];
         state.sources = [];
