@@ -18,6 +18,15 @@ const APP_CONFIG = Object.freeze({
     enabled: true,
     ttlSeconds: 21600
   }),
+  // Bezoeken worden vastgelegd in een verborgen __stats-tabblad.
+  // Bewaar het ID bij voorkeur als private Apps Script Script Property:
+  // WORKSHOPKOMPAS_STATS_SPREADSHEET_ID (zie docs/STATS.md).
+  usageStats: Object.freeze({
+    enabled: true,
+    spreadsheetId: null, // Optioneel; gebruik bij voorkeur de private scripteigenschap.
+    sheetName: '__stats',
+    retentionDays: 180
+  }),
   allowedEmails: [
     'jouw-account@voorbeeld.nl'
   ],

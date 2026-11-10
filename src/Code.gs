@@ -41,8 +41,8 @@ function include(filename, accessToken) {
  * Levert uitsluitend de toegestane dashboardvelden aan een gecontroleerde bezoeker.
  * Contactgegevens, notities, technische ID's en financiële detailvelden worden niet teruggestuurd.
  */
-function getDashboardData(accessToken) {
-  return dashboardDataResponse_(false, accessToken);
+function getDashboardData(accessToken, visitId) {
+  return dashboardDataResponse_(false, accessToken, visitId);
 }
 
 /** Importeert Excel en haalt de Google-bronnen bewust opnieuw op en vervangt de gedeelde snapshot. */
@@ -50,7 +50,7 @@ function refreshDashboardData(accessToken) {
   return dashboardDataResponse_(true, accessToken);
 }
 
-function dashboardDataResponse_(forceRefresh, accessToken) {
+function dashboardDataResponse_(forceRefresh, accessToken, visitId) {
   const email = requireAccess_(accessToken);
   const canViewFinancials = canViewFinancials_(email);
 
@@ -65,7 +65,7 @@ function dashboardDataResponse_(forceRefresh, accessToken) {
 
     const snapshot = delivery.snapshot;
 
-    return {
+    const response = {
       mode: 'live',
       generatedAt: snapshot.updatedAt,
       complete: snapshot.complete,
@@ -82,6 +82,16 @@ function dashboardDataResponse_(forceRefresh, accessToken) {
       }),
       sources: snapshot.sources.map(publicSourceStatus_)
     };
+    if (forceRefresh !== true) {
+      // Een herladen pagina blijft dezelfde toegangssessie. Voor e-mailcodes
+      // identificeert het geverifieerde sessietoken de login; voor Google de
+      // browser-tab-sessie. Geen geldig sessie-ID betekent geen registratie.
+      try {
+        recordDashboardVisit_(email, Boolean(accessToken),
+          accessToken ? authHash_(accessToken) : visitId);
+      } catch (ignored) {}
+    }
+    return response;
   } catch (error) {
     const reference = logServerError_('getDashboardData', error);
     const code = error && error.publicCode ? error.publicCode : 'DASHBOARD_DATA_FAILED';

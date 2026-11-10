@@ -4,7 +4,7 @@ Gebruik bij voorkeur een **nieuw leeg Apps Script-project**. Zo blijven oude `.g
 
 ## Stap 1 · Maak de Apps Script-bestanden
 
-Maak in Apps Script zeven scriptbestanden via **+ → Script**:
+Maak in Apps Script acht scriptbestanden via **+ → Script**:
 
 1. `Config`
 2. `Code`
@@ -13,6 +13,7 @@ Maak in Apps Script zeven scriptbestanden via **+ → Script**:
 5. `Auth`
 6. `ExcelImport`
 7. `Diagnostics`
+8. `Stats`
 
 Maak daarna zes HTML-bestanden via **+ → HTML**:
 
@@ -27,7 +28,7 @@ Kopieer de inhoud uit de gelijknamige bestanden in `src/`.
 
 Controleer de bestandstypen goed:
 
-- `Config`, `Code`, `Data`, `Cache` en `Auth` krijgen in Apps Script de extensie `.gs`;
+- `Config`, `Code`, `Data`, `Cache`, `Auth` en `Stats` krijgen in Apps Script de extensie `.gs`;
 - `Index`, `Styles`, `Municipalities`, `Planning`, `Client`, `Access` en `AccessClient` krijgen de extensie `.html`;
 - `document` en `window` mogen nergens in een `.gs`-bestand staan.
 
@@ -61,7 +62,7 @@ Sla alle bestanden op en koppel bij stap 4 minimaal één Google Sheet. Open daa
 
 De app heeft geen demomodus. Zonder ingestelde bron verschijnt een melding over de ontbrekende configuratie; er worden geen fictieve workshopgegevens geladen.
 
-Bij een bestaand project: werk `Code.gs`, `Data.gs`, `Cache.gs` en `Client.html` samen bij. Verwijder de vervallen eigenschap `demoMode` uit je eigen `Config.gs` en behoud je broninstellingen en toegangsadressen. Voeg zo nodig **Auth** als script en **Access**, **AccessClient** en **Municipalities** als HTML toe. Zie [TOEGANG.md](TOEGANG.md) voor gastinzage.
+Bij een bestaand project: werk `Code.gs`, `Data.gs`, `Cache.gs` en `Client.html` samen bij. Voor bezoekregistratie voeg je ook `Stats.gs` toe en configureer je `usageStats` in `Config.gs`; zie [Bezoekstatistieken](STATS.md). Verwijder de vervallen eigenschap `demoMode` uit je eigen `Config.gs` en behoud je broninstellingen en toegangsadressen. Voeg zo nodig **Auth** als script en **Access**, **AccessClient** en **Municipalities** als HTML toe. Zie [TOEGANG.md](TOEGANG.md) voor gastinzage.
 
 ## Stap 4 · Koppel één Google Sheet
 
