@@ -155,6 +155,60 @@ test('een nieuwe sessie wordt eenmaal geregistreerd, refresh en bronverversing n
   assert.equal(app.rows.length, 5);
 });
 
+test('e-mailcode-dashboardpagina van niet-Gmailgebruiker logt direct en nooit dubbel', () => {
+  const app = harness();
+  vm.runInContext(fs.readFileSync('src/Code.gs', 'utf8'), app.ctx);
+  const email = 'collega@outlook.com';
+  const token = 'a'.repeat(64);
+  app.ctx.emailSession_ = () => ({ email, expiresAt: Date.now() + 3600000 });
+  app.ctx.dashboardPage_ = () => ({ getContent: () => '<main id="dashboard"></main>' });
+  app.ctx.requireAccess_ = () => email;
+  app.ctx.canViewFinancials_ = () => false;
+  app.ctx.liveDashboardSnapshot_ = () => ({
+    snapshot: { records: [], sources: [], updatedAt: '2026-11-10T12:00:00Z', complete: true },
+    source: 'cache', storage: 'used'
+  });
+  app.ctx.snapshotCacheEnabled_ = () => true;
+  app.ctx.publicRecord_ = record => record;
+  app.ctx.publicSourceStatus_ = source => source;
+
+  const page = app.ctx.getDashboardPage(token);
+  assert.match(page.html, /dashboard/);
+  assert.equal(app.rows.length, 2);
+  assert.equal(app.rows[1][1], email);
+  assert.equal(app.rows[1][2], 'E-mailcode');
+
+  app.ctx.getDashboardData(token, VISIT_A);
+  app.ctx.getDashboardPage(token); // Browser-refresh van dezelfde gast.
+  assert.equal(app.rows.length, 2);
+
+  const secondToken = 'b'.repeat(64);
+  app.ctx.getDashboardPage(secondToken); // Nieuwe echte login via e-mailcode.
+  assert.equal(app.rows.length, 3);
+  assert.equal(app.rows[2][1], email);
+});
+
+test('diagnose in gastproject herkent een ontbrekende of bruikbare stats-koppeling', () => {
+  const missing = harness({ properties: [] });
+  missing.ctx.activeUserEmail_ = () => 'beheerder@voorbeeld.nl';
+  missing.ctx.effectiveUserEmail_ = () => 'beheerder@voorbeeld.nl';
+  vm.runInContext("APP_CONFIG.allowedEmails[0] = 'beheerder@voorbeeld.nl'", missing.ctx);
+  const absent = missing.ctx.checkUsageStatsSetup();
+  assert.equal(absent.ok, false);
+  assert.equal(absent.code, 'STATS_SPREADSHEET_NOT_CONFIGURED');
+  assert.equal(absent.action.includes('DIT Apps Script-project'), true);
+
+  const configured = harness();
+  configured.ctx.activeUserEmail_ = () => 'beheerder@voorbeeld.nl';
+  configured.ctx.effectiveUserEmail_ = () => 'beheerder@voorbeeld.nl';
+  vm.runInContext("APP_CONFIG.allowedEmails[0] = 'beheerder@voorbeeld.nl'", configured.ctx);
+  const checked = configured.ctx.checkUsageStatsSetup();
+  assert.equal(checked.ok, true);
+  assert.equal(checked.code, 'STATS_CONFIGURED');
+  assert.equal(checked.sheetFound, false);
+  assert.equal(configured.rows.length, 0); // Diagnostiek schrijft geen bezoek.
+});
+
 test('idempotentie gebruikt server-side sessiesleutel en schrapt oude markeringen', () => {
   const app = harness();
   assert.equal(app.ctx.recordDashboardVisit_('docent@voorbeeld.nl', false, VISIT_A), true);
