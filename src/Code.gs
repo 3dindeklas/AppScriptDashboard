@@ -162,7 +162,15 @@ function dashboardPage_(accessToken) {
 
 function getDashboardPage(accessToken) {
   const session = emailSession_(accessToken);
-  return { html: dashboardPage_(accessToken).getContent(), expiresInMs: session.expiresAt - Date.now() };
+  const html = dashboardPage_(accessToken).getContent();
+
+  // Een e-mailcodegebruiker kan de dashboardpagina bereiken zonder dat de
+  // eerste data-aanvraag succesvol wordt afgerond. Registreer daarom hier al
+  // de geldige gast-sessie; getDashboardData gebruikt dezelfde sleutel en
+  // kan dit bezoek niet nogmaals opslaan (ook niet na browser-refresh).
+  try { recordDashboardVisit_(session.email, true, authHash_(accessToken)); } catch (ignored) {}
+
+  return { html: html, expiresInMs: session.expiresAt - Date.now() };
 }
 
 function openGoogleDashboard() {
