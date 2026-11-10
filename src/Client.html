@@ -690,10 +690,13 @@
 
     function renderKpis(records) {
       const totals = dashboardMetrics(records);
+      const allDataTotals = dashboardMetrics(state.records);
       const metrics = [
         ['Aanvragen / workshops', formatInteger(totals.requests)],
         ['Leerlingdeelnames', formatInteger(totals.studentParticipations)],
-        ['Scholen', formatInteger(totals.schools)],
+        ['Scholen met aanvragen', formatInteger(totals.schools)],
+        ['Scholen bezocht', formatInteger(totals.visitedSchools)],
+        ['Scholen in alle data', formatInteger(allDataTotals.schools)],
         ['Lesmomenten', formatInteger(totals.sessions)],
         ['Uitgevoerd', formatInteger(totals.completed)],
         ['Gem. leerlingen / aanvraag', formatDecimal(totals.averageStudents)],
@@ -729,12 +732,16 @@
       const knownStudents = records.filter(record => Number.isInteger(record.students) && record.students >= 0);
       const recordsWithSchool = records.filter(record => schoolIdentity(record));
       const schools = new Set(recordsWithSchool.map(schoolIdentity));
+      const visitedSchools = new Set(recordsWithSchool
+        .filter(record => record.statusGroup === 'Uitgevoerd')
+        .map(schoolIdentity));
       const studentParticipations = sum(knownStudents, 'students');
 
       return {
         requests: records.length,
         studentParticipations: studentParticipations,
         schools: schools.size,
+        visitedSchools: visitedSchools.size,
         sessions: sum(records, 'sessions'),
         completed: records.filter(record => record.statusGroup === 'Uitgevoerd').length,
         averageStudents: knownStudents.length ? studentParticipations / knownStudents.length : null,
@@ -746,7 +753,15 @@
     function schoolIdentity(record) {
       const school = normalizedIdentity(record.school);
       if (!school || school === 'onbekende school') return '';
-      return [record.source, record.region, record.school].map(normalizedIdentity).join('|');
+
+      // Bij een bekende regio is een school over jaren én tech-hubs heen dezelfde school.
+      // Bij een ontbrekende regio houden we hubs gescheiden om gelijknamige scholen
+      // niet zonder bewijs samen te voegen.
+      const region = normalizedIdentity(record.region).replace(/^gemeente\s+/, '');
+      if (!region || region === 'onbekend') {
+        return ['regio-onbekend', normalizedIdentity(record.source), school].join('|');
+      }
+      return ['regio', region, school].join('|');
     }
 
     function normalizedIdentity(value) {
@@ -774,7 +789,7 @@
       if (!sources.length) {
         const row = document.createElement('tr');
         const cell = document.createElement('td');
-        cell.colSpan = 9;
+        cell.colSpan = 10;
         cell.className = 'empty';
         cell.textContent = 'Geen tech-hubs beschikbaar binnen deze gegevens.';
         row.appendChild(cell);
@@ -794,6 +809,7 @@
           formatInteger(totals.requests),
           formatInteger(totals.studentParticipations),
           formatInteger(totals.schools),
+          formatInteger(totals.visitedSchools),
           formatInteger(totals.sessions),
           formatInteger(totals.completed),
           formatDecimal(totals.averageStudents),
