@@ -152,6 +152,8 @@
       token = '';
       expiresAt = 0;
       savedToken('');
+      // Een expliciete uitlog beëindigt ook de bezoekregistratiesessie.
+      try { window.sessionStorage.removeItem('workshopkompas-visit-id'); } catch (ignored) {}
       if (onLock) { onLock(); onLock = undefined; }
       // Verwijder de gegevens direct, ook als de toegangspagina niet kan worden opgehaald.
       document.body.replaceChildren();
