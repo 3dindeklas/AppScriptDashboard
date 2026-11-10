@@ -411,7 +411,7 @@ test('tech-hubsvergelijking gebruikt een toegankelijke tabel met alle stap-6-cij
   assert.match(index, /<table class="comparison-table">/);
   assert.match(index, /<caption class="visually-hidden">Vergelijking van de actieve kerncijfers per tech-hub<\/caption>/);
   for (const heading of [
-    'Tech-hub', 'Aanvragen', 'Leerlingdeelnames', 'Scholen met aanvragen', 'Scholen bezocht', 'Lesmomenten',
+    'Tech-hub', 'Aanvragen', 'Leerlingdeelnames', 'Unieke scholen bezocht', 'Lesmomenten',
     'Uitgevoerd', 'Gem. leerlingen', 'Aanvragen / school', 'Zonder leerlingaantal'
   ]) {
     assert.match(index, new RegExp('<th scope="col">' + heading.replace('/', '\\/') + '<\\/th>'));
@@ -774,12 +774,10 @@ test('testgegevens leveren de gedocumenteerde stap-6-kerncijfers op', () => {
   ]));
 
   assert.deepEqual(kpis, {
-    'Aanvragen / workshops': '10',
+    'Totaal (school) aanvragen': '10',
     'Leerlingdeelnames': '204',
-    'Scholen met aanvragen': '10',
-    'Scholen bezocht': '4',
-    'Scholen in alle data': '10',
-    'Lesmomenten': '22',
+        'Unieke scholen bezocht': '4',
+        'Lesmomenten': '22',
     'Uitgevoerd': '4',
     'Gem. leerlingen / aanvraag': '22,7',
     'Aanvragen / school': '1,0'
@@ -787,8 +785,8 @@ test('testgegevens leveren de gedocumenteerde stap-6-kerncijfers op', () => {
   assert.deepEqual(elements.comparisonRows.children.map(row =>
     row.children.map(cell => cell.textContent)
   ), [
-    ['Tech-hub A', '5', '105', '5', '2', '11', '2', '21,0', '1,0', '0'],
-    ['Tech-hub B', '5', '99', '5', '2', '11', '2', '24,8', '1,0', '1']
+    ['Tech-hub A', '5', '105', '2', '11', '2', '21,0', '1,0', '0'],
+    ['Tech-hub B', '5', '99', '2', '11', '2', '24,8', '1,0', '1']
   ]);
 });
 
@@ -1457,12 +1455,10 @@ test('stap-6-kerncijfers en tech-hubvergelijking gebruiken exact dezelfde filter
   );
 
   assert.deepEqual(kpis(), {
-    'Aanvragen / workshops': '5',
+    'Totaal (school) aanvragen': '5',
     'Leerlingdeelnames': '60',
-    'Scholen met aanvragen': '2',
-    'Scholen bezocht': '2',
-    'Scholen in alle data': '2',
-    'Lesmomenten': '7',
+        'Unieke scholen bezocht': '2',
+        'Lesmomenten': '7',
     'Uitgevoerd': '3',
     'Gem. leerlingen / aanvraag': '15,0',
     'Aanvragen / school': '2,0'
@@ -1472,19 +1468,19 @@ test('stap-6-kerncijfers en tech-hubvergelijking gebruiken exact dezelfde filter
     '1 aanvraag heeft geen bekend leerlingaantal. Gemiddelden gebruiken alleen bekende aantallen.'
   );
   assert.deepEqual(rows(), [
-    ['Tech-hub A', '3', '50', '2', '2', '6', '2', '25,0', '1,5', '1'],
-    ['Tech-hub B', '2', '10', '1', '1', '1', '1', '5,0', '1,0', '0']
+    ['Tech-hub A', '3', '50', '2', '6', '2', '25,0', '1,5', '1'],
+    ['Tech-hub B', '2', '10', '1', '1', '1', '5,0', '1,0', '0']
   ]);
 
   elements.sourceFilter.value = 'Tech-hub B';
   elements.sourceFilter.trigger('change');
-  assert.equal(kpis()['Aanvragen / workshops'], '2');
+  assert.equal(kpis()['Totaal (school) aanvragen'], '2');
   assert.equal(kpis()['Leerlingdeelnames'], '10');
   assert.equal(kpis()['Gem. leerlingen / aanvraag'], '5,0');
   assert.equal(elements.comparisonSummary.textContent, '2 zichtbare aanvragen');
   assert.deepEqual(rows(), [
-    ['Tech-hub A', '0', '0', '0', '0', '0', '0', '—', '—', '0'],
-    ['Tech-hub B', '2', '10', '1', '1', '1', '1', '5,0', '1,0', '0']
+    ['Tech-hub A', '0', '0', '0', '0', '0', '—', '—', '0'],
+    ['Tech-hub B', '2', '10', '1', '1', '1', '5,0', '1,0', '0']
   ]);
 });
 
@@ -1513,24 +1509,18 @@ test('schoolbereik ontdubbelt over schooljaren en hubs, terwijl bezoek alleen ui
   const kpis = () => Object.fromEntries(elements.kpis.children.map(card => [
     card.children[0].textContent, card.children[1].textContent
   ]));
-  assert.equal(kpis()['Scholen met aanvragen'], '4');
-  assert.equal(kpis()['Scholen bezocht'], '1');
-  assert.equal(kpis()['Scholen in alle data'], '4');
-  assert.equal(kpis()['Aanvragen / school'], '1,3');
+    assert.equal(kpis()['Unieke scholen bezocht'], '1');
+    assert.equal(kpis()['Aanvragen / school'], '1,3');
 
   elements.schoolYearFilter.value = '2026–2027';
   elements.schoolYearFilter.trigger('change');
-  assert.equal(kpis()['Scholen met aanvragen'], '4');
-  assert.equal(kpis()['Scholen bezocht'], '0');
-  assert.equal(kpis()['Scholen in alle data'], '4');
-  assert.equal(kpis()['Aanvragen / workshops'], '5');
+    assert.equal(kpis()['Unieke scholen bezocht'], '0');
+    assert.equal(kpis()['Totaal (school) aanvragen'], '5');
 
   elements.sourceFilter.value = 'Hub B';
   elements.sourceFilter.trigger('change');
-  assert.equal(kpis()['Scholen met aanvragen'], '2');
-  assert.equal(kpis()['Scholen bezocht'], '0');
-  assert.equal(kpis()['Scholen in alle data'], '4');
-});
+    assert.equal(kpis()['Unieke scholen bezocht'], '0');
+  });
 
 test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {
   let requestedRange;
