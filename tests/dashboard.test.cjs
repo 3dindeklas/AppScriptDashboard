@@ -650,7 +650,7 @@ test('aanvragen per schoolbestuur tellen per bronregel, groeperen schrijfvariant
 
   elements.sourceFilter.value = 'Hub B';
   elements.sourceFilter.trigger('change');
-  assert.deepEqual(rows(), [['Niet ingevuld', '1'], ['stichting hórizon', '1']]);
+  assert.deepEqual(rows(), [['stichting hórizon', '1'], ['Niet ingevuld', '1']]);
   assert.equal(elements.schoolBoardsSummary.textContent,
     '1 schoolbestuur · 1 aanvraag zonder schoolbestuur');
   elements.schoolYearFilter.value = '2025–2026';
