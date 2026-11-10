@@ -24,7 +24,7 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - afzonderlijk aan- en uitzetten van dashboardonderdelen via **Weergave**, ook voor screenshots en afdrukken;
 - inclusief maandbereik op aanvraagdatum of één van de definitieve lesdagen en een bereik voor leerlingaantallen;
 - expliciete keuzes om regels zonder datum of leerlingaantal wel of niet mee te nemen;
-- zeven gefilterde kerncijfers, waaronder **Totaal (school) aanvragen** en **Unieke scholen bezocht**, plus een vergelijking tussen de tech-hubs;
+- zeven gefilterde kerncijfers en een vergelijking tussen de tech-hubs;
 - een standaard ingeklapt financieel overzicht met kosten, facturatie, marge en volledigheid, uitsluitend voor apart toegestane accounts;
 - een maandgrafiek voor aanvragen, leerlingdeelnames en lesmomenten per tech-hub;
 - verdelingen voor PO/VO, regio, workshop, aanbieder en statusgroep;
