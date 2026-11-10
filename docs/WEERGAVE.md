@@ -4,7 +4,7 @@
 
 Het introductieblok toont **Grip op bereik, planning en impact.**, de modus, het bijgewerktijdstip en de actieve selectie met het aantal zichtbare workshops. Zo blijft de context ook bij een ingeklapte zijbalk en op screenshots zichtbaar.
 
-De schooljaarknoppen gebruiken de schooljaren uit de geladen gegevens, met het nieuwste eerst. **Alle schooljaren** neemt ook regels zonder bekend schooljaar mee. De cijfers **Totaal (school) aanvragen** en **Unieke scholen bezocht** volgen dit filter. Bij **Alle schooljaren** worden scholen die in meerdere jaren voorkwamen binnen de selectie slechts eenmaal als bezochte school geteld. De knoppen en het schooljaarfilter in de zijbalk werken synchroon. Een schooljaarwissel behoudt alle andere filters, waaronder de ingestelde periode en leerlingaantallen. **Filters wissen** herstelt ook de schooljaarkeuze.
+De schooljaarknoppen gebruiken de schooljaren uit de geladen gegevens, met het nieuwste eerst. **Alle schooljaren** neemt ook regels zonder bekend schooljaar mee. De knoppen en het schooljaarfilter in de zijbalk werken synchroon. Een schooljaarwissel behoudt alle andere filters, waaronder de ingestelde periode en leerlingaantallen. **Filters wissen** herstelt ook de schooljaarkeuze.
 
 ## Filters
 
