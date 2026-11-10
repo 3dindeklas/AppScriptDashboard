@@ -43,7 +43,7 @@ De keuze blijft behouden tijdens filteren en handmatig vernieuwen. Ze geldt alle
 
 ## Samengevoegde onderdelen
 
-**Gemeenten en regio’s** toont de kaart en de regionale staafgrafiek tegelijk. De staven staan onder de uitleg over het werkgebied. Op desktop groeit de kaart mee met de hoogte van deze kolom, ook bij het openen van de cijfertabel. Op kleinere schermen staan de kaart en de toelichting met staven onder elkaar. Beide gebruiken dezelfde actieve gegevensselectie; de kaarttabel maakt daarnaast duidelijk welke regio’s niet aan een gemeente zijn gekoppeld.
+**Gemeenten en regio’s** toont de kaart en de regionale staafgrafiek tegelijk. De staven staan onder de uitleg over het werkgebied. Op desktop groeit de kaart mee met de hoogte van deze kolom, ook bij het openen van de cijfertabel. Op kleinere schermen staan de kaart en de toelichting met staven onder elkaar. Beide gebruiken dezelfde actieve gegevensselectie; de kaarttabel maakt daarnaast duidelijk welke regio’s niet aan een gemeente zijn gekoppeld. Bij kaartgebied **Werkgebied** zoomt de kaart mee naar de gemeenten uit de gefilterde aanvragen. Bij een lege of niet-koppelbare selectie blijft de kaart op het werkgebied van de geladen gegevens staan. Met **Heel Nederland** blijft de landelijke uitsnede stabiel.
 
 **Bereik in PO en VO** combineert twee taartdiagrammen: PO-groepen en VO-leerjaren, met vaste heldere kleuren per leerjaar, gewogen aanvragen en percentages. De uitleg over combinatiegroepen staat onderaan datzelfde blok. De PO/VO-sectorverdeling blijft een afzonderlijke donut.
 

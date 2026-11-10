@@ -743,10 +743,22 @@
       };
     }
 
+    // Eén schoolidentiteit voor alle bronnen, schooljaren en schoolgerelateerde cijfers.
+    // Verschillende aanvragen van dezelfde school blijven afzonderlijke workshopregels.
     function schoolIdentity(record) {
       const school = normalizedIdentity(record.school);
       if (!school || school === 'onbekende school') return '';
-      return [record.source, record.region, record.school].map(normalizedIdentity).join('|');
+
+      const region = municipalityKey(record.region);
+      const municipality = municipalityIndex.get(region);
+      const regionIdentity = municipality
+        ? municipality.code
+        : normalizedIdentity(record.region).replace(/^gemeente\s+/, '');
+
+      // Onbekende regio: voorkom onterecht samenvoegen van gelijknamige scholen.
+      return regionIdentity && regionIdentity !== 'onbekend'
+        ? ['regio', regionIdentity, school].join('|')
+        : ['bron', normalizedIdentity(record.source), school].join('|');
     }
 
     function normalizedIdentity(value) {
@@ -1092,10 +1104,13 @@
       const totals = municipalityTotals(records);
       mapCounts = totals.counts;
       const mappedCount = [...mapCounts.values()].reduce((sum, count) => sum + count, 0);
+      const activeArea = municipalities.filter(item => mapCounts.has(item.code));
       const allCodes = municipalityTotals(state.records).counts;
-      const activeArea = municipalities.filter(item => allCodes.has(item.code));
-      const bounds = mapBounds(elements.mapScope.value === 'netherlands' || !activeArea.length
-        ? municipalities : activeArea);
+      const allArea = municipalities.filter(item => allCodes.has(item.code));
+      // Werkgebied volgt de actieve filters. Bij geen koppelbare gemeente gebruiken
+      // we het gehele geladen werkgebied als stabiele terugval.
+      const bounds = mapBounds(elements.mapScope.value === 'netherlands'
+        ? municipalities : activeArea.length ? activeArea : allArea.length ? allArea : municipalities);
       const visible = municipalities.filter(item => item.bounds[2] >= bounds[0] && item.bounds[0] <= bounds[0] + bounds[2] &&
         item.bounds[3] >= bounds[1] && item.bounds[1] <= bounds[1] + bounds[3]);
       const maximum = Math.max(0, ...mapCounts.values());

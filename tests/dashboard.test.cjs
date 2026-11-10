@@ -687,10 +687,20 @@ test('kaartkleuren, aantallen en detailselectie volgen dezelfde filters en behou
   elements.sourceFilter.value = 'B';
   elements.sourceFilter.trigger('change');
   assert.equal(elements.mapCoverage.textContent, '1 van 1 aanvragen gekoppeld aan 1 gemeente.');
-  assert.equal(elements.municipalityMap.children[0].getAttribute('viewBox'), originalView);
-  assert.equal(elements.mapDetail.textContent, 'Gorinchem: 0 gekoppelde aanvragen.');
+  assert.notEqual(elements.municipalityMap.children[0].getAttribute('viewBox'), originalView);
+  // Na inzoomen kan de eerder geselecteerde gemeente buiten beeld liggen.
+  if (elements.mapMunicipality.value === 'GM0512') {
+    assert.equal(elements.mapDetail.textContent, 'Gorinchem: 0 gekoppelde aanvragen.');
+  } else {
+    assert.equal(elements.mapMunicipality.value, '');
+    assert.equal(elements.mapDetail.textContent, 'Kies een gemeente op de kaart of in de lijst.');
+  }
   paths = elements.municipalityMap.children[0].children.filter(child => child.tagName === 'PATH');
-  assert.equal(paths.find(path => path.getAttribute('data-code') === 'GM0512').getAttribute('fill'), '#ebe8ee');
+  const gorinchemAfter = paths.find(path => path.getAttribute('data-code') === 'GM0512');
+  if (gorinchemAfter) assert.equal(gorinchemAfter.getAttribute('fill'), '#ebe8ee');
+  const molenlandenAfter = paths.find(path => path.getAttribute('data-code') === 'GM1978');
+  assert.ok(molenlandenAfter);
+  assert.notEqual(molenlandenAfter.getAttribute('fill'), '#ebe8ee');
   elements.mapScope.value = 'netherlands';
   elements.mapScope.trigger('change');
   assert.notEqual(elements.municipalityMap.children[0].getAttribute('viewBox'), originalView);
@@ -1457,11 +1467,11 @@ test('stap-6-kerncijfers en tech-hubvergelijking gebruiken exact dezelfde filter
   assert.deepEqual(kpis(), {
     'Aanvragen / workshops': '5',
     'Leerlingdeelnames': '60',
-    'Scholen': '3',
+    'Scholen': '2',
     'Lesmomenten': '7',
     'Uitgevoerd': '3',
     'Gem. leerlingen / aanvraag': '15,0',
-    'Aanvragen / school': '1,3'
+    'Aanvragen / school': '2,0'
   });
   assert.equal(
     elements.kpiQualityNote.textContent,
@@ -1482,6 +1492,100 @@ test('stap-6-kerncijfers en tech-hubvergelijking gebruiken exact dezelfde filter
     ['Tech-hub A', '0', '0', '0', '0', '0', '—', '—', '0'],
     ['Tech-hub B', '2', '10', '1', '1', '1', '5,0', '1,0', '0']
   ]);
+});
+
+test('kerncijfer Scholen ontdubbelt over hubs en jaren zonder andere cijfers te wijzigen', () => {
+  const records = [
+    { source: 'Hub A', region: 'Vijfheerenlanden', school: 'De Horizon',
+      schoolYear: '2025–2026', statusGroup: 'Uitgevoerd', scheduledDate: '2026-04-10',
+      students: 20, sessions: 1 },
+    { source: 'Hub B', region: ' Gemeente Vijfheerenlanden ', school: ' de hórizon ',
+      schoolYear: '2026–2027', statusGroup: 'Open', scheduledDate: '2026-09-10',
+      students: 15, sessions: 1 },
+    { source: 'Hub A', region: 'Gorinchem', school: 'De Horizon',
+      schoolYear: '2026–2027', statusGroup: 'Geannuleerd', scheduledDate: '2026-10-10',
+      students: 10, sessions: 1 },
+    { source: 'Hub A', region: 'Onbekend', school: 'De Vrije School',
+      schoolYear: '2026–2027', statusGroup: 'Open', scheduledDate: '2026-10-11',
+      students: 5, sessions: 1 },
+    { source: 'Hub B', region: 'Onbekend', school: 'De Vrije School',
+      schoolYear: '2026–2027', statusGroup: 'Open', scheduledDate: '2026-10-12',
+      students: 5, sessions: 1 }
+  ];
+  const elements = clientHarness(records);
+  const kpis = () => Object.fromEntries(elements.kpis.children.map(card =>
+    [card.children[0].textContent, card.children[1].textContent]
+  ));
+
+  assert.equal(kpis()['Scholen'], '4');
+  assert.equal(kpis()['Aanvragen / workshops'], '5');
+  assert.equal(kpis()['Leerlingdeelnames'], '55');
+  assert.equal(kpis()['Uitgevoerd'], '1');
+  // Dezelfde unieke schoolidentiteit wordt ook gebruikt voor Aanvragen / school.
+  assert.equal(kpis()['Aanvragen / school'], '1,3');
+
+  elements.schoolYearFilter.value = '2026–2027';
+  elements.schoolYearFilter.trigger('change');
+  assert.equal(kpis()['Scholen'], '4');
+  assert.equal(kpis()['Aanvragen / workshops'], '4');
+
+  elements.sourceFilter.value = 'Hub B';
+  elements.sourceFilter.trigger('change');
+  assert.equal(kpis()['Scholen'], '2');
+  assert.equal(kpis()['Aanvragen / workshops'], '2');
+});
+
+test('unieke schoolidentiteit herkent GM-code en gemeentenaam uit andere sources', () => {
+  const records = [
+    { source: 'A', region: 'Gorinchem', school: 'OBS De Ster',
+      schoolYear: '2025–2026', students: 12, scheduledDate: '2026-06-10' },
+    { source: 'B', region: 'GM0512', school: 'obs de stér',
+      schoolYear: '2026–2027', students: 18, scheduledDate: '2026-09-10' }
+  ];
+  const elements = clientHarness(records);
+  const kpis = () => Object.fromEntries(elements.kpis.children.map(card =>
+    [card.children[0].textContent, card.children[1].textContent]
+  ));
+
+  assert.equal(kpis()['Scholen'], '1');
+  assert.equal(kpis()['Aanvragen / school'], '2,0');
+  assert.equal(kpis()['Aanvragen / workshops'], '2');
+  assert.equal(elements.mapCoverage.textContent, '2 van 2 aanvragen gekoppeld aan 1 gemeente.');
+
+  elements.schoolYearFilter.value = '2026–2027';
+  elements.schoolYearFilter.trigger('change');
+  assert.equal(kpis()['Scholen'], '1');
+  assert.equal(kpis()['Aanvragen / workshops'], '1');
+});
+
+test('werkgebied volgt de gefilterde gemeenten en landelijk gebied blijft vast', () => {
+  const elements = clientHarness([
+    { source: 'A', schoolYear: '2025–2026', region: 'Gorinchem', students: 10 },
+    { source: 'B', schoolYear: '2026–2027', region: 'Molenlanden', students: 10 }
+  ]);
+  const initial = elements.municipalityMap.children[0].getAttribute('viewBox');
+  elements.sourceFilter.value = 'A';
+  elements.sourceFilter.trigger('change');
+  const filtered = elements.municipalityMap.children[0].getAttribute('viewBox');
+  assert.notEqual(filtered, initial);
+  assert.equal(elements.mapCoverage.textContent, '1 van 1 aanvragen gekoppeld aan 1 gemeente.');
+  elements.mapScope.value = 'netherlands';
+  elements.mapScope.trigger('change');
+  const national = elements.municipalityMap.children[0].getAttribute('viewBox');
+  elements.sourceFilter.value = 'B';
+  elements.sourceFilter.trigger('change');
+  assert.equal(elements.municipalityMap.children[0].getAttribute('viewBox'), national);
+  elements.mapScope.value = 'workarea';
+  elements.mapScope.trigger('change');
+  assert.notEqual(elements.municipalityMap.children[0].getAttribute('viewBox'), filtered);
+  elements.sourceFilter.value = '';
+  elements.sourceFilter.trigger('change');
+  assert.equal(elements.municipalityMap.children[0].getAttribute('viewBox'), initial);
+
+  elements.schoolYearFilter.value = '2025–2026';
+  elements.schoolYearFilter.trigger('change');
+  assert.equal(elements.mapCoverage.textContent, '1 van 1 aanvragen gekoppeld aan 1 gemeente.');
+  assert.equal(elements.municipalityMap.children[0].getAttribute('viewBox'), filtered);
 });
 
 test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {
