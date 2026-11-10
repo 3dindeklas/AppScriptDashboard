@@ -640,19 +640,19 @@ test('aanvragen per schoolbestuur tellen per bronregel, groeperen schrijfvariant
   const rows = () => elements.schoolBoardsTableRows.children.map(row =>
     row.children.map(cell => cell.textContent));
   assert.deepEqual(rows(), [
-    ['Stichting Horizon', '2'], ['Niet ingevuld', '2'], ['Bestuur Rivierenland', '1']
+    ['Stichting Horizon', '2'], ['Bestuur Rivierenland', '1'], ['Overige', '2']
   ]);
   assert.equal(elements.schoolBoardsSummary.textContent,
-    '2 schoolbesturen · 2 aanvragen zonder schoolbestuur');
+    '2 schoolbesturen · 2 aanvragen zonder bestuur (data-inconsistentie)');
   assert.equal(elements.schoolBoardsChart.children.length, 3);
   assert.equal(rows().reduce((total, row) => total + Number(row[1]), 0), 5);
   assert.equal(elements.kpis.children[0].children[1].textContent, '5');
 
   elements.sourceFilter.value = 'Hub B';
   elements.sourceFilter.trigger('change');
-  assert.deepEqual(rows(), [['stichting hórizon', '1'], ['Niet ingevuld', '1']]);
+  assert.deepEqual(rows(), [['stichting hórizon', '1'], ['Overige', '1']]);
   assert.equal(elements.schoolBoardsSummary.textContent,
-    '1 schoolbestuur · 1 aanvraag zonder schoolbestuur');
+    '1 schoolbestuur · 1 aanvraag zonder bestuur (data-inconsistentie)');
   elements.schoolYearFilter.value = '2025–2026';
   elements.schoolYearFilter.trigger('change');
   assert.equal(elements.schoolBoardsChart.children[0].textContent, 'Geen gegevens binnen deze filters.');
@@ -674,24 +674,43 @@ test('bij veel schoolbesturen toont de grafiek de top 8 en de tabel het volledig
   const elements = clientHarness(records);
   assert.equal(elements.schoolBoardsChart.children.length, 9);
   assert.equal(elements.schoolBoardsChart.children[8].children[0].children[0].textContent,
-    'Overige (2)');
+    'Overige');
   assert.equal(elements.schoolBoardsTableRows.children.length, 10);
   assert.equal(elements.schoolBoardsTableRows.children.reduce((sum, row) =>
     sum + Number(row.children[1].textContent), 0), 10);
 });
 
-test('bronkolom Schoolbestuur wordt veilig meegegeven, leeg krijgt Niet ingevuld', () => {
-  for (const heading of ['Schoolbestuur', 'School bestuur', 'Bestuur']) {
-    const internal = normalize([headers.concat(heading),
-      row().concat('Stichting De Toekomst')]).records[0];
-    assert.equal(internal.schoolBoard, 'Stichting De Toekomst');
-    const visible = context().publicRecord_(internal, false);
-    assert.equal(visible.schoolBoard, 'Stichting De Toekomst');
-    assert.equal(visible.providerTotalCosts, undefined);
-    assert.equal(visible.requestId, undefined);
-  }
+test('de bronkolom Bestuur wordt veilig gelezen; lege waarden blijven herkenbaar als inconsistentie', () => {
+  const internal = normalize([headers.concat('Bestuur'),
+    row().concat('Stichting De Toekomst')]).records[0];
+  assert.equal(internal.schoolBoard, 'Stichting De Toekomst');
+  const visible = context().publicRecord_(internal, false);
+  assert.equal(visible.schoolBoard, 'Stichting De Toekomst');
+  assert.equal(visible.providerTotalCosts, undefined);
+  assert.equal(visible.requestId, undefined);
+
   const blank = context().publicRecord_(normalize().records[0], false);
-  assert.equal(blank.schoolBoard, 'Niet ingevuld');
+  assert.equal(blank.schoolBoard, '');
+  const extra = normalize([headers.concat('Schoolbestuur'),
+    row().concat('Andere kolom')]).records[0];
+  assert.equal(extra.schoolBoard, '');
+});
+
+test('leeg Bestuur en bestaand Overige worden samengevoegd; de kwaliteitsteller blijft correct', () => {
+  const elements = clientHarness([
+    { source: 'A', schoolBoard: '' },
+    { source: 'A', schoolBoard: 'Overige' },
+    { source: 'A', schoolBoard: 'Stichting Dorp' },
+    { source: 'A', schoolBoard: 'ONBEKEND' }
+  ]);
+  const rows = elements.schoolBoardsTableRows.children.map(row =>
+    row.children.map(cell => cell.textContent));
+  assert.deepEqual(rows, [['Stichting Dorp', '1'], ['Overige', '3']]);
+  assert.equal(elements.schoolBoardsSummary.textContent,
+    '1 schoolbestuur · 2 aanvragen zonder bestuur (data-inconsistentie)');
+  assert.equal(elements.schoolBoardsChart.children.length, 2);
+  assert.equal(elements.schoolBoardsChart.children[1].children[0].children[0].textContent, 'Overige');
+  assert.equal(elements.schoolBoardsChart.children[1].children[0].children[1].textContent, '3');
 });
 
 test('donuts tonen aantallen, percentages en vaste kleuren na filteren', () => {
