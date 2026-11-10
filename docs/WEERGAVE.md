@@ -27,7 +27,7 @@ Boven het dashboard blijft alleen de modus en een korte bijgewerkt-regel zichtba
 
 ## Weergave kiezen
 
-Open **Weergave** en vink de onderdelen aan die je wilt laten zien. Je kunt kerncijfers, maandgrafiek, gemeenten, PO/VO, statusgroepen, workshops, aanbieders, leerjaren, recente workshops en de vergelijking afzonderlijk tonen of verbergen.
+Open **Weergave** en vink de onderdelen aan die je wilt laten zien. Je kunt kerncijfers, maandgrafiek, gemeenten, PO/VO, statusgroepen, workshops, aanbieders, **schoolbesturen**, leerjaren, recente workshops en de vergelijking afzonderlijk tonen of verbergen.
 
 De financiële optie verschijnt alleen voor een account met financieel recht. **Alles tonen** verandert die toegangscontrole niet.
 
@@ -44,6 +44,8 @@ De keuze blijft behouden tijdens filteren en handmatig vernieuwen. Ze geldt alle
 ## Samengevoegde onderdelen
 
 **Gemeenten en regio’s** toont de kaart en de regionale staafgrafiek tegelijk. De staven staan onder de uitleg over het werkgebied. Op desktop groeit de kaart mee met de hoogte van deze kolom, ook bij het openen van de cijfertabel. Op kleinere schermen staan de kaart en de toelichting met staven onder elkaar. Beide gebruiken dezelfde actieve gegevensselectie; de kaarttabel maakt daarnaast duidelijk welke regio’s niet aan een gemeente zijn gekoppeld. Bij kaartgebied **Werkgebied** zoomt de kaart mee naar de gemeenten uit de gefilterde aanvragen. Bij een lege of niet-koppelbare selectie blijft de kaart op het werkgebied van de geladen gegevens staan. Met **Heel Nederland** blijft de landelijke uitsnede stabiel.
+
+**Aanvragen per schoolbestuur** toont een gerangschikte horizontale staafgrafiek met maximaal acht categorieën. De tabel bevat alle schoolbesturen. De grafiek volgt de actieve filters en vermeldt hoeveel aanvragen geen ingevuld schoolbestuur hebben. Dit is geen telling van unieke scholen.
 
 **Bereik in PO en VO** combineert twee taartdiagrammen: PO-groepen en VO-leerjaren, met vaste heldere kleuren per leerjaar, gewogen aanvragen en percentages. De uitleg over combinatiegroepen staat onderaan datzelfde blok. De PO/VO-sectorverdeling blijft een afzonderlijke donut.
 
