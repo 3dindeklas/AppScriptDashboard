@@ -690,13 +690,10 @@
 
     function renderKpis(records) {
       const totals = dashboardMetrics(records);
-      const allDataTotals = dashboardMetrics(state.records);
       const metrics = [
-        ['Aanvragen / workshops', formatInteger(totals.requests)],
+        ['Totaal (school) aanvragen', formatInteger(totals.requests)],
         ['Leerlingdeelnames', formatInteger(totals.studentParticipations)],
-        ['Scholen met aanvragen', formatInteger(totals.schools)],
-        ['Scholen bezocht', formatInteger(totals.visitedSchools)],
-        ['Scholen in alle data', formatInteger(allDataTotals.schools)],
+        ['Unieke scholen bezocht', formatInteger(totals.visitedSchools)],
         ['Lesmomenten', formatInteger(totals.sessions)],
         ['Uitgevoerd', formatInteger(totals.completed)],
         ['Gem. leerlingen / aanvraag', formatDecimal(totals.averageStudents)],
@@ -789,7 +786,7 @@
       if (!sources.length) {
         const row = document.createElement('tr');
         const cell = document.createElement('td');
-        cell.colSpan = 10;
+        cell.colSpan = 9;
         cell.className = 'empty';
         cell.textContent = 'Geen tech-hubs beschikbaar binnen deze gegevens.';
         row.appendChild(cell);
@@ -808,7 +805,6 @@
         [
           formatInteger(totals.requests),
           formatInteger(totals.studentParticipations),
-          formatInteger(totals.schools),
           formatInteger(totals.visitedSchools),
           formatInteger(totals.sessions),
           formatInteger(totals.completed),
