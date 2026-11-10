@@ -691,9 +691,9 @@
     function renderKpis(records) {
       const totals = dashboardMetrics(records);
       const metrics = [
-        ['Totaal (school) aanvragen', formatInteger(totals.requests)],
+        ['Aanvragen / workshops', formatInteger(totals.requests)],
         ['Leerlingdeelnames', formatInteger(totals.studentParticipations)],
-        ['Unieke scholen bezocht', formatInteger(totals.visitedSchools)],
+        ['Scholen', formatInteger(uniqueSchoolCount(records))],
         ['Lesmomenten', formatInteger(totals.sessions)],
         ['Uitgevoerd', formatInteger(totals.completed)],
         ['Gem. leerlingen / aanvraag', formatDecimal(totals.averageStudents)],
@@ -729,16 +729,12 @@
       const knownStudents = records.filter(record => Number.isInteger(record.students) && record.students >= 0);
       const recordsWithSchool = records.filter(record => schoolIdentity(record));
       const schools = new Set(recordsWithSchool.map(schoolIdentity));
-      const visitedSchools = new Set(recordsWithSchool
-        .filter(record => record.statusGroup === 'Uitgevoerd')
-        .map(schoolIdentity));
       const studentParticipations = sum(knownStudents, 'students');
 
       return {
         requests: records.length,
         studentParticipations: studentParticipations,
         schools: schools.size,
-        visitedSchools: visitedSchools.size,
         sessions: sum(records, 'sessions'),
         completed: records.filter(record => record.statusGroup === 'Uitgevoerd').length,
         averageStudents: knownStudents.length ? studentParticipations / knownStudents.length : null,
@@ -747,18 +743,28 @@
       };
     }
 
+    // Alleen voor het kerncijfer Scholen: dezelfde school bij meerdere tech-hubs
+    // telt eenmaal. Andere kerncijfers en de tech-hubvergelijking blijven gelijk.
+    function uniqueSchoolCount(records) {
+      const schools = new Set();
+      records.forEach(record => {
+        const originalKey = schoolIdentity(record);
+        if (!originalKey) return;
+        const region = normalizedIdentity(record.region).replace(/^gemeente\s+/, '');
+        const school = normalizedIdentity(record.school);
+        // Zonder bekende gemeente blijft de bron onderdeel van de sleutel:
+        // gelijknamige scholen worden niet zonder bewijs samengevoegd.
+        schools.add(region && region !== 'onbekend'
+          ? [region, school].join('|')
+          : originalKey);
+      });
+      return schools.size;
+    }
+
     function schoolIdentity(record) {
       const school = normalizedIdentity(record.school);
       if (!school || school === 'onbekende school') return '';
-
-      // Bij een bekende regio is een school over jaren én tech-hubs heen dezelfde school.
-      // Bij een ontbrekende regio houden we hubs gescheiden om gelijknamige scholen
-      // niet zonder bewijs samen te voegen.
-      const region = normalizedIdentity(record.region).replace(/^gemeente\s+/, '');
-      if (!region || region === 'onbekend') {
-        return ['regio-onbekend', normalizedIdentity(record.source), school].join('|');
-      }
-      return ['regio', region, school].join('|');
+      return [record.source, record.region, record.school].map(normalizedIdentity).join('|');
     }
 
     function normalizedIdentity(value) {
@@ -805,7 +811,7 @@
         [
           formatInteger(totals.requests),
           formatInteger(totals.studentParticipations),
-          formatInteger(totals.visitedSchools),
+          formatInteger(totals.schools),
           formatInteger(totals.sessions),
           formatInteger(totals.completed),
           formatDecimal(totals.averageStudents),
