@@ -1302,7 +1302,7 @@ test('dashboardvelden verlaten gecontroleerd de server maar privacy- en detailve
   assert.deepEqual(Array.from(publicRecord.scheduledDates), ['2026-11-20']);
   assert.equal(publicRecord.schoolYear, '2026–2027');
   assert.equal(publicRecord.school, 'School A');
-  assert.equal(publicRecord.schoolBoard, 'Niet ingevuld');
+  assert.equal(publicRecord.schoolBoard, '');
   assert.deepEqual(Array.from(publicRecord.grades), [6, 7, 8]);
   assert.equal(publicRecord.statusGroup, 'Ingepland');
   assert.equal(publicRecord.type, 'Workshop');
