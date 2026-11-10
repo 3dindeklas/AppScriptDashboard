@@ -1,13 +1,14 @@
 /**
  * Optionele bezoekstatistieken. Deze data verlaat de server nooit als dashboardpayload.
- * Een bezoek is een geslaagde, normale eerste dashboard-data-aanvraag. Handmatig
- * vernieuwen van brongegevens en wisselen van filters registreren niets.
+ * Een bezoek is een geslaagde dashboardopening per toegangssessie. Browser-refresh,
+ * bronverversing en filterwijzigingen tellen niet als nieuwe sessie.
  */
 const USAGE_STATS_HEADERS_ = Object.freeze([
   'Tijdstip', 'Gebruiker (e-mailadres)', 'Toegang', 'Gebeurtenis'
 ]);
 const USAGE_STATS_ID_PROPERTY_ = 'WORKSHOPKOMPAS_STATS_SPREADSHEET_ID';
 const USAGE_STATS_CLEANUP_PROPERTY_ = 'WORKSHOPKOMPAS_STATS_LAST_CLEANUP';
+const USAGE_STATS_VISIT_PREFIX_ = 'WORKSHOPKOMPAS_STATS_VISIT:';
 
 function usageStatsSettings_() {
   const config = APP_CONFIG.usageStats || {};
@@ -25,15 +26,22 @@ function usageStatsSettings_() {
 }
 
 /** Mag de toegang tot het dashboard nooit beïnvloeden, ook niet bij ontbrekende rechten. */
-function recordDashboardVisit_(email, isEmailCode) {
+function recordDashboardVisit_(email, isEmailCode, visitId) {
   try {
     const settings = usageStatsSettings_();
     if (!settings.enabled || !settings.spreadsheetId || !email) return false;
+    // Idempotent over browser-refreshes, ook wanneer Google een gecachete
+    // dashboardsnapshot teruggeeft. De sleutel bevat geen onversleuteld token.
+    if (typeof visitId !== 'string' || !/^[a-f0-9-]{36,64}$/i.test(visitId)) return false;
+    if (!settings.properties) return false;
+    const visitKey = USAGE_STATS_VISIT_PREFIX_ +
+      authHash_(String(email).trim().toLowerCase() + ':' + visitId);
     if (typeof SpreadsheetApp === 'undefined' || typeof LockService === 'undefined') return false;
     const lock = LockService.getScriptLock();
     if (!lock.tryLock(3000)) return false;
 
     try {
+      if (settings.properties.getProperty(visitKey)) return false;
       const book = SpreadsheetApp.openById(settings.spreadsheetId);
       let sheet = book.getSheetByName(settings.sheetName);
       if (!sheet) sheet = book.insertSheet(settings.sheetName);
@@ -55,6 +63,7 @@ function recordDashboardVisit_(email, isEmailCode) {
         isEmailCode ? 'E-mailcode' : 'Google-account',
         'Dashboard geopend'
       ]);
+      settings.properties.setProperty(visitKey, String(now.getTime()));
       sheet.getRange(sheet.getLastRow(), 1).setNumberFormat('dd-mm-yyyy hh:mm:ss');
       pruneUsageStats_(sheet, settings);
 
@@ -95,5 +104,14 @@ function pruneUsageStats_(sheet, settings) {
         times[expired][0].getTime() < cutoff) expired += 1;
     if (expired) sheet.deleteRows(2, expired);
   }
+  // Ook tijdelijke sessiemarkeringen moeten na de bewaartermijn verdwijnen.
+  const oldSessionCutoff = Date.now() - settings.retentionDays * 86400000;
+  Object.entries(properties.getProperties()).forEach(function(entry) {
+    if (entry[0].indexOf(USAGE_STATS_VISIT_PREFIX_) !== 0) return;
+    const time = Number(entry[1]);
+    if (!Number.isFinite(time) || time < oldSessionCutoff) {
+      properties.deleteProperty(entry[0]);
+    }
+  });
   properties.setProperty(USAGE_STATS_CLEANUP_PROPERTY_, today);
 }
