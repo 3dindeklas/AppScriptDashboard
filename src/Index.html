@@ -61,6 +61,7 @@
                   <label><input id="viewStatus" type="checkbox" checked> Statusgroepen</label>
                   <label><input id="viewWorkshops" type="checkbox" checked> Workshops</label>
                   <label><input id="viewProviders" type="checkbox" checked> Aanbieders</label>
+                  <label><input id="viewSchoolBoards" type="checkbox" checked> Schoolbesturen</label>
                   <label><input id="viewGrades" type="checkbox" checked> PO- en VO-leerjaren</label>
                   <label><input id="viewRecent" type="checkbox" checked> Recente workshops</label>
                   <label><input id="viewComparison" type="checkbox" checked> Tech-hubs vergelijken</label>
@@ -296,6 +297,13 @@
             <div class="panel-heading"><div><p class="eyebrow">AANBIEDERS</p><h3>Aanvragen per aanbieder</h3></div></div>
             <div id="providerChart" class="bar-chart"></div>
             <details class="chart-data"><summary>Bekijk cijfers als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Aanvragen per aanbieder</caption><thead><tr><th scope="col">Aanbieder</th><th scope="col">Aanvragen</th></tr></thead><tbody id="providerTableRows"></tbody></table></div></details>
+          </article>
+          <article id="schoolBoardsPanel" class="panel chart-card school-board-panel" aria-labelledby="schoolBoardsTitle">
+            <div class="panel-heading"><div><p class="eyebrow">SCHOOLBESTUREN</p><h3 id="schoolBoardsTitle">Aanvragen per schoolbestuur</h3></div></div>
+            <p id="schoolBoardsSummary" class="chart-subtitle" aria-live="polite"></p>
+            <div id="schoolBoardsChart" class="bar-chart" aria-label="Aanvragen per schoolbestuur"></div>
+            <details class="chart-data"><summary>Bekijk alle schoolbesturen als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Aantal aanvragen per schoolbestuur in de actieve selectie</caption><thead><tr><th scope="col">Schoolbestuur</th><th scope="col">Aanvragen</th></tr></thead><tbody id="schoolBoardsTableRows"></tbody></table></div></details>
+            <p class="chart-note">Elke aanvraag telt één keer. Niet ingevulde schoolbesturen worden apart vermeld.</p>
           </article>
 <article id="gradesPanel" class="panel grades-panel">
  <div class="panel-heading"><div><p class="eyebrow">LEERJAREN</p><h2>Bereik in PO en VO</h2></div></div>
