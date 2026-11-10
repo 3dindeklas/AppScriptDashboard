@@ -25,6 +25,7 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - inclusief maandbereik op aanvraagdatum of één van de definitieve lesdagen en een bereik voor leerlingaantallen;
 - expliciete keuzes om regels zonder datum of leerlingaantal wel of niet mee te nemen;
 - zeven gefilterde kerncijfers en een vergelijking tussen de tech-hubs;
+- optionele registratie van geslaagde dashboardopeningen in een afgeschermd, verborgen `__stats`-tabblad (zie [Bezoekstatistieken](docs/STATS.md));
 - een standaard ingeklapt financieel overzicht met kosten, facturatie, marge en volledigheid, uitsluitend voor apart toegestane accounts;
 - een maandgrafiek voor aanvragen, leerlingdeelnames en lesmomenten per tech-hub;
 - verdelingen voor PO/VO, regio, workshop, aanbieder en statusgroep;
@@ -52,6 +53,7 @@ Stap 10 importeert een Excel-bestand vanuit een downloadbare URL of een export i
 | `ExcelImport.gs` | server | Excel ophalen, tijdelijk converteren en gecontroleerd publiceren naar een Google-tabblad |
 | `Cache.gs` | server | privacyveilige snapshots, compressie, locking en herstel bij een cache-miss |
 | `Auth.gs` | server | eenmalige e-mailcodes, verzendbegrenzing en gastsessies |
+| `Stats.gs` | server | optionele bezoekstatistieken, verborgen tabblad en bewaartermijn |
 | `Index.html` | browser | paginastructuur |
 | `Styles.html` | browser | CSS binnen een `<style>`-tag |
 | `Municipalities.html` | browser | openbare, vereenvoudigde gemeentegrenzen als JSON; bevat geen workshopgegevens |
