@@ -224,14 +224,20 @@ Alle onderstaande cijfers worden berekend over exact dezelfde workshopregels die
 | --- | --- |
 | Aanvragen / workshops | aantal zichtbare workshopregels |
 | Leerlingdeelnames | som van alle bekende waarden in `students`; geen telling van unieke leerlingen |
-| Scholen | unieke combinatie van tech-hub, regio en genormaliseerde schoolnaam |
+| Scholen met aanvragen | aantal verschillende scholen met een zichtbare aanvraag, ongeacht status (ook open en geannuleerd) |
+| Scholen bezocht | aantal verschillende scholen met minimaal één zichtbare aanvraag met statusgroep `Uitgevoerd` |
+| Scholen in alle data | aantal verschillende scholen met een aanvraag in **alle geladen bronrecords**, over alle schooljaren en tech-hubs; onafhankelijk van alle dashboardfilters |
 | Lesmomenten | som van alle bekende waarden in `sessions` |
 | Uitgevoerd | aantal regels met `statusGroup` gelijk aan `Uitgevoerd` |
 | Gem. leerlingen / aanvraag | leerlingdeelnames gedeeld door het aantal regels met een bekend leerlingaantal |
 | Aanvragen / school | aantal regels met een bekende school gedeeld door het aantal unieke bekende scholen |
 | Zonder leerlingaantal | aantal zichtbare regels waarvoor `students` onbekend is |
 
-Bij het eenduidig tellen van scholen worden hoofdletters, accenten en overtollige spaties genegeerd. De tech-hub en regio blijven onderdeel van de sleutel: dezelfde schoolnaam in een andere regio of tech-hub telt daarom als een andere school. Een lege school of `Onbekende school` telt niet mee als school en ook niet in de teller van **Aanvragen / school**.
+Bij het eenduidig tellen van scholen worden hoofdletters, accenten en overtollige spaties genegeerd. De identiteit is de genormaliseerde schoolnaam met de gemeente/regio; het voorvoegsel `Gemeente ` wordt genegeerd. De tech-hub en het schooljaar maken bij een **bekende regio** geen deel uit van de sleutel. Daardoor telt dezelfde school die in meerdere jaren of via verschillende tech-hubs voorkomt maar één keer mee in een totaalcijfer. Gelijknamige scholen in verschillende regio's blijven verschillend. Als de regio ontbreekt of `Onbekend` is, houden we de tech-hub juist wél in de sleutel om niet zonder bewijs twee gelijknamige scholen samen te voegen. Varianten van de schoolnaam (zoals `OBS De Ster` en `De Ster`) worden niet automatisch samengevoegd: dat vereist een expliciete identificatie in de brondata. Een lege school of `Onbekende school` telt niet mee als school en ook niet in de teller van **Aanvragen / school**.
+
+De kerncijfers **Scholen met aanvragen** en **Scholen bezocht** volgen de actieve filters (dus ook het gekozen schooljaar). **Scholen in alle data** is een onafhankelijke referentie over alle geladen records, ook als een schooljaar of tech-hub is geselecteerd; het gaat niet om uitsluitend bezochte scholen. Het totaal van unieke scholen kan kleiner zijn dan de som van de unieke scholen per tech-hub, omdat dezelfde school bij meerdere hubs kan voorkomen.
+
+De andere aantallen, inclusief **Aanvragen / workshops**, **Uitgevoerd**, de grafieken en de gemeentekaart, zijn aantallen workshopregels of sommen van geregistreerde leerlingdeelnames/lesmomenten, en géén unieke scholen of personen. Dubbele `Aanvraag ID`-waarden binnen een bron worden als datakwaliteitswaarschuwing gemeld, maar rijen worden bewust niet stilzwijgend verwijderd: dat kan legitieme registratie verwijderen. Controleer zulke bronregels als totaalcijfers te hoog lijken.
 
 Een leerlingaantal van nul is een bekende waarde en telt mee in som en gemiddelde. Ontbrekende leerlingaantallen blijven onbekend, worden nooit als nul geïnterpreteerd en worden onder de KPI’s en per tech-hub apart gemeld. Gemiddelden worden met één decimaal getoond; als er geen geldige deler is, verschijnt `—`.
 
