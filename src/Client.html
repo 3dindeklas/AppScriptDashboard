@@ -174,6 +174,28 @@
 
     const planning = window.WorkshopPlanning ? window.WorkshopPlanning.create() : null;
 
+    // Een tab-sessie blijft gelijk bij verversen van de browserpagina.
+    // De identifier is geen inlogtoken; bij geblokkeerde sessieopslag
+    // laten we bezoekregistratie achterwege in plaats van elke refresh te tellen.
+    function dashboardVisitId() {
+      const key = 'workshopkompas-visit-id';
+      try {
+        let id = window.sessionStorage.getItem(key);
+        if (!/^[a-f0-9-]{36}$/.test(id || '')) {
+          id = typeof window.crypto?.randomUUID === 'function'
+            ? window.crypto.randomUUID()
+            : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, char => {
+              const random = Math.floor(Math.random() * 16);
+              return (char === 'x' ? random : (random & 3 | 8)).toString(16);
+            });
+          window.sessionStorage.setItem(key, id);
+        }
+        return id;
+      } catch (error) {
+        return '';
+      }
+    }
+
     function loadDashboard(forceRefresh) {
       if (state.locked) return;
       beginLoadingFeedback(forceRefresh === true);
@@ -184,7 +206,7 @@
           .withFailureHandler(handleError);
         const token = window.WorkshopAccess ? window.WorkshopAccess.token() : '';
         if (forceRefresh === true) request.refreshDashboardData(token);
-        else request.getDashboardData(token);
+        else request.getDashboardData(token, dashboardVisitId());
         return;
       }
 
