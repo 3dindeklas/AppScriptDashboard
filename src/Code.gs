@@ -65,7 +65,7 @@ function dashboardDataResponse_(forceRefresh, accessToken) {
 
     const snapshot = delivery.snapshot;
 
-    return {
+    const response = {
       mode: 'live',
       generatedAt: snapshot.updatedAt,
       complete: snapshot.complete,
@@ -82,6 +82,12 @@ function dashboardDataResponse_(forceRefresh, accessToken) {
       }),
       sources: snapshot.sources.map(publicSourceStatus_)
     };
+    if (forceRefresh !== true) {
+      // Alleen een succesvol geopend dashboard telt als bezoek. Een mislukte
+      // registratie mag de werking niet blokkeren (ook niet bij oudere deployments).
+      try { recordDashboardVisit_(email, Boolean(accessToken)); } catch (ignored) {}
+    }
+    return response;
   } catch (error) {
     const reference = logServerError_('getDashboardData', error);
     const code = error && error.publicCode ? error.publicCode : 'DASHBOARD_DATA_FAILED';
