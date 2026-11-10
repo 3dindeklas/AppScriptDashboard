@@ -1,6 +1,6 @@
 # Bezoekstatistieken voor Workshopkompas
 
-Workshopkompas kan iedere **geslaagde dashboardopening** in een verborgen tabblad `__stats` opslaan. De registratie vindt server-side plaats zodra `getDashboardData` succesvol is; een bronverversing (`refreshDashboardData`), een filterwijziging, kalendernavigatie, een mislukte aanmelding of alleen het aanvragen van een e-mailcode telt **niet** mee. Het gaat dus om dashboardopeningen (pageviews), niet om unieke bezoekers of het aantal afzonderlijke inlogpogingen. Een nieuwe geopende pagina of herlaadactie telt als een nieuwe opening.
+Workshopkompas kan iedere **geslaagde dashboardopening** in een verborgen tabblad `__stats` opslaan. De registratie vindt server-side plaats zodra `getDashboardData` succesvol is, **maximaal één keer per toegangssessie**. Bij Google-toegang gebruikt Workshopkompas een willekeurige browser-tab-sessie-ID in `sessionStorage` (die behouden blijft bij een browser-refresh); bij e-mailcodetoegang identificeert een gehashte vorm van het gevalideerde sessietoken de login. Het token of de browser-ID wordt nooit in het spreadsheet opgeslagen. Een nieuw Google-tabblad of een nieuwe e-mailcode-login telt als nieuwe sessie. Een browser-refresh, bronverversing (`refreshDashboardData`), filterwijziging, kalendernavigatie, mislukte aanmelding of alleen het aanvragen van een e-mailcode telt **niet** mee. Zonder beschikbare sessieopslag registreren we geen Google-bezoek om dubbeltellingen te voorkomen. Het betreft sessie-openingen, niet hoeveel minuten iemand actief was.
 
 ## Inrichten
 
@@ -10,6 +10,8 @@ Workshopkompas kan iedere **geslaagde dashboardopening** in een verborgen tabbla
    - **Waarde:** het ID van het spreadsheet waarin de gegevens terecht moeten komen (de tekst tussen `/d/` en `/edit`).
 3. Zorg dat het uitvoerende account van de web-app **bewerkingstoegang** heeft tot dit spreadsheet. Publiceer een nieuwe versie van de web-app en open het dashboard met een toegestaan account.
 4. Het tabblad `__stats` wordt bij de eerste geslaagde dashboardopening automatisch aangemaakt, met een kopregel en de eerste registratie. Het wordt verborgen als in het spreadsheet nog een ander zichtbaar tabblad bestaat.
+
+Voor het onderdrukken van dubbeltellingen onthoudt Apps Script een **gehashte** sessiemarkering in Scripteigenschappen. Deze wordt met een lock gecontroleerd voordat een bezoek wordt toegevoegd. Markeringen ouder dan de bewaartermijn worden periodiek opgeruimd.
 
 Het spreadsheet-ID staat bewust **niet** in de publieke GitHub-repository. Alternatief voor privé geforkte projecten: vul `usageStats.spreadsheetId` in `Config.gs`; die waarde heeft voorrang op de scripteigenschap. `usageStats.enabled = false` schakelt de registratie uit. Met `usageStats.sheetName` wijzig je de tabbladnaam.
 
@@ -34,6 +36,6 @@ Registratie is niet kritisch: wanneer het werkblad niet beschikbaar is, de kopre
 
 ## Statistieken analyseren
 
-Gebruik in een apart, afgeschermd overzicht een draaitabel op `__stats`: tel het aantal regels per dag, gebruiker of maand. Deze aantallen zijn **dashboardopeningen**, geen minuten dat het dashboard actief was. Voor unieke gebruikers per maand kun je e-mailadressen per maand ontdubbelen in een draaitabel of een aparte analyse.
+Gebruik in een apart, afgeschermd overzicht een draaitabel op `__stats`: tel het aantal regels per dag, gebruiker of maand. Deze aantallen zijn **toegangssessies**, geen pagina-refreshes en geen minuten dat het dashboard actief was. Voor unieke gebruikers per maand kun je e-mailadressen per maand ontdubbelen in een draaitabel of een aparte analyse.
 
-De huidige opzet schrijft geen bezoekgegevens naar de dashboardbrowser en voegt geen statistieken toe aan de normale live-snapshot.
+De huidige opzet schrijft geen bezoekgegevens naar de dashboardbrowser en voegt geen statistieken toe aan de normale live-snapshot. Alleen een willekeurige niet-geheime sessie-ID staat tijdelijk in de browseropslag.
