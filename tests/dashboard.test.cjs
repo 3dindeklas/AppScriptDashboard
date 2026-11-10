@@ -1509,18 +1509,46 @@ test('schoolbereik ontdubbelt over schooljaren en hubs, terwijl bezoek alleen ui
   const kpis = () => Object.fromEntries(elements.kpis.children.map(card => [
     card.children[0].textContent, card.children[1].textContent
   ]));
-    assert.equal(kpis()['Unieke scholen bezocht'], '1');
-    assert.equal(kpis()['Aanvragen / school'], '1,3');
+  assert.equal(kpis()['Totaal (school) aanvragen'], '6');
+  assert.equal(kpis()['Unieke scholen bezocht'], '1');
+  assert.equal(kpis()['Aanvragen / school'], '1,3');
 
   elements.schoolYearFilter.value = '2026–2027';
   elements.schoolYearFilter.trigger('change');
-    assert.equal(kpis()['Unieke scholen bezocht'], '0');
-    assert.equal(kpis()['Totaal (school) aanvragen'], '5');
+  assert.equal(kpis()['Unieke scholen bezocht'], '0');
+  assert.equal(kpis()['Totaal (school) aanvragen'], '5');
 
   elements.sourceFilter.value = 'Hub B';
   elements.sourceFilter.trigger('change');
-    assert.equal(kpis()['Unieke scholen bezocht'], '0');
-  });
+  assert.equal(kpis()['Totaal (school) aanvragen'], '2');
+  assert.equal(kpis()['Unieke scholen bezocht'], '0');
+});
+
+test('één bezochte school bij meerdere hubs en jaren telt eenmaal', () => {
+  const records = [
+    { source: 'Hub A', region: 'Vijfheerenlanden', school: 'De Horizon',
+      schoolYear: '2025–2026', statusGroup: 'Uitgevoerd',
+      scheduledDate: '2026-04-10', students: 20, sessions: 1 },
+    { source: 'Hub B', region: 'Gemeente Vijfheerenlanden', school: '  DE HORIZON  ',
+      schoolYear: '2026–2027', statusGroup: 'Uitgevoerd',
+      scheduledDate: '2026-09-10', students: 20, sessions: 1 },
+    { source: 'Hub A', region: 'Gorinchem', school: 'De Horizon',
+      schoolYear: '2026–2027', statusGroup: 'Uitgevoerd',
+      scheduledDate: '2026-10-10', students: 25, sessions: 1 }
+  ];
+  const elements = clientHarness(records);
+  const kpis = () => Object.fromEntries(elements.kpis.children.map(card => [
+    card.children[0].textContent, card.children[1].textContent
+  ]));
+  assert.equal(kpis()['Totaal (school) aanvragen'], '3');
+  assert.equal(kpis()['Unieke scholen bezocht'], '2');
+  assert.equal(kpis()['Aanvragen / school'], '1,5');
+
+  elements.schoolYearFilter.value = '2026–2027';
+  elements.schoolYearFilter.trigger('change');
+  assert.equal(kpis()['Totaal (school) aanvragen'], '2');
+  assert.equal(kpis()['Unieke scholen bezocht'], '2');
+});
 
 test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {
   let requestedRange;
