@@ -2,6 +2,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const crypto = require('node:crypto');
+const VISIT_A = 'd1442b9b-06e4-44c8-b5da-0aaf72ead570';
+const VISIT_B = 'd1442b9b-06e4-44c8-b5da-0aaf72ead571';
 
 function harness(options = {}) {
   const rows = options.rows ? options.rows.slice() : [];
@@ -40,8 +43,11 @@ function harness(options = {}) {
     console: { warn() {}, error() {} },
     PropertiesService: { getScriptProperties: () => ({
       getProperty: key => properties.get(key) || null,
-      setProperty: (key, value) => properties.set(key, value)
+      setProperty: (key, value) => properties.set(key, value),
+      deleteProperty: key => properties.delete(key),
+      getProperties: () => Object.fromEntries(properties)
     }) },
+    authHash_: value => crypto.createHash('sha256').update(String(value)).digest('hex'),
     SpreadsheetApp: { openById: id => {
       opens++;
       if (options.failOpen) throw new Error('Geen schrijfrechten op statsbestand');
@@ -62,7 +68,7 @@ function harness(options = {}) {
 
 test('eerste opening maakt verborgen __stats-tabblad en schrijft uitsluitend minimale informatie', () => {
   const app = harness();
-  assert.equal(app.ctx.recordDashboardVisit_(' DOCENT@Voorbeeld.nl ', false), true);
+  assert.equal(app.ctx.recordDashboardVisit_(' DOCENT@Voorbeeld.nl ', false, VISIT_A), true);
   assert.equal(app.insertions, 1);
   assert.equal(app.hidden, true);
   assert.deepEqual(Array.from(app.rows[0]), [
@@ -73,7 +79,7 @@ test('eerste opening maakt verborgen __stats-tabblad en schrijft uitsluitend min
     'docent@voorbeeld.nl', 'Google-account', 'Dashboard geopend'
   ]);
   assert.equal(app.formatCalls[0].value, 'dd-mm-yyyy hh:mm:ss');
-  assert.equal(app.ctx.recordDashboardVisit_('gast@voorbeeld.nl', true), true);
+  assert.equal(app.ctx.recordDashboardVisit_('gast@voorbeeld.nl', true, VISIT_B), true);
   assert.equal(app.insertions, 1);
   assert.equal(app.rows.length, 3);
   assert.equal(app.rows[2][2], 'E-mailcode');
@@ -81,14 +87,14 @@ test('eerste opening maakt verborgen __stats-tabblad en schrijft uitsluitend min
 
 test('een onjuist tabblad, lock of ontbrekende rechten blokkeert dashboard niet', () => {
   const wrong = harness({ rows: [['Andere gegevens', 'Niet overschrijven']] });
-  assert.equal(wrong.ctx.recordDashboardVisit_('docent@voorbeeld.nl', false), false);
+  assert.equal(wrong.ctx.recordDashboardVisit_('docent@voorbeeld.nl', false, VISIT_A), false);
   assert.equal(wrong.rows.length, 1);
   const locked = harness();
   locked.setLockBusy(true);
-  assert.equal(locked.ctx.recordDashboardVisit_('docent@voorbeeld.nl', false), false);
+  assert.equal(locked.ctx.recordDashboardVisit_('docent@voorbeeld.nl', false, VISIT_A), false);
   assert.equal(locked.opens, 0);
   const unavailable = harness({ failOpen: true });
-  assert.equal(unavailable.ctx.recordDashboardVisit_('docent@voorbeeld.nl', false), false);
+  assert.equal(unavailable.ctx.recordDashboardVisit_('docent@voorbeeld.nl', false, VISIT_A), false);
   assert.equal(unavailable.rows.length, 0);
 });
 
@@ -100,14 +106,14 @@ test('bezoekstatistieken verwijderen na 180 dagen oude rijen en houden recente r
     [old, 'oud@voorbeeld.nl', 'Google-account', 'Dashboard geopend'],
     [recent, 'recent@voorbeeld.nl', 'Google-account', 'Dashboard geopend']
   ] });
-  assert.equal(app.ctx.recordDashboardVisit_('nieuw@voorbeeld.nl', false), true);
+  assert.equal(app.ctx.recordDashboardVisit_('nieuw@voorbeeld.nl', false, VISIT_A), true);
   assert.equal(app.deletions, 1);
   assert.equal(app.rows.length, 3);
   assert.equal(app.rows[1][1], 'recent@voorbeeld.nl');
   assert.equal(app.rows[2][1], 'nieuw@voorbeeld.nl');
 });
 
-test('normale dashboarddata registreert een bezoek; geforceerd vernieuwen niet', () => {
+test('een nieuwe sessie wordt eenmaal geregistreerd, refresh en bronverversing niet', () => {
   const app = harness();
   // Code.gs is dezelfde serverroute die de live webapp gebruikt.
   vm.runInContext(fs.readFileSync('src/Code.gs', 'utf8'), app.ctx);
@@ -120,12 +126,49 @@ test('normale dashboarddata registreert een bezoek; geforceerd vernieuwen niet',
   app.ctx.snapshotCacheEnabled_ = () => false;
   app.ctx.publicRecord_ = record => record;
   app.ctx.publicSourceStatus_ = source => source;
-  const opened = app.ctx.getDashboardData('');
+  const opened = app.ctx.getDashboardData('', VISIT_A);
   assert.deepEqual(JSON.parse(JSON.stringify(opened.records)), []);
+  assert.equal(app.rows.length, 2);
+
+  // Browser-refresh met dezelfde tabsessie, ook bij herhaaldelijk data ophalen.
+  app.ctx.getDashboardData('', VISIT_A);
+  app.ctx.getDashboardData('', VISIT_A);
   assert.equal(app.rows.length, 2);
   app.ctx.refreshDashboardData('');
   assert.equal(app.rows.length, 2);
-  assert.equal(app.ctx.getDashboardData('token').records.length, 0);
+
+  // Nieuw tabblad: wel een nieuwe sessie, zonder de andere cijfers te wijzigen.
+  app.ctx.getDashboardData('', VISIT_B);
   assert.equal(app.rows.length, 3);
-  assert.equal(app.rows[2][2], 'E-mailcode');
+  assert.equal(app.rows[2][2], 'Google-account');
+
+  // E-mailcode-sessies zijn gekoppeld aan het echte (gehashte) sessietoken.
+  app.ctx.getDashboardData('token', VISIT_A);
+  app.ctx.getDashboardData('token', VISIT_B);
+  assert.equal(app.rows.length, 4);
+  assert.equal(app.rows[3][2], 'E-mailcode');
+  app.ctx.getDashboardData('nieuwe-token', VISIT_A);
+  assert.equal(app.rows.length, 5);
+
+  // Zonder tabsessie is Google-verkeer niet als login aan te merken.
+  app.ctx.getDashboardData('');
+  assert.equal(app.rows.length, 5);
+});
+
+test('idempotentie gebruikt server-side sessiesleutel en schrapt oude markeringen', () => {
+  const app = harness();
+  assert.equal(app.ctx.recordDashboardVisit_('docent@voorbeeld.nl', false, VISIT_A), true);
+  assert.equal(app.ctx.recordDashboardVisit_('docent@voorbeeld.nl', false, VISIT_A), false);
+  assert.equal(app.rows.length, 2);
+  assert.equal(app.opens, 1); // De tweede poging raakt het spreadsheet niet.
+  assert.equal(app.ctx.recordDashboardVisit_('docent@voorbeeld.nl', false, 'ongeldig'), false);
+  assert.equal(app.rows.length, 2);
+  const keys = Array.from(app.properties.keys()).filter(k => k.startsWith('WORKSHOPKOMPAS_STATS_VISIT:'));
+  assert.equal(keys.length, 1);
+  assert.doesNotMatch(keys[0], /docent@voorbeeld|d1442b9b/);
+
+  app.properties.set('WORKSHOPKOMPAS_STATS_VISIT:verlopen', String(Date.now() - 200 * 86400000));
+  app.properties.delete('WORKSHOPKOMPAS_STATS_LAST_CLEANUP');
+  assert.equal(app.ctx.recordDashboardVisit_('docent@voorbeeld.nl', false, VISIT_B), true);
+  assert.equal(app.properties.has('WORKSHOPKOMPAS_STATS_VISIT:verlopen'), false);
 });
