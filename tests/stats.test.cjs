@@ -118,6 +118,8 @@ test('normale dashboarddata registreert een bezoek; geforceerd vernieuwen niet',
     source: 'live', storage: 'disabled'
   });
   app.ctx.snapshotCacheEnabled_ = () => false;
+  app.ctx.publicRecord_ = record => record;
+  app.ctx.publicSourceStatus_ = source => source;
   const opened = app.ctx.getDashboardData('');
   assert.deepEqual(JSON.parse(JSON.stringify(opened.records)), []);
   assert.equal(app.rows.length, 2);
