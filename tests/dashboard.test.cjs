@@ -1521,7 +1521,7 @@ test('kerncijfer Scholen ontdubbelt over hubs en jaren zonder andere cijfers te 
   assert.equal(kpis()['Aanvragen / workshops'], '5');
   assert.equal(kpis()['Leerlingdeelnames'], '55');
   assert.equal(kpis()['Uitgevoerd'], '1');
-  // Dit bestaande gemiddelde blijft bewust de oorspronkelijke berekening gebruiken.
+  // Dezelfde unieke schoolidentiteit wordt ook gebruikt voor Aanvragen / school.
   assert.equal(kpis()['Aanvragen / school'], '1,3');
 
   elements.schoolYearFilter.value = '2026–2027';
@@ -1581,6 +1581,11 @@ test('werkgebied volgt de gefilterde gemeenten en landelijk gebied blijft vast',
   elements.sourceFilter.value = '';
   elements.sourceFilter.trigger('change');
   assert.equal(elements.municipalityMap.children[0].getAttribute('viewBox'), initial);
+
+  elements.schoolYearFilter.value = '2025–2026';
+  elements.schoolYearFilter.trigger('change');
+  assert.equal(elements.mapCoverage.textContent, '1 van 1 aanvragen gekoppeld aan 1 gemeente.');
+  assert.equal(elements.municipalityMap.children[0].getAttribute('viewBox'), filtered);
 });
 
 test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {
