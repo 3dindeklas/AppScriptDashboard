@@ -13,6 +13,7 @@ Alle Google Sheets-rijen worden eerst server-side omgezet naar één intern work
 | `scheduledDates` | `Definitieve datum` | alle unieke geldige lesdagen, chronologisch gesorteerd |
 | `schoolYear` | afgeleid | schooljaar van de eerste definitieve lesdag, anders aanvraagdatum |
 | `school` | `Schoolnaam` | intern voorbereid voor latere filtering |
+| `schoolBoard` | `Bestuur` | optionele tekst; lege waarden blijven leeg voor datakwaliteitscontrole |
 | `schoolKey` | afgeleid | genormaliseerde schoolnaam plus regio |
 | `region` | `Gemeente / Regio` | lege waarde wordt `Onbekend` |
 | `workshop` | `Workshopnaam` | lege waarde wordt `Onbekende workshop` |
@@ -53,6 +54,7 @@ Contactpersoon, e-mailadres, telefoon, notities, debuggegevens en e-mail-/kalend
 | `scheduledDates` | kopie van alle geldige definitieve lesdagen, anders lege lijst |
 | `schoolYear` | `schoolYear`, anders `Onbekend` |
 | `school` | `school`, anders `Onbekende school` |
+| `schoolBoard` | `schoolBoard` of lege tekst |
 | `workshop` | `workshop` |
 | `provider` | `provider` |
 | `region` | `region` |
@@ -87,6 +89,14 @@ Een cel in `Definitieve datum` mag meerdere datums bevatten, bijvoorbeeld `20-11
 Het leerlingbereik gebruikt uitsluitend gehele, niet-negatieve aantallen. De minimum- en maximumslider starten op de laagste en hoogste bekende waarde. Onder- en bovengrens kunnen elkaar niet passeren.
 
 Een lege of ongeldige datum en een leeg of ongeldig leerlingaantal blijven onbekend. Zulke regels worden alleen meegenomen wanneer de bijbehorende keuze **zonder datum meenemen** of **zonder leerlingaantal meenemen** aanstaat. Beide keuzes staan standaard aan, zodat het eerste overzicht en **Filters wissen** alle workshopregels tonen.
+
+## Schoolbesturen
+
+Het blok **Aanvragen per schoolbestuur** leest uitsluitend de bronkolom **`Bestuur`** uit de workshopbron. Er is **geen automatische koppeling** met een los scholenregister of het tabblad `Scholen en Credits`: de waarde moet bij de aanvraag in de ingelezen bron aanwezig zijn. Een ontbrekende of lege waarde wordt beschouwd als **data-inconsistentie** en in de grafiek en tabel onder **Overige** geteld. Het aantal aanvragen zonder ingevuld bestuur blijft als kwaliteitsmelding boven de grafiek zichtbaar. Alle workshopregels tellen precies één keer, dus twee aanvragen van dezelfde school onder hetzelfde bestuur blijven twee aanvragen.
+
+Schoolbestuurnamen worden uitsluitend samengevoegd als ze na negeren van hoofdletters, accenttekens en extra spaties gelijk zijn; verschillende juridische namen/afkortingen worden niet automatisch aan elkaar gekoppeld. De staafgrafiek toont maximaal acht benoemde besturen plus **Overige**, dat zowel de lege/ongeldige bestuurwaarden als eventuele besturen buiten de top acht omvat. De uitklapbare tabel toont *alle* benoemde categorieën en **Overige** (daar uitsluitend de lege/ongeldige of expliciet als Overige ingevulde bronwaarden). De som van de volledige tabel is het totale aantal aanvragen in de actieve selectie. Tech-hub-, schooljaar-, status- en overige dashboardfilters veranderen de aantallen direct. Dit is geen telling van unieke scholen of schoolbesturen en bevat ook nog niet uitgevoerde aanvragen. De lijst is via **Weergave → Schoolbesturen** afzonderlijk te verbergen.
+
+Een wijziging in de browserprojectie maakt oude snapshots ongeldig (schema `workshopkompas-v3`); na publicatie wordt de cache met de nieuwe kolom opnieuw opgebouwd.
 
 ## Donuts en gemeentekaart
 

@@ -5,7 +5,8 @@
  * wordt gecomprimeerd en over meerdere cache-items verdeeld, omdat Apps Script
  * per cache-item maximaal 100 KB accepteert.
  */
-const SNAPSHOT_CACHE_SCHEMA_ = 'workshopkompas-v2';
+// Nieuwe browserprojectie bevat het schoolbestuur: oudere snapshots missen dit veld.
+const SNAPSHOT_CACHE_SCHEMA_ = 'workshopkompas-v3';
 const SNAPSHOT_CACHE_PREFIX_ = 'dashboard-snapshot:' + SNAPSHOT_CACHE_SCHEMA_ + ':';
 const SNAPSHOT_CACHE_MANIFEST_KEY_ = SNAPSHOT_CACHE_PREFIX_ + 'manifest';
 const SNAPSHOT_CACHE_CHUNK_SIZE_ = 90000;
