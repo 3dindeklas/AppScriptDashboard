@@ -96,7 +96,7 @@ De kaart gebruikt dezelfde gefilterde regels. Een aanvraag met meerdere lesdagen
 
 Plaatsnamen, afkortingen en samengestelde regio’s worden niet automatisch geraden. Zulke regels blijven in het dashboard en in de gemeente-/regiostaafgrafiek staan, maar krijgen in de kaarttabel de status **Niet gekoppeld**. Het totaal van gekoppelde en niet-gekoppelde kaartregels blijft gelijk aan het aantal gefilterde aanvragen.
 
-Kleurintensiteit geeft het absolute aantal aanvragen aan, van lichtpaars (1) tot donkerpaars (het grootste aantal in de huidige selectie). Grijs betekent nul gekoppelde aanvragen binnen die selectie, niet dat de gemeente in werkelijkheid geen workshops heeft. De kleur is geen percentage van bevolking, scholen of oppervlakte. De aantallen en schaal worden opnieuw berekend na filteren. **Werkgebied** houdt dezelfde uitsnede voor alle geladen gegevens; daardoor verschuift de kaart niet bij iedere filterwijziging. Details bekijken verandert geen dashboardfilter.
+Kleurintensiteit geeft het absolute aantal aanvragen aan, van lichtpaars (1) tot donkerpaars (het grootste aantal in de huidige selectie). Grijs betekent nul gekoppelde aanvragen binnen die selectie, niet dat de gemeente in werkelijkheid geen workshops heeft. De kleur is geen percentage van bevolking, scholen of oppervlakte. De aantallen en schaal worden opnieuw berekend na filteren. **Werkgebied** zoomt naar de gemeenten in de actieve filterselectie. Bij geen gekoppelde gemeenten valt de uitsnede terug op het werkgebied van alle geladen gegevens; **Heel Nederland** houdt een landelijke uitsnede. Details bekijken verandert geen dashboardfilter.
 
 ## Getallen en bedragen
 
@@ -231,7 +231,9 @@ Alle onderstaande cijfers worden berekend over exact dezelfde workshopregels die
 | Aanvragen / school | aantal regels met een bekende school gedeeld door het aantal unieke bekende scholen |
 | Zonder leerlingaantal | aantal zichtbare regels waarvoor `students` onbekend is |
 
-Bij het eenduidig tellen van scholen worden hoofdletters, accenten en overtollige spaties genegeerd. De tech-hub en regio blijven onderdeel van de sleutel: dezelfde schoolnaam in een andere regio of tech-hub telt daarom als een andere school. Een lege school of `Onbekende school` telt niet mee als school en ook niet in de teller van **Aanvragen / school**.
+Voor de schoolgerelateerde cijfers wordt één gedeelde schoolidentiteit gebruikt over alle geladen bronnen en schooljaren: de genormaliseerde schoolnaam met de gemeente/regio. Hoofdletters, accenten, extra spaties en het voorvoegsel `Gemeente ` worden genegeerd; officiële gemeentenaam en GM-code worden als dezelfde gemeente herkend. Dezelfde school met een bekende gemeente telt daardoor één keer, ook als deze via meerdere tech-hubs of jaren voorkomt. Bij ontbrekende of onbekende gemeente blijft de tech-hub onderdeel van de sleutel om onterechte samenvoeging te vermijden. Een lege school of `Onbekende school` telt niet mee. De **Scholen**-KPI en de deler van **Aanvragen / school** gebruiken dezelfde schoolidentiteit; de vergelijking doet dit per geselecteerde bron.
+
+Alle aanvragen en lesmomenten blijven op workshopregelniveau tellen, ook wanneer meerdere aanvragen bij dezelfde school horen. Het dashboard verwijdert geen potentiële dubbele aanvraagregistraties: hiervoor ontbreekt een betrouwbare bronoverstijgende aanvraagidentiteit. Ook afwijkende schoolnamen (bijvoorbeeld `OBS De Ster` versus `De Ster`) worden niet automatisch gelijkgesteld. Een stabiele school-ID of goedgekeurde aliaslijst zou dat later kunnen oplossen.
 
 Een leerlingaantal van nul is een bekende waarde en telt mee in som en gemiddelde. Ontbrekende leerlingaantallen blijven onbekend, worden nooit als nul geïnterpreteerd en worden onder de KPI’s en per tech-hub apart gemeld. Gemiddelden worden met één decimaal getoond; als er geen geldige deler is, verschijnt `—`.
 
