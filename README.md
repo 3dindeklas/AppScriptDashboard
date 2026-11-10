@@ -25,7 +25,7 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - inclusief maandbereik op aanvraagdatum of één van de definitieve lesdagen en een bereik voor leerlingaantallen;
 - expliciete keuzes om regels zonder datum of leerlingaantal wel of niet mee te nemen;
 - zeven gefilterde kerncijfers en een vergelijking tussen de tech-hubs;
-- optionele registratie van geslaagde dashboardopeningen in een afgeschermd, verborgen `__stats`-tabblad (zie [Bezoekstatistieken](docs/STATS.md));
+- optionele registratie van toegangssessies (zonder dubbeltelling na browser-refresh) in een afgeschermd, verborgen `__stats`-tabblad (zie [Bezoekstatistieken](docs/STATS.md));
 - een standaard ingeklapt financieel overzicht met kosten, facturatie, marge en volledigheid, uitsluitend voor apart toegestane accounts;
 - een maandgrafiek voor aanvragen, leerlingdeelnames en lesmomenten per tech-hub;
 - verdelingen voor PO/VO, regio, workshop, aanbieder en statusgroep;
