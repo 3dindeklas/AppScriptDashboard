@@ -23,7 +23,7 @@ const APP_CONFIG = Object.freeze({
   // WORKSHOPKOMPAS_STATS_SPREADSHEET_ID (zie docs/STATS.md).
   usageStats: Object.freeze({
     enabled: true,
-    spreadsheetId: '', // Optioneel, alleen bij private configuratie gebruiken.
+    spreadsheetId: null, // Optioneel; gebruik bij voorkeur de private scripteigenschap.
     sheetName: '__stats',
     retentionDays: 180
   }),
