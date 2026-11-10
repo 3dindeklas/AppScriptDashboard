@@ -40,7 +40,7 @@ function harness(options = {}) {
   };
   const ctx = vm.createContext({
     Date,
-    console: { warn() {}, error() {} },
+    console: { warn() {}, error() {}, log() {} },
     PropertiesService: { getScriptProperties: () => ({
       getProperty: key => properties.get(key) || null,
       setProperty: (key, value) => properties.set(key, value),
@@ -48,6 +48,7 @@ function harness(options = {}) {
       getProperties: () => Object.fromEntries(properties)
     }) },
     authHash_: value => crypto.createHash('sha256').update(String(value)).digest('hex'),
+    normalizeEmail_: value => String(value || '').trim().toLowerCase(),
     SpreadsheetApp: { openById: id => {
       opens++;
       if (options.failOpen) throw new Error('Geen schrijfrechten op statsbestand');
