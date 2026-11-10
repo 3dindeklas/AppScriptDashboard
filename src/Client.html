@@ -953,16 +953,14 @@
         elements.providerChart, elements.providerTableRows, countBy(records, 'provider'), 8
       );
       const boards = countSchoolBoardRequests(records);
-      const missingBoards = boards.find(entry => entry[0] === 'Niet ingevuld');
-      const knownBoards = boards.length - (missingBoards ? 1 : 0);
-      const unassigned = missingBoards ? missingBoards[1] : 0;
+      const knownBoards = boards.entries.filter(entry => entry[0] !== 'Overige').length;
+      const unassigned = boards.missingCount;
       elements.schoolBoardsSummary.textContent = numberFormat.format(knownBoards) +
         (knownBoards === 1 ? ' schoolbestuur' : ' schoolbesturen') + ' · ' +
         numberFormat.format(unassigned) +
-        (unassigned === 1 ? ' aanvraag zonder schoolbestuur' : ' aanvragen zonder schoolbestuur');
-      renderCategoryChart(
-        elements.schoolBoardsChart, elements.schoolBoardsTableRows, boards, 8
-      );
+        (unassigned === 1 ? ' aanvraag zonder bestuur (data-inconsistentie)'
+          : ' aanvragen zonder bestuur (data-inconsistentie)');
+      renderSchoolBoardChart(boards.entries);
       renderCategoryChart(
         elements.poChart, elements.poTableRows, weightedGrades(records, 'PO'), 9, 'pie'
       );
@@ -1489,18 +1487,56 @@
 
     function countSchoolBoardRequests(records) {
       const counts = new Map();
+      let missingCount = 0;
       records.forEach(record => {
         const raw = String(record.schoolBoard || '').trim().replace(/\s+/g, ' ');
         const missing = !raw || /^(?:niet ingevuld|onbekend|n\/?a|-)$/i.test(raw);
-        const label = missing ? 'Niet ingevuld' : raw;
-        const key = missing ? '__missing__' : normalizedIdentity(label);
+        if (missing) missingCount += 1;
+        const label = missing || normalizedIdentity(raw) === 'overige' ? 'Overige' : raw;
+        const key = label === 'Overige' ? '__other__' : normalizedIdentity(label);
         if (!counts.has(key)) counts.set(key, { label, count: 0 });
         counts.get(key).count += 1;
       });
-      return [...counts.values()].map(entry => [entry.label, entry.count])
-        .sort((a, b) => b[1] - a[1] ||
-          (a[0] === 'Niet ingevuld' ? 1 : b[0] === 'Niet ingevuld' ? -1 : 0) ||
-          a[0].localeCompare(b[0], 'nl'));
+      const entries = [...counts.values()].map(entry => [entry.label, entry.count])
+        .sort((a, b) => (a[0] === 'Overige' ? 1 : b[0] === 'Overige' ? -1 : 0) ||
+          b[1] - a[1] || a[0].localeCompare(b[0], 'nl'));
+      return { entries, missingCount };
+    }
+
+    // Grafiek: acht benoemde besturen plus één categorie Overige. Die bevat
+    // ontbrekende bronwaarden én besturen buiten de top acht. De tabel
+    // behoudt alle afzonderlijke benamingen en de originele Overige-telling.
+    function renderSchoolBoardChart(entries) {
+      const named = entries.filter(entry => entry[0] !== 'Overige');
+      const other = entries.find(entry => entry[0] === 'Overige');
+      const beyondTopEight = named.slice(8);
+      const chartEntries = named.slice(0, 8);
+      const otherCount = (other ? other[1] : 0) +
+        beyondTopEight.reduce((total, entry) => total + entry[1], 0);
+      if (otherCount) chartEntries.push(['Overige', otherCount]);
+      renderBars(elements.schoolBoardsChart, chartEntries, chartEntries.length);
+
+      elements.schoolBoardsTableRows.replaceChildren();
+      if (!entries.length) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 2;
+        cell.className = 'empty';
+        cell.textContent = 'Geen gegevens binnen deze filters.';
+        row.appendChild(cell);
+        elements.schoolBoardsTableRows.appendChild(row);
+        return;
+      }
+      entries.forEach(entry => {
+        const row = document.createElement('tr');
+        const name = document.createElement('th');
+        name.setAttribute('scope', 'row');
+        name.textContent = entry[0];
+        const count = document.createElement('td');
+        count.textContent = formatChartNumber(entry[1]);
+        row.append(name, count);
+        elements.schoolBoardsTableRows.appendChild(row);
+      });
     }
 
     function countBy(records, field) {
