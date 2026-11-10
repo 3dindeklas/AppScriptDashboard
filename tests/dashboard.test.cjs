@@ -652,7 +652,7 @@ test('aanvragen per schoolbestuur tellen per bronregel, groeperen schrijfvariant
   elements.sourceFilter.trigger('change');
   assert.deepEqual(rows(), [['Niet ingevuld', '1'], ['stichting hórizon', '1']]);
   assert.equal(elements.schoolBoardsSummary.textContent,
-    '1 schoolbestuur · 1 aanvragen zonder schoolbestuur');
+    '1 schoolbestuur · 1 aanvraag zonder schoolbestuur');
   elements.schoolYearFilter.value = '2025–2026';
   elements.schoolYearFilter.trigger('change');
   assert.equal(elements.schoolBoardsChart.children[0].textContent, 'Geen gegevens binnen deze filters.');
