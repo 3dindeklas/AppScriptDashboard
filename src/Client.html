@@ -1498,7 +1498,9 @@
         counts.get(key).count += 1;
       });
       return [...counts.values()].map(entry => [entry.label, entry.count])
-        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'nl'));
+        .sort((a, b) => b[1] - a[1] ||
+          (a[0] === 'Niet ingevuld' ? 1 : b[0] === 'Niet ingevuld' ? -1 : 0) ||
+          a[0].localeCompare(b[0], 'nl'));
     }
 
     function countBy(records, field) {
