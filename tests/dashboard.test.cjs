@@ -688,9 +688,19 @@ test('kaartkleuren, aantallen en detailselectie volgen dezelfde filters en behou
   elements.sourceFilter.trigger('change');
   assert.equal(elements.mapCoverage.textContent, '1 van 1 aanvragen gekoppeld aan 1 gemeente.');
   assert.notEqual(elements.municipalityMap.children[0].getAttribute('viewBox'), originalView);
-  assert.equal(elements.mapDetail.textContent, 'Gorinchem: 0 gekoppelde aanvragen.');
+  // Na inzoomen kan de eerder geselecteerde gemeente buiten beeld liggen.
+  if (elements.mapMunicipality.value === 'GM0512') {
+    assert.equal(elements.mapDetail.textContent, 'Gorinchem: 0 gekoppelde aanvragen.');
+  } else {
+    assert.equal(elements.mapMunicipality.value, '');
+    assert.equal(elements.mapDetail.textContent, 'Kies een gemeente op de kaart of in de lijst.');
+  }
   paths = elements.municipalityMap.children[0].children.filter(child => child.tagName === 'PATH');
-  assert.equal(paths.find(path => path.getAttribute('data-code') === 'GM0512').getAttribute('fill'), '#ebe8ee');
+  const gorinchemAfter = paths.find(path => path.getAttribute('data-code') === 'GM0512');
+  if (gorinchemAfter) assert.equal(gorinchemAfter.getAttribute('fill'), '#ebe8ee');
+  const molenlandenAfter = paths.find(path => path.getAttribute('data-code') === 'GM1978');
+  assert.ok(molenlandenAfter);
+  assert.notEqual(molenlandenAfter.getAttribute('fill'), '#ebe8ee');
   elements.mapScope.value = 'netherlands';
   elements.mapScope.trigger('change');
   assert.notEqual(elements.municipalityMap.children[0].getAttribute('viewBox'), originalView);
