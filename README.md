@@ -28,7 +28,7 @@ De server normaliseert de volledige analysekolomstructuur naar één intern work
 - optionele registratie van toegangssessies (zonder dubbeltelling na browser-refresh) in een afgeschermd, verborgen `__stats`-tabblad (zie [Bezoekstatistieken](docs/STATS.md));
 - een standaard ingeklapt financieel overzicht met kosten, facturatie, marge en volledigheid, uitsluitend voor apart toegestane accounts;
 - een maandgrafiek voor aanvragen, leerlingdeelnames en lesmomenten per tech-hub;
-- verdelingen voor PO/VO, regio, workshop, aanbieder en statusgroep;
+- verdelingen voor PO/VO, regio, workshop, aanbieder, **schoolbestuur** en statusgroep;
 - gewogen PO- en VO-leerjaren, inclusief combinatiegroepen en onbekende waarden;
 - twee leerjaartaarten met gewogen aantallen en percentages, in één PO/VO-blok;
 - donuts met aantallen en percentages voor PO/VO en statusgroepen;
