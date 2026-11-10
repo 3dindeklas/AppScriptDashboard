@@ -115,3 +115,59 @@ function pruneUsageStats_(sheet, settings) {
   });
   properties.setProperty(USAGE_STATS_CLEANUP_PROPERTY_, today);
 }
+
+/**
+ * Uitvoeren vanuit de Apps Script-editor van de deployment die de gast gebruikt.
+ * Toont uitsluitend veilige controlecodes, geen spreadsheet-ID's of gebruikersdata.
+ * Schrijft of wijzigt geen statistieken.
+ */
+function checkUsageStatsSetup() {
+  const caller = activeUserEmail_();
+  const administrators = (APP_CONFIG.allowedEmails || []).map(normalizeEmail_);
+  if (!caller || caller !== effectiveUserEmail_() || administrators.indexOf(caller) === -1) {
+    throw new Error('Voer checkUsageStatsSetup uit als toegestane beheerder in de Apps Script-editor.');
+  }
+
+  const settings = usageStatsSettings_();
+  const result = { ok: false, code: '', action: '', sheetFound: false };
+  if (!settings.enabled) {
+    result.code = 'STATS_DISABLED';
+    result.action = 'Zet usageStats.enabled op true in de Config.gs van deze deployment.';
+  } else if (!settings.spreadsheetId) {
+    result.code = 'STATS_SPREADSHEET_NOT_CONFIGURED';
+    result.action = 'Zet WORKSHOPKOMPAS_STATS_SPREADSHEET_ID in de Script Properties van DIT Apps Script-project.';
+  } else {
+    try {
+      const book = SpreadsheetApp.openById(settings.spreadsheetId);
+      const sheet = book.getSheetByName(settings.sheetName);
+      result.sheetFound = Boolean(sheet);
+      if (sheet && sheet.getLastRow() > 0) {
+        const actual = sheet.getRange(1, 1, 1, USAGE_STATS_HEADERS_.length).getValues()[0];
+        if (USAGE_STATS_HEADERS_.some(function(header, index) { return actual[index] !== header; })) {
+          result.code = 'STATS_HEADERS_MISMATCH';
+          result.action = 'Controleer de kopregel van __stats; deze wordt bewust niet overschreven.';
+        }
+      }
+      if (!result.code) {
+        // Drive-API v3 kan schrijfrecht controleren zonder het bestand te wijzigen.
+        if (typeof Drive !== 'undefined' && Drive.Files && Drive.Files.get) {
+          const file = Drive.Files.get(settings.spreadsheetId, { fields: 'capabilities(canEdit)' });
+          if (file.capabilities && file.capabilities.canEdit === false) {
+            result.code = 'STATS_NOT_WRITABLE';
+            result.action = 'Geef het uitvoerende account bewerkrechten op het statistiekenspreadsheet.';
+          }
+        }
+        if (!result.code) {
+          result.ok = true;
+          result.code = 'STATS_CONFIGURED';
+          result.action = 'Open een nieuwe e-mailcodesessie via de bijgewerkte gastdeployment en controleer __stats.';
+        }
+      }
+    } catch (error) {
+      result.code = 'STATS_SPREADSHEET_UNAVAILABLE';
+      result.action = 'Controleer het spreadsheet-ID, de Google-autorisatie en bewerkrechten van de gastdeployment.';
+    }
+  }
+  console.log('[STATS_CHECK] ' + result.code + ' · ' + result.action);
+  return result;
+}
