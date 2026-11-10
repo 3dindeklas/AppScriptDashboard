@@ -13,7 +13,7 @@ Alle Google Sheets-rijen worden eerst server-side omgezet naar één intern work
 | `scheduledDates` | `Definitieve datum` | alle unieke geldige lesdagen, chronologisch gesorteerd |
 | `schoolYear` | afgeleid | schooljaar van de eerste definitieve lesdag, anders aanvraagdatum |
 | `school` | `Schoolnaam` | intern voorbereid voor latere filtering |
-| `schoolBoard` | `Schoolbestuur`, `School bestuur`, `Schoolbestuur / stichting` of `Bestuur` | optionele tekst, ontbreekt als lege waarde |
+| `schoolBoard` | `Bestuur` | optionele tekst; lege waarden blijven leeg voor datakwaliteitscontrole |
 | `schoolKey` | afgeleid | genormaliseerde schoolnaam plus regio |
 | `region` | `Gemeente / Regio` | lege waarde wordt `Onbekend` |
 | `workshop` | `Workshopnaam` | lege waarde wordt `Onbekende workshop` |
@@ -54,7 +54,7 @@ Contactpersoon, e-mailadres, telefoon, notities, debuggegevens en e-mail-/kalend
 | `scheduledDates` | kopie van alle geldige definitieve lesdagen, anders lege lijst |
 | `schoolYear` | `schoolYear`, anders `Onbekend` |
 | `school` | `school`, anders `Onbekende school` |
-| `schoolBoard` | `schoolBoard`, anders `Niet ingevuld` |
+| `schoolBoard` | `schoolBoard` of lege tekst |
 | `workshop` | `workshop` |
 | `provider` | `provider` |
 | `region` | `region` |
@@ -92,9 +92,9 @@ Een lege of ongeldige datum en een leeg of ongeldig leerlingaantal blijven onbek
 
 ## Schoolbesturen
 
-Het blok **Aanvragen per schoolbestuur** leest de optionele kolom `Schoolbestuur` uit de workshopbron (ook de schrijfwijzen `School bestuur`, `Schoolbestuur / stichting` en `Bestuur` worden ondersteund). Er is **geen automatische koppeling** met een los scholenregister of het tabblad `Scholen en Credits`: de waarde moet bij de aanvraag in de ingelezen bron aanwezig zijn. Anders staat de aanvraag onder **Niet ingevuld**. Alle workshopregels tellen precies één keer, dus twee aanvragen van dezelfde school onder hetzelfde bestuur blijven twee aanvragen.
+Het blok **Aanvragen per schoolbestuur** leest uitsluitend de bronkolom **`Bestuur`** uit de workshopbron. Er is **geen automatische koppeling** met een los scholenregister of het tabblad `Scholen en Credits`: de waarde moet bij de aanvraag in de ingelezen bron aanwezig zijn. Een ontbrekende of lege waarde wordt beschouwd als **data-inconsistentie** en in de grafiek en tabel onder **Overige** geteld. Het aantal aanvragen zonder ingevuld bestuur blijft als kwaliteitsmelding boven de grafiek zichtbaar. Alle workshopregels tellen precies één keer, dus twee aanvragen van dezelfde school onder hetzelfde bestuur blijven twee aanvragen.
 
-Schoolbestuurnamen worden uitsluitend samengevoegd als ze na negeren van hoofdletters, accenttekens en extra spaties gelijk zijn; verschillende juridische namen/afkortingen worden niet automatisch aan elkaar gekoppeld. De staafgrafiek toont maximaal acht categorieën en groepeert de rest in **Overige**. De uitklapbare tabel toont *alle* categorieën, inclusief `Niet ingevuld`, en de som daarvan is het totale aantal aanvragen in de actieve selectie. Tech-hub-, schooljaar-, status- en overige dashboardfilters veranderen de aantallen direct. Dit is geen telling van unieke scholen of schoolbesturen en bevat ook nog niet uitgevoerde aanvragen. De lijst is via **Weergave → Schoolbesturen** afzonderlijk te verbergen.
+Schoolbestuurnamen worden uitsluitend samengevoegd als ze na negeren van hoofdletters, accenttekens en extra spaties gelijk zijn; verschillende juridische namen/afkortingen worden niet automatisch aan elkaar gekoppeld. De staafgrafiek toont maximaal acht benoemde besturen plus **Overige**, dat zowel de lege/ongeldige bestuurwaarden als eventuele besturen buiten de top acht omvat. De uitklapbare tabel toont *alle* benoemde categorieën en **Overige** (daar uitsluitend de lege/ongeldige of expliciet als Overige ingevulde bronwaarden). De som van de volledige tabel is het totale aantal aanvragen in de actieve selectie. Tech-hub-, schooljaar-, status- en overige dashboardfilters veranderen de aantallen direct. Dit is geen telling van unieke scholen of schoolbesturen en bevat ook nog niet uitgevoerde aanvragen. De lijst is via **Weergave → Schoolbesturen** afzonderlijk te verbergen.
 
 Een wijziging in de browserprojectie maakt oude snapshots ongeldig (schema `workshopkompas-v3`); na publicatie wordt de cache met de nieuwe kolom opnieuw opgebouwd.
 
