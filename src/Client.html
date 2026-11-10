@@ -144,6 +144,9 @@
       workshopTableRows: document.getElementById('workshopTableRows'),
       providerChart: document.getElementById('providerChart'),
       providerTableRows: document.getElementById('providerTableRows'),
+      schoolBoardsChart: document.getElementById('schoolBoardsChart'),
+      schoolBoardsSummary: document.getElementById('schoolBoardsSummary'),
+      schoolBoardsTableRows: document.getElementById('schoolBoardsTableRows'),
       poChart: document.getElementById('poChart'),
       poTableRows: document.getElementById('poTableRows'),
       voChart: document.getElementById('voChart'),
@@ -166,7 +169,8 @@
       ['viewKpis', 'metricsPanel'], ['viewTimeline', 'timelinePanel'],
       ['viewGeography', 'geographyPanel'], ['viewSector', 'sectorPanel'],
       ['viewStatus', 'statusPanel'], ['viewWorkshops', 'workshopsPanel'],
-      ['viewProviders', 'providersPanel'], ['viewGrades', 'gradesPanel'],
+      ['viewProviders', 'providersPanel'], ['viewSchoolBoards', 'schoolBoardsPanel'],
+      ['viewGrades', 'gradesPanel'],
       ['viewRecent', 'recentPanel'], ['viewComparison', 'comparisonPanel'],
       ['viewFinancial', 'financialOverview']
     ].map(pair => ({ control: document.getElementById(pair[0]), panel: document.getElementById(pair[1]),
@@ -445,7 +449,7 @@
         item.panel.hidden = !item.control.checked || (item.financial && !state.canViewFinancials);
       });
       const chartIds = ['timelinePanel', 'geographyPanel', 'sectorPanel', 'statusPanel',
-        'workshopsPanel', 'providersPanel', 'gradesPanel'];
+        'workshopsPanel', 'providersPanel', 'schoolBoardsPanel', 'gradesPanel'];
       elements.analyticsSection.hidden = chartIds.every(id => document.getElementById(id).hidden);
       elements.emptyView.hidden = viewPanels.some(item => !item.panel.hidden);
     }
@@ -947,6 +951,16 @@
       );
       renderCategoryChart(
         elements.providerChart, elements.providerTableRows, countBy(records, 'provider'), 8
+      );
+      const boards = countSchoolBoardRequests(records);
+      const missingBoards = boards.find(entry => entry[0] === 'Niet ingevuld');
+      const knownBoards = boards.length - (missingBoards ? 1 : 0);
+      elements.schoolBoardsSummary.textContent = numberFormat.format(knownBoards) +
+        (knownBoards === 1 ? ' schoolbestuur' : ' schoolbesturen') + ' · ' +
+        numberFormat.format(missingBoards ? missingBoards[1] : 0) +
+        ' aanvragen zonder schoolbestuur';
+      renderCategoryChart(
+        elements.schoolBoardsChart, elements.schoolBoardsTableRows, boards, 8
       );
       renderCategoryChart(
         elements.poChart, elements.poTableRows, weightedGrades(records, 'PO'), 9, 'pie'
@@ -1470,6 +1484,20 @@
 
     function formatChartNumber(value) {
       return chartNumberFormat.format(Math.abs(value) < 0.0000001 ? 0 : value);
+    }
+
+    function countSchoolBoardRequests(records) {
+      const counts = new Map();
+      records.forEach(record => {
+        const raw = String(record.schoolBoard || '').trim().replace(/\s+/g, ' ');
+        const missing = !raw || /^(?:niet ingevuld|onbekend|n\/?a|-)$/i.test(raw);
+        const label = missing ? 'Niet ingevuld' : raw;
+        const key = missing ? '__missing__' : normalizedIdentity(label);
+        if (!counts.has(key)) counts.set(key, { label, count: 0 });
+        counts.get(key).count += 1;
+      });
+      return [...counts.values()].map(entry => [entry.label, entry.count])
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'nl'));
     }
 
     function countBy(records, field) {
