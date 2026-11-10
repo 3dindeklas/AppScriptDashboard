@@ -411,7 +411,7 @@ test('tech-hubsvergelijking gebruikt een toegankelijke tabel met alle stap-6-cij
   assert.match(index, /<table class="comparison-table">/);
   assert.match(index, /<caption class="visually-hidden">Vergelijking van de actieve kerncijfers per tech-hub<\/caption>/);
   for (const heading of [
-    'Tech-hub', 'Aanvragen', 'Leerlingdeelnames', 'Unieke scholen bezocht', 'Lesmomenten',
+    'Tech-hub', 'Aanvragen', 'Leerlingdeelnames', 'Scholen', 'Lesmomenten',
     'Uitgevoerd', 'Gem. leerlingen', 'Aanvragen / school', 'Zonder leerlingaantal'
   ]) {
     assert.match(index, new RegExp('<th scope="col">' + heading.replace('/', '\\/') + '<\\/th>'));
@@ -774,10 +774,10 @@ test('testgegevens leveren de gedocumenteerde stap-6-kerncijfers op', () => {
   ]));
 
   assert.deepEqual(kpis, {
-    'Totaal (school) aanvragen': '10',
+    'Aanvragen / workshops': '10',
     'Leerlingdeelnames': '204',
-        'Unieke scholen bezocht': '4',
-        'Lesmomenten': '22',
+    'Scholen': '10',
+    'Lesmomenten': '22',
     'Uitgevoerd': '4',
     'Gem. leerlingen / aanvraag': '22,7',
     'Aanvragen / school': '1,0'
@@ -785,8 +785,8 @@ test('testgegevens leveren de gedocumenteerde stap-6-kerncijfers op', () => {
   assert.deepEqual(elements.comparisonRows.children.map(row =>
     row.children.map(cell => cell.textContent)
   ), [
-    ['Tech-hub A', '5', '105', '2', '11', '2', '21,0', '1,0', '0'],
-    ['Tech-hub B', '5', '99', '2', '11', '2', '24,8', '1,0', '1']
+    ['Tech-hub A', '5', '105', '5', '11', '2', '21,0', '1,0', '0'],
+    ['Tech-hub B', '5', '99', '5', '11', '2', '24,8', '1,0', '1']
   ]);
 });
 
@@ -1455,13 +1455,13 @@ test('stap-6-kerncijfers en tech-hubvergelijking gebruiken exact dezelfde filter
   );
 
   assert.deepEqual(kpis(), {
-    'Totaal (school) aanvragen': '5',
+    'Aanvragen / workshops': '5',
     'Leerlingdeelnames': '60',
-        'Unieke scholen bezocht': '2',
-        'Lesmomenten': '7',
+    'Scholen': '2',
+    'Lesmomenten': '7',
     'Uitgevoerd': '3',
     'Gem. leerlingen / aanvraag': '15,0',
-    'Aanvragen / school': '2,0'
+    'Aanvragen / school': '1,3'
   });
   assert.equal(
     elements.kpiQualityNote.textContent,
@@ -1474,7 +1474,7 @@ test('stap-6-kerncijfers en tech-hubvergelijking gebruiken exact dezelfde filter
 
   elements.sourceFilter.value = 'Tech-hub B';
   elements.sourceFilter.trigger('change');
-  assert.equal(kpis()['Totaal (school) aanvragen'], '2');
+  assert.equal(kpis()['Aanvragen / workshops'], '2');
   assert.equal(kpis()['Leerlingdeelnames'], '10');
   assert.equal(kpis()['Gem. leerlingen / aanvraag'], '5,0');
   assert.equal(elements.comparisonSummary.textContent, '2 zichtbare aanvragen');
@@ -1484,70 +1484,45 @@ test('stap-6-kerncijfers en tech-hubvergelijking gebruiken exact dezelfde filter
   ]);
 });
 
-test('schoolbereik ontdubbelt over schooljaren en hubs, terwijl bezoek alleen uitgevoerd telt', () => {
+test('kerncijfer Scholen ontdubbelt over hubs en jaren zonder andere cijfers te wijzigen', () => {
   const records = [
-    { source: 'Hub A', region: 'Vijfheerenlanden', school: 'OBS De Ster',
-      schoolYear: '2025–2026', statusGroup: 'Uitgevoerd', requestedDate: '2026-04-01',
-      scheduledDate: '2026-04-10', students: 20, sessions: 1 },
-    { source: 'Hub B', region: ' Gemeente Vijfheerenlanden ', school: ' obs de stér ',
-      schoolYear: '2026–2027', statusGroup: 'Open', requestedDate: '2026-09-01',
-      scheduledDate: '2026-09-10', students: 25, sessions: 1 },
-    { source: 'Hub A', region: 'Molenlanden', school: 'OBS De Ster',
-      schoolYear: '2026–2027', statusGroup: 'Geannuleerd', requestedDate: '2026-09-02',
-      scheduledDate: '2026-09-12', students: 15, sessions: 1 },
+    { source: 'Hub A', region: 'Vijfheerenlanden', school: 'De Horizon',
+      schoolYear: '2025–2026', statusGroup: 'Uitgevoerd', scheduledDate: '2026-04-10',
+      students: 20, sessions: 1 },
+    { source: 'Hub B', region: ' Gemeente Vijfheerenlanden ', school: ' de hórizon ',
+      schoolYear: '2026–2027', statusGroup: 'Open', scheduledDate: '2026-09-10',
+      students: 15, sessions: 1 },
+    { source: 'Hub A', region: 'Gorinchem', school: 'De Horizon',
+      schoolYear: '2026–2027', statusGroup: 'Geannuleerd', scheduledDate: '2026-10-10',
+      students: 10, sessions: 1 },
     { source: 'Hub A', region: 'Onbekend', school: 'De Vrije School',
-      schoolYear: '2026–2027', statusGroup: 'Open', requestedDate: '2026-09-03',
-      scheduledDate: '2026-09-13', students: 10, sessions: 1 },
+      schoolYear: '2026–2027', statusGroup: 'Open', scheduledDate: '2026-10-11',
+      students: 5, sessions: 1 },
     { source: 'Hub B', region: 'Onbekend', school: 'De Vrije School',
-      schoolYear: '2026–2027', statusGroup: 'Open', requestedDate: '2026-09-04',
-      scheduledDate: '2026-09-14', students: 10, sessions: 1 },
-    { source: 'Hub A', region: 'Vijfheerenlanden', school: 'Onbekende school',
-      schoolYear: '2026–2027', statusGroup: 'Uitgevoerd', requestedDate: '2026-09-05',
-      scheduledDate: '2026-09-15', students: 10, sessions: 1 }
+      schoolYear: '2026–2027', statusGroup: 'Open', scheduledDate: '2026-10-12',
+      students: 5, sessions: 1 }
   ];
   const elements = clientHarness(records);
-  const kpis = () => Object.fromEntries(elements.kpis.children.map(card => [
-    card.children[0].textContent, card.children[1].textContent
-  ]));
-  assert.equal(kpis()['Totaal (school) aanvragen'], '6');
-  assert.equal(kpis()['Unieke scholen bezocht'], '1');
-  assert.equal(kpis()['Aanvragen / school'], '1,3');
+  const kpis = () => Object.fromEntries(elements.kpis.children.map(card =>
+    [card.children[0].textContent, card.children[1].textContent]
+  ));
+
+  assert.equal(kpis()['Scholen'], '4');
+  assert.equal(kpis()['Aanvragen / workshops'], '5');
+  assert.equal(kpis()['Leerlingdeelnames'], '55');
+  assert.equal(kpis()['Uitgevoerd'], '1');
+  // Dit bestaande gemiddelde blijft bewust de oorspronkelijke berekening gebruiken.
+  assert.equal(kpis()['Aanvragen / school'], '1,0');
 
   elements.schoolYearFilter.value = '2026–2027';
   elements.schoolYearFilter.trigger('change');
-  assert.equal(kpis()['Unieke scholen bezocht'], '0');
-  assert.equal(kpis()['Totaal (school) aanvragen'], '5');
+  assert.equal(kpis()['Scholen'], '4');
+  assert.equal(kpis()['Aanvragen / workshops'], '4');
 
   elements.sourceFilter.value = 'Hub B';
   elements.sourceFilter.trigger('change');
-  assert.equal(kpis()['Totaal (school) aanvragen'], '2');
-  assert.equal(kpis()['Unieke scholen bezocht'], '0');
-});
-
-test('één bezochte school bij meerdere hubs en jaren telt eenmaal', () => {
-  const records = [
-    { source: 'Hub A', region: 'Vijfheerenlanden', school: 'De Horizon',
-      schoolYear: '2025–2026', statusGroup: 'Uitgevoerd',
-      scheduledDate: '2026-04-10', students: 20, sessions: 1 },
-    { source: 'Hub B', region: 'Gemeente Vijfheerenlanden', school: '  DE HORIZON  ',
-      schoolYear: '2026–2027', statusGroup: 'Uitgevoerd',
-      scheduledDate: '2026-09-10', students: 20, sessions: 1 },
-    { source: 'Hub A', region: 'Gorinchem', school: 'De Horizon',
-      schoolYear: '2026–2027', statusGroup: 'Uitgevoerd',
-      scheduledDate: '2026-10-10', students: 25, sessions: 1 }
-  ];
-  const elements = clientHarness(records);
-  const kpis = () => Object.fromEntries(elements.kpis.children.map(card => [
-    card.children[0].textContent, card.children[1].textContent
-  ]));
-  assert.equal(kpis()['Totaal (school) aanvragen'], '3');
-  assert.equal(kpis()['Unieke scholen bezocht'], '2');
-  assert.equal(kpis()['Aanvragen / school'], '1,5');
-
-  elements.schoolYearFilter.value = '2026–2027';
-  elements.schoolYearFilter.trigger('change');
-  assert.equal(kpis()['Totaal (school) aanvragen'], '2');
-  assert.equal(kpis()['Unieke scholen bezocht'], '2');
+  assert.equal(kpis()['Scholen'], '2');
+  assert.equal(kpis()['Aanvragen / workshops'], '2');
 });
 
 test('Google Sheet wordt vanaf de ingestelde kopregel gelezen', () => {
