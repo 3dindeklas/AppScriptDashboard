@@ -955,10 +955,11 @@
       const boards = countSchoolBoardRequests(records);
       const missingBoards = boards.find(entry => entry[0] === 'Niet ingevuld');
       const knownBoards = boards.length - (missingBoards ? 1 : 0);
+      const unassigned = missingBoards ? missingBoards[1] : 0;
       elements.schoolBoardsSummary.textContent = numberFormat.format(knownBoards) +
         (knownBoards === 1 ? ' schoolbestuur' : ' schoolbesturen') + ' · ' +
-        numberFormat.format(missingBoards ? missingBoards[1] : 0) +
-        ' aanvragen zonder schoolbestuur';
+        numberFormat.format(unassigned) +
+        (unassigned === 1 ? ' aanvraag zonder schoolbestuur' : ' aanvragen zonder schoolbestuur');
       renderCategoryChart(
         elements.schoolBoardsChart, elements.schoolBoardsTableRows, boards, 8
       );
