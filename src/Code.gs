@@ -67,6 +67,7 @@ function dashboardDataResponse_(forceRefresh, accessToken, visitId) {
 
     const response = {
       mode: 'live',
+      usageStatsEnabled: typeof usageStatsAvailable_ === 'function' && usageStatsAvailable_(),
       generatedAt: snapshot.updatedAt,
       complete: snapshot.complete,
       snapshot: {
@@ -100,6 +101,13 @@ function dashboardDataResponse_(forceRefresh, accessToken, visitId) {
       : 'Dashboardgegevens konden niet worden geladen.';
     throw new Error(message + ' Foutcode: ' + code + '. Referentie: ' + reference + '.');
   }
+}
+
+/** De server bepaalt de gebruiker; er gaan geen filterwaarden naar statistieken. */
+function trackDashboardFilterChange(accessToken) {
+  const email = requireAccess_(accessToken);
+  if (typeof recordFilterChange_ !== 'function') return false;
+  return recordFilterChange_(email, Boolean(accessToken));
 }
 
 function assertDashboardResult_(result) {
@@ -162,7 +170,15 @@ function dashboardPage_(accessToken) {
 
 function getDashboardPage(accessToken) {
   const session = emailSession_(accessToken);
-  return { html: dashboardPage_(accessToken).getContent(), expiresInMs: session.expiresAt - Date.now() };
+  const html = dashboardPage_(accessToken).getContent();
+
+  // Een e-mailcodegebruiker kan de dashboardpagina bereiken zonder dat de
+  // eerste data-aanvraag succesvol wordt afgerond. Registreer daarom hier al
+  // de geldige gast-sessie; getDashboardData gebruikt dezelfde sleutel en
+  // kan dit bezoek niet nogmaals opslaan (ook niet na browser-refresh).
+  try { recordDashboardVisit_(session.email, true, authHash_(accessToken)); } catch (ignored) {}
+
+  return { html: html, expiresInMs: session.expiresAt - Date.now() };
 }
 
 function openGoogleDashboard() {

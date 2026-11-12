@@ -246,6 +246,7 @@ function clientHarness(records, options = {}) {
   let successHandler;
   let failureHandler;
   let requestedMethod = '';
+  const filterEvents = [];
   const runner = {
     withSuccessHandler(handler) {
       successHandler = handler;
@@ -256,7 +257,8 @@ function clientHarness(records, options = {}) {
       return this;
     },
     getDashboardData() { requestedMethod = 'getDashboardData'; },
-    refreshDashboardData() { requestedMethod = 'refreshDashboardData'; }
+    refreshDashboardData() { requestedMethod = 'refreshDashboardData'; },
+    trackDashboardFilterChange(...args) { filterEvents.push(args); }
   };
   let printCount = 0;
   const window = { print: () => { printCount += 1; } };
@@ -278,6 +280,7 @@ function clientHarness(records, options = {}) {
   });
   if (!options.deferLoad) successHandler({
     mode: 'live', generatedAt: '2026-10-17T00:00:00.000Z', complete: true,
+    usageStatsEnabled: options.usageStatsEnabled === true,
     permissions: { canViewFinancials: options.canViewFinancials !== false },
     sources: [], records
   });
@@ -295,6 +298,7 @@ function clientHarness(records, options = {}) {
   elements.__resolveLoad = payload => successHandler(payload);
   elements.__rejectLoad = error => failureHandler(error);
   elements.__requestedMethod = () => requestedMethod;
+  elements.__filterEvents = filterEvents;
   return elements;
 }
 
@@ -2133,4 +2137,36 @@ test('snapshotdiagnose leest geen Sheets en vereist beheerdersrechten', () => {
   assert.equal(ctx.checkDashboardSnapshot().compression, true);
   ctx.Session = session('outsider@example.nl');
   assert.throws(() => ctx.checkDashboardSnapshot(), /Geen toegang/);
+});
+
+
+test('gebruikstellers tellen alleen bevestigde wijzigingen van dashboardfilters', () => {
+  const records = [
+    { source: 'Hub A', schoolYear: '2026–2027', scheduledDate: '2026-10-10', students: 12 },
+    { source: 'Hub B', schoolYear: '2026–2027', scheduledDate: '2026-11-10', students: 24 }
+  ];
+  const ui = clientHarness(records, { usageStatsEnabled: true });
+  assert.equal(ui.__filterEvents.length, 0);
+  ui.sourceFilter.value = 'Hub A';
+  ui.sourceFilter.trigger('change');
+  ui.sourceFilter.trigger('change');
+  assert.equal(ui.__filterEvents.length, 1);
+  ui.studentsFromRange.value = '14';
+  ui.studentsFromRange.trigger('input');
+  ui.studentsFromRange.value = '16';
+  ui.studentsFromRange.trigger('input');
+  assert.equal(ui.__filterEvents.length, 1);
+  ui.studentsFromRange.trigger('change');
+  assert.equal(ui.__filterEvents.length, 2);
+  ui.resetButton.trigger('click');
+  ui.resetButton.trigger('click');
+  assert.equal(ui.__filterEvents.length, 3);
+  ui.refreshButton.trigger('click');
+  assert.equal(ui.__filterEvents.length, 3);
+  assert.deepEqual(ui.__filterEvents, [[''], [''], ['']]);
+
+  const disabled = clientHarness(records);
+  disabled.sourceFilter.value = 'Hub A';
+  disabled.sourceFilter.trigger('change');
+  assert.equal(disabled.__filterEvents.length, 0);
 });
