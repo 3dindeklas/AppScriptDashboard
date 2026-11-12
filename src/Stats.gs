@@ -5,7 +5,7 @@
  */
 const USAGE_STATS_HEADERS_ = Object.freeze([
   'Tijdstip', 'Gebruiker (e-mailadres)', 'Toegang', 'Gebeurtenis',
-  'Dag', 'Bezoeken', 'Filterwijzigingen'
+  'Dag', 'Bezoeken', 'Filterwijzigingen', 'Laatste activiteit'
 ]);
 const USAGE_STATS_ID_PROPERTY_ = 'WORKSHOPKOMPAS_STATS_SPREADSHEET_ID';
 const USAGE_STATS_CLEANUP_PROPERTY_ = 'WORKSHOPKOMPAS_STATS_LAST_CLEANUP';
@@ -34,6 +34,8 @@ function usageStatsHeadersState_(sheet) {
   if (!sheet || sheet.getLastRow() === 0) return 'empty';
   const row = sheet.getRange(1, 1, 1, USAGE_STATS_HEADERS_.length).getValues()[0];
   if (USAGE_STATS_HEADERS_.every(function(header, i) { return row[i] === header; })) return 'current';
+  if (sheet.getLastColumn() === 7 &&
+      USAGE_STATS_HEADERS_.slice(0, 7).every(function(header, i) { return row[i] === header; })) return 'daily';
   if (sheet.getLastColumn() === 4 &&
       USAGE_STATS_HEADERS_.slice(0, 4).every(function(header, i) { return row[i] === header; })) return 'legacy';
   return 'invalid';
@@ -82,7 +84,8 @@ function recordUsageStats_(email, isEmailCode, visitId) {
       const headers = usageStatsHeadersState_(sheet);
       if (headers === 'invalid') return false;
       if (headers === 'empty') sheet.appendRow(USAGE_STATS_HEADERS_.slice());
-      if (headers === 'legacy') sheet.getRange(1, 5, 1, 3).setValues([USAGE_STATS_HEADERS_.slice(4)]);
+      if (headers === 'legacy') sheet.getRange(1, 5, 1, 4).setValues([USAGE_STATS_HEADERS_.slice(4)]);
+      if (headers === 'daily') sheet.getRange(1, 8, 1, 1).setValues([[USAGE_STATS_HEADERS_[7]]]);
 
       const count = sheet.getLastRow() - 1;
       const rows = count > 0 ? sheet.getRange(2, 1, count, 7).getValues() : [];
@@ -96,14 +99,16 @@ function recordUsageStats_(email, isEmailCode, visitId) {
       const filters = visitId ? 0 : 1;
       if (index >= 0) {
         const row = rows[index];
-        sheet.getRange(index + 2, 6, 1, 2).setValues([[
-          (Number(row[5]) || 0) + visits, (Number(row[6]) || 0) + filters
+        sheet.getRange(index + 2, 8).setNumberFormat('dd-mm-yyyy hh:mm:ss');
+        sheet.getRange(index + 2, 6, 1, 3).setValues([[
+          (Number(row[5]) || 0) + visits, (Number(row[6]) || 0) + filters, now
         ]]);
       } else {
         const row = sheet.getLastRow() + 1;
         // Bewaar de datum als ISO-tekst, ongeacht de spreadsheetlocale.
         sheet.getRange(row, 5).setNumberFormat('@');
-        sheet.getRange(row, 1, 1, 7).setValues([[now, user, method, 'Dagtotalen', day, visits, filters]]);
+        sheet.getRange(row, 1, 1, 8).setValues([[now, user, method, 'Dagtotalen', day, visits, filters, now]]);
+        sheet.getRange(row, 8).setNumberFormat('dd-mm-yyyy hh:mm:ss');
         sheet.getRange(row, 1).setNumberFormat('dd-mm-yyyy hh:mm:ss');
       }
       // Commit de spreadsheetwijziging vóór een volgende uitvoering de lock krijgt.

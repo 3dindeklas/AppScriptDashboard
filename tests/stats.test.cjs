@@ -87,10 +87,10 @@ test('eerste opening maakt verborgen __stats-tabblad en schrijft uitsluitend min
   assert.equal(app.insertions, 1);
   assert.equal(app.hidden, true);
   assert.deepEqual(Array.from(app.rows[0]), [
-    'Tijdstip', 'Gebruiker (e-mailadres)', 'Toegang', 'Gebeurtenis', 'Dag', 'Bezoeken', 'Filterwijzigingen'
+    'Tijdstip', 'Gebruiker (e-mailadres)', 'Toegang', 'Gebeurtenis', 'Dag', 'Bezoeken', 'Filterwijzigingen', 'Laatste activiteit'
   ]);
   assert.equal(app.rows[1][0] instanceof Date, true);
-  assert.deepEqual(Array.from(app.rows[1].slice(1)), [
+  assert.deepEqual(Array.from(app.rows[1].slice(1, 7)), [
     'docent@voorbeeld.nl', 'Google-account', 'Dagtotalen', '2026-11-12', 1, 0
   ]);
   assert.equal(app.formatCalls[1].value, 'dd-mm-yyyy hh:mm:ss');
@@ -253,7 +253,7 @@ test('Amsterdamse daggrens telt dezelfde sessie pas na lokale middernacht opnieu
   assert.equal(app.ctx.recordDashboardVisit_('gast@voorbeeld.nl', true, VISIT_A), false);
   app.setNow('2026-11-12T23:00:00Z');
   assert.equal(app.ctx.recordDashboardVisit_('gast@voorbeeld.nl', true, VISIT_A), true);
-  assert.deepEqual(app.rows.slice(1).map(row => Array.from(row.slice(4))), [
+  assert.deepEqual(app.rows.slice(1).map(row => Array.from(row.slice(4, 7))), [
     ['2026-11-12', 1, 0], ['2026-11-13', 1, 0]
   ]);
 });
@@ -270,10 +270,10 @@ test('filteractie is geauthenticeerd en verandert nooit de bezoekenteller', () =
   assert.equal(app.ctx.recordDashboardVisit_('collega@outlook.com', true, VISIT_A), true);
   assert.equal(app.ctx.trackDashboardFilterChange('valid'), true);
   assert.equal(app.ctx.trackDashboardFilterChange('valid'), true);
-  assert.deepEqual(Array.from(app.rows[1].slice(4)), ['2026-11-12', 1, 2]);
+  assert.deepEqual(Array.from(app.rows[1].slice(4, 7)), ['2026-11-12', 1, 2]);
   app.setNow('2026-11-13T10:00:00Z');
   assert.equal(app.ctx.trackDashboardFilterChange('valid'), true);
-  assert.deepEqual(Array.from(app.rows[2].slice(4)), ['2026-11-13', 0, 1]);
+  assert.deepEqual(Array.from(app.rows[2].slice(4, 7)), ['2026-11-13', 0, 1]);
 });
 
 test('bestaande bezoekregels blijven intact en vreemde uitbreidingen worden niet overschreven', () => {
@@ -282,8 +282,36 @@ test('bestaande bezoekregels blijven intact en vreemde uitbreidingen worden niet
   const app = harness({rows: [headers, old]});
   assert.equal(app.ctx.recordFilterChange_('docent@voorbeeld.nl', false), true);
   assert.deepEqual(app.rows[1], old);
-  assert.deepEqual(Array.from(app.rows[0].slice(4)), ['Dag', 'Bezoeken', 'Filterwijzigingen']);
+  assert.deepEqual(Array.from(app.rows[0].slice(4)), ['Dag', 'Bezoeken', 'Filterwijzigingen', 'Laatste activiteit']);
   const unrelated = harness({ rows: [headers, [...old, 'eigen data']] });
   assert.equal(unrelated.ctx.recordFilterChange_('docent@voorbeeld.nl', false), false);
   assert.equal(unrelated.rows[1][4], 'eigen data');
+});
+
+
+test('laatste activiteit beweegt mee met getelde acties, eerste tijdstip blijft staan', () => {
+  const app = harness();
+  const email = 'gast@voorbeeld.nl';
+  assert.equal(app.ctx.recordDashboardVisit_(email, true, VISIT_A), true);
+  const first = app.rows[1][0].toISOString();
+  assert.equal(app.rows[1][7].toISOString(), first);
+  app.setNow('2026-11-12T13:00:00Z');
+  assert.equal(app.ctx.recordDashboardVisit_(email, true, VISIT_A), false);
+  assert.equal(app.rows[1][7].toISOString(), first);
+  assert.equal(app.ctx.recordFilterChange_(email, true), true);
+  assert.equal(app.rows[1][7].toISOString(), '2026-11-12T13:00:00.000Z');
+  app.setNow('2026-11-12T14:00:00Z');
+  assert.equal(app.ctx.recordDashboardVisit_(email, true, VISIT_B), true);
+  assert.equal(app.rows[1][0].toISOString(), first);
+  assert.equal(app.rows[1][7].toISOString(), '2026-11-12T14:00:00.000Z');
+  assert.deepEqual(Array.from(app.rows[1].slice(5, 7)), [2, 1]);
+});
+
+test('bestaande dagtotalen krijgen een nieuwe kolom zonder verzonnen tijdstippen', () => {
+  const headers = ['Tijdstip', 'Gebruiker (e-mailadres)', 'Toegang', 'Gebeurtenis', 'Dag', 'Bezoeken', 'Filterwijzigingen'];
+  const previous = [new Date('2026-11-11T11:00:00Z'), 'gast@voorbeeld.nl', 'E-mailcode', 'Dagtotalen', '2026-11-11', 1, 2];
+  const app = harness({ rows: [headers, previous] });
+  assert.equal(app.ctx.recordFilterChange_('gast@voorbeeld.nl', true), true);
+  assert.equal(app.rows[0][7], 'Laatste activiteit');
+  assert.deepEqual(app.rows[1], previous);
 });

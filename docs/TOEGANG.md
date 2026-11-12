@@ -105,10 +105,12 @@ De lokale tests simuleren Google en de mailbezorging. Een echte gastdeployment e
 
 ### Dagtotalen in __stats
 
-Nieuwe activiteit gebruikt één regel met `Dagtotalen` per Amsterdamse kalenderdag, e-mailadres en toegangsmethode. De kolommen **Dag**, **Bezoeken** en **Filterwijzigingen** worden aan het bestaande vierkolommige schema toegevoegd. Historische regels blijven staan en tellen niet mee in de nieuwe dagtotalen; de ingestelde bewaartermijn blijft gelden. Bij een afwijkend schema schrijft de app niets.
+Nieuwe activiteit gebruikt één regel met `Dagtotalen` per Amsterdamse kalenderdag, e-mailadres en toegangsmethode. De kolommen **Dag**, **Bezoeken**, **Filterwijzigingen** en **Laatste activiteit** worden aan het bestaande vierkolommige schema toegevoegd. Historische regels blijven staan en tellen niet mee in de nieuwe dagtotalen; de ingestelde bewaartermijn blijft gelden. Bij een afwijkend schema schrijft de app niets.
 
 Een bezoek telt bij de eerste dashboardopening van die sessie die dag. Een nieuwe gastlogin of Google-tabsessie kan een tweede bezoek opleveren; dezelfde sessie die na lokale middernacht opnieuw opent telt voor de nieuwe dag. Dit is geen telling van unieke personen of een log van Google-inlogacties. Een filterwijziging zonder bezoek die dag kan een dagregel met nul bezoeken opleveren.
 
 Dashboard- en kalenderfilters tellen wanneer de gebruiker de selectie verandert. Schuifregelaars tellen bij het bevestigen, niet per tussenstap. Filters wissen telt eenmaal als er iets verandert. De app bewaart alleen het aantal, geen gekozen filterwaarden. Maandnavigatie, renderen en bronverversing zijn geen filterwijzigingen.
 
 Publiceer bij een apart gastproject ook daar de bijgewerkte bestanden. Voer `checkUsageStatsSetup` per project uit als de tellers niet verschijnen. Een verborgen tabblad beperkt de toegang tot de geregistreerde e-mailadressen niet; geef alleen bevoegde beheerders toegang tot het statistiekenspreadsheet.
+
+**Tijdstip** blijft het moment van de eerste geregistreerde actie op die dag. **Laatste activiteit** wordt bijgewerkt bij een geteld bezoek of een bevestigde filterwijziging. Herladen binnen dezelfde sessie en dag verandert deze tijd niet. Bestaande dagregels zonder bekende laatste activiteit houden een lege cel tot een nieuwe getelde actie.
