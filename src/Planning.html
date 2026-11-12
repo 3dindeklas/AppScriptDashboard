@@ -69,7 +69,7 @@
       if (text !== undefined) element.textContent = text;
       return element;
     }
-    function create() {
+    function create(onFilterChange) {
       const byId = id => document.getElementById(id);
       const view = byId('planningView');
       let records = [], loaded = false, locked = false, busy = false;
@@ -238,12 +238,22 @@
         const event = currentEvents.find(item => item.key === anchor.dataset.lesson);
         return event ? { anchor, event } : null;
       }
+      const filterSnapshot = () => JSON.stringify([
+        ...fields.map(([field]) => filters[field] || ''), byId('calendarCancelled').checked
+      ]);
+      let lastFilters = filterSnapshot();
+      function renderAndTrackFilters() {
+        render();
+        const next = filterSnapshot();
+        if (next !== lastFilters && loaded && !locked && onFilterChange) onFilterChange();
+        lastFilters = next;
+      }
       fields.forEach(([field, label]) => {
         const wrapper = node('label', '', label);
         const input = node('select'); input.id = 'calendarFilter-' + field;
         wrapper.appendChild(input); selects[field] = input;
         byId('calendarFilterFields').appendChild(wrapper);
-        listen(input, 'change', () => { filters[field] = input.value; dayExpanded.clear(); render(); });
+        listen(input, 'change', () => { filters[field] = input.value; dayExpanded.clear(); renderAndTrackFilters(); });
       });
       listen(byId('dashboardNav'), 'click', () => navigate('dashboard'));
       listen(byId('planningNav'), 'click', () => navigate('planning'));
@@ -251,10 +261,10 @@
       listen(byId('calendarNext'), 'click', () => changeMonth(shiftMonth(month, 1)));
       listen(byId('calendarToday'), 'click', () => changeMonth(today().slice(0, 7)));
       listen(byId('calendarMonth'), 'change', event => { changeMonth(event.target.value); byId('calendarMonth').value = month; });
-      listen(byId('calendarCancelled'), 'change', render);
+      listen(byId('calendarCancelled'), 'change', renderAndTrackFilters);
       listen(byId('calendarReset'), 'click', () => {
         fields.forEach(([field]) => { filters[field] = ''; selects[field].value = ''; });
-        byId('calendarCancelled').checked = false; dayExpanded.clear(); render();
+        byId('calendarCancelled').checked = false; dayExpanded.clear(); renderAndTrackFilters();
       });
       listen(byId('calendarUnscheduled'), 'toggle', () => {
         if (byId('calendarUnscheduled').open) render();
@@ -308,7 +318,7 @@
             filters[field] = values.includes(previous) ? previous : '';
             selects[field].value = filters[field];
           });
-          dayExpanded.clear(); render();
+          dayExpanded.clear(); render(); lastFilters = filterSnapshot();
         },
         setLoading(value) {
           busy = value;

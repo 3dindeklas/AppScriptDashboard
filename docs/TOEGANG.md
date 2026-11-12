@@ -53,7 +53,7 @@ Gebruik bij voorkeur een **apart Apps Script-project voor gastinzage**. Zo blijv
 5. Voer als beheerder **checkEmailAccessSetup** en **checkUsageStatsSetup** vanuit de editor van dit gastproject uit en verleen de gevraagde autorisaties. De statistiekendiagnose meldt bijvoorbeeld `STATS_SPREADSHEET_NOT_CONFIGURED` of `STATS_SPREADSHEET_UNAVAILABLE` zonder spreadsheet-ID's of gastadressen in het log te zetten. De beheerder moet in `allowedEmails` staan. Deze functie verstuurt geen mail; het uitvoeringslog toont of mailtoegang werkt, hoeveel dagquotum over is en of gasttoegang en de adreslijst zijn ingesteld.
 6. Maak een web-appdeployment: **Uitvoeren als: ik** en **Toegang: iedereen**. De beheerder moet de bron-Sheets kunnen lezen. Deel de bronbladen zelf niet met gasten.
 7. Open de gepubliceerde **/exec**-URL in een privévenster zonder Google-login. `/dev` is alleen toegankelijk voor projecteditors en test de gasttoegang dus niet.
-8. Controleer een toegestaan en een onbekend e-mailadres, een verkeerde code, opnieuw versturen, uitloggen, herladen en de financiële afscherming. Na een geslaagde gast-login moet er precies één regel met `E-mailcode` in `__stats` staan; refresh en dashboarddata opnieuw ophalen mogen geen extra regel toevoegen. Controleer ook daadwerkelijke bezorging bij Microsoft en de map ongewenste e-mail.
+8. Controleer een toegestaan en een onbekend e-mailadres, een verkeerde code, opnieuw versturen, uitloggen, herladen en de financiële afscherming. Na een geslaagde gast-login moet `Bezoeken` in de dagregel met `E-mailcode` in `__stats` met één stijgen. Herladen binnen dezelfde sessie en dag of brongegevens vernieuwen verandert de teller niet. Verander één filter en controleer of alleen `Filterwijzigingen` met één stijgt. Controleer ook daadwerkelijke bezorging bij Microsoft en de map ongewenste e-mail.
 9. Publiceer na acceptatie de gecontroleerde Apps Script-versie.
 
 Je kunt ook het bestaande project voor gasttoegang omzetten met hetzelfde gastmanifest en dezelfde instellingen. Buiten het domein kan Google dan geen actieve accountidentiteit leveren. Die gebruikers loggen met een code in en moeten daarvoor ook in `emailAccess.allowedEmails` staan. Dit verandert bovendien onder wiens rechten de bronbladen worden gelezen. Daarom is een apart gastproject de eenvoudigste manier om de bestaande Google-toegang intact te houden.
@@ -101,3 +101,14 @@ Een mislukte verzending telt niet meer mee voor de app-verzendlimiet en doet bij
 - [Servercommunicatie en private helpers](https://developers.google.com/apps-script/guides/html/communication)
 
 De lokale tests simuleren Google en de mailbezorging. Een echte gastdeployment en daadwerkelijke e-mailbezorging moeten nog in Apps Script worden getest.
+
+
+### Dagtotalen in __stats
+
+Nieuwe activiteit gebruikt één regel met `Dagtotalen` per Amsterdamse kalenderdag, e-mailadres en toegangsmethode. De kolommen **Dag**, **Bezoeken** en **Filterwijzigingen** worden aan het bestaande vierkolommige schema toegevoegd. Historische regels blijven staan en tellen niet mee in de nieuwe dagtotalen; de ingestelde bewaartermijn blijft gelden. Bij een afwijkend schema schrijft de app niets.
+
+Een bezoek telt bij de eerste dashboardopening van die sessie die dag. Een nieuwe gastlogin of Google-tabsessie kan een tweede bezoek opleveren; dezelfde sessie die na lokale middernacht opnieuw opent telt voor de nieuwe dag. Dit is geen telling van unieke personen of een log van Google-inlogacties. Een filterwijziging zonder bezoek die dag kan een dagregel met nul bezoeken opleveren.
+
+Dashboard- en kalenderfilters tellen wanneer de gebruiker de selectie verandert. Schuifregelaars tellen bij het bevestigen, niet per tussenstap. Filters wissen telt eenmaal als er iets verandert. De app bewaart alleen het aantal, geen gekozen filterwaarden. Maandnavigatie, renderen en bronverversing zijn geen filterwijzigingen.
+
+Publiceer bij een apart gastproject ook daar de bijgewerkte bestanden. Voer `checkUsageStatsSetup` per project uit als de tellers niet verschijnen. Een verborgen tabblad beperkt de toegang tot de geregistreerde e-mailadressen niet; geef alleen bevoegde beheerders toegang tot het statistiekenspreadsheet.

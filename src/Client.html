@@ -172,7 +172,7 @@
     ].map(pair => ({ control: document.getElementById(pair[0]), panel: document.getElementById(pair[1]),
       financial: pair[1] === 'financialOverview' }));
 
-    const planning = window.WorkshopPlanning ? window.WorkshopPlanning.create() : null;
+    const planning = window.WorkshopPlanning ? window.WorkshopPlanning.create(trackFilterChange) : null;
 
     // Een tab-sessie blijft gelijk bij verversen van de browserpagina.
     // De identifier is geen inlogtoken; bij geblokkeerde sessieopslag
@@ -194,6 +194,34 @@
       } catch (error) {
         return '';
       }
+    }
+
+    let usageStatsEnabled = false;
+    let lastDashboardFilters = '';
+    function dashboardFilterSnapshot() {
+      return JSON.stringify([
+        ...filters.map(filter => filter.element.value), elements.dateBasis.value,
+        elements.dateFrom.value, elements.dateTo.value,
+        elements.studentsFrom.value, elements.studentsTo.value,
+        elements.includeUnknownDate.checked, elements.includeUnknownStudents.checked
+      ]);
+    }
+    function trackFilterChange() {
+      if (state.locked || !usageStatsEnabled || typeof google === 'undefined') return;
+      try {
+        const token = window.WorkshopAccess ? window.WorkshopAccess.token() : '';
+        google.script.run.withSuccessHandler(() => {}).withFailureHandler(() => {})
+          .trackDashboardFilterChange(token);
+      } catch (ignored) { /* Statistieken blokkeren de filters nooit. */ }
+    }
+    function commitDashboardFilters() {
+      const next = dashboardFilterSnapshot();
+      if (next !== lastDashboardFilters) trackFilterChange();
+      lastDashboardFilters = next;
+    }
+    function renderAndTrackFilters() {
+      render();
+      commitDashboardFilters();
     }
 
     function loadDashboard(forceRefresh) {
@@ -222,6 +250,7 @@
 
       const loadDuration = stopLoadingFeedback();
 
+      usageStatsEnabled = payload.usageStatsEnabled === true;
       state.records = payload.records;
       state.sources = Array.isArray(payload.sources) ? payload.sources : [];
       state.generatedAt = payload.generatedAt || new Date().toISOString();
@@ -250,6 +279,7 @@
       renderSourceStatus();
       renderLoadMessage();
       render();
+      lastDashboardFilters = dashboardFilterSnapshot();
     }
 
     function handleError(error) {
@@ -459,7 +489,7 @@
         button.textContent = year || 'Alle schooljaren';
         button.addEventListener('click', () => {
           elements.schoolYear.value = year;
-          render();
+          renderAndTrackFilters();
         });
         elements.schoolYearSwitch.appendChild(button);
       });
@@ -1583,10 +1613,10 @@
       return message;
     }
 
-    filters.forEach(filter => filter.element.addEventListener('change', render));
+    filters.forEach(filter => filter.element.addEventListener('change', renderAndTrackFilters));
     elements.dateBasis.addEventListener('change', () => {
       configureDateRange(false);
-      render();
+      renderAndTrackFilters();
     });
     elements.dateFrom.addEventListener('input', () => {
       constrainRange(elements.dateFrom, elements.dateTo, elements.dateFrom, updateDateRangeLabels);
@@ -1600,8 +1630,10 @@
     elements.studentsTo.addEventListener('input', () => {
       constrainRange(elements.studentsFrom, elements.studentsTo, elements.studentsTo, updateStudentRangeLabels);
     });
-    elements.includeUnknownDate.addEventListener('change', render);
-    elements.includeUnknownStudents.addEventListener('change', render);
+    [elements.dateFrom, elements.dateTo, elements.studentsFrom, elements.studentsTo]
+      .forEach(input => input.addEventListener('change', commitDashboardFilters));
+    elements.includeUnknownDate.addEventListener('change', renderAndTrackFilters);
+    elements.includeUnknownStudents.addEventListener('change', renderAndTrackFilters);
     elements.timelineMetric.addEventListener('change', render);
     elements.mapScope.addEventListener('change', render);
     elements.mapMunicipality.addEventListener('change', showMunicipalityDetail);
@@ -1664,7 +1696,7 @@
       elements.includeUnknownStudents.checked = true;
       configureDateRange(false);
       configureStudentRange(false);
-      render();
+      renderAndTrackFilters();
     });
 
     if (window.WorkshopAccess) {

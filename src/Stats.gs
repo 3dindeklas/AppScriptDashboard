@@ -1,10 +1,11 @@
 /**
  * Optionele bezoekstatistieken. Deze data verlaat de server nooit als dashboardpayload.
- * Een bezoek is een geslaagde dashboardopening per toegangssessie. Browser-refresh,
- * bronverversing en filterwijzigingen tellen niet als nieuwe sessie.
+ * Per Amsterdamse kalenderdag, gebruiker en toegangsmethode één regel.
+ * Filterwijzigingen staan los van bezoeken.
  */
 const USAGE_STATS_HEADERS_ = Object.freeze([
-  'Tijdstip', 'Gebruiker (e-mailadres)', 'Toegang', 'Gebeurtenis'
+  'Tijdstip', 'Gebruiker (e-mailadres)', 'Toegang', 'Gebeurtenis',
+  'Dag', 'Bezoeken', 'Filterwijzigingen'
 ]);
 const USAGE_STATS_ID_PROPERTY_ = 'WORKSHOPKOMPAS_STATS_SPREADSHEET_ID';
 const USAGE_STATS_CLEANUP_PROPERTY_ = 'WORKSHOPKOMPAS_STATS_LAST_CLEANUP';
@@ -25,50 +26,90 @@ function usageStatsSettings_() {
   };
 }
 
-/** Mag de toegang tot het dashboard nooit beïnvloeden, ook niet bij ontbrekende rechten. */
-function recordDashboardVisit_(email, isEmailCode, visitId) {
+function usageStatsDay_(date) {
+  return Utilities.formatDate(date, 'Europe/Amsterdam', 'yyyy-MM-dd');
+}
+
+function usageStatsHeadersState_(sheet) {
+  if (!sheet || sheet.getLastRow() === 0) return 'empty';
+  const row = sheet.getRange(1, 1, 1, USAGE_STATS_HEADERS_.length).getValues()[0];
+  if (USAGE_STATS_HEADERS_.every(function(header, i) { return row[i] === header; })) return 'current';
+  if (sheet.getLastColumn() === 4 &&
+      USAGE_STATS_HEADERS_.slice(0, 4).every(function(header, i) { return row[i] === header; })) return 'legacy';
+  return 'invalid';
+}
+
+function usageStatsAvailable_() {
   try {
     const settings = usageStatsSettings_();
-    if (!settings.enabled || !settings.spreadsheetId || !email) return false;
-    // Idempotent over browser-refreshes, ook wanneer Google een gecachete
-    // dashboardsnapshot teruggeeft. De sleutel bevat geen onversleuteld token.
-    if (typeof visitId !== 'string' || !/^[a-f0-9-]{36,64}$/i.test(visitId)) return false;
-    if (!settings.properties) return false;
-    const visitKey = USAGE_STATS_VISIT_PREFIX_ +
-      authHash_(String(email).trim().toLowerCase() + ':' + visitId);
-    if (typeof SpreadsheetApp === 'undefined' || typeof LockService === 'undefined') return false;
+    return settings.enabled && Boolean(settings.spreadsheetId);
+  } catch (error) {
+    return false;
+  }
+}
+
+function recordDashboardVisit_(email, isEmailCode, visitId) {
+  if (typeof visitId !== 'string' || !/^[a-f0-9-]{36,64}$/i.test(visitId)) return false;
+  return recordUsageStats_(email, isEmailCode, visitId);
+}
+
+function recordFilterChange_(email, isEmailCode) {
+  return recordUsageStats_(email, isEmailCode, '');
+}
+
+/** Bij storing blijven de normale dashboard- en toegangsfuncties beschikbaar. */
+function recordUsageStats_(email, isEmailCode, visitId) {
+  try {
+    const settings = usageStatsSettings_();
+    if (!settings.enabled || !settings.spreadsheetId || !email || !settings.properties) return false;
+    const user = usageStatsSafeText_(email);
+    const method = isEmailCode ? 'E-mailcode' : 'Google-account';
+    const visitKey = visitId ? USAGE_STATS_VISIT_PREFIX_ +
+      authHash_(method + ':' + String(email).trim().toLowerCase() + ':' + visitId) : '';
     const lock = LockService.getScriptLock();
     if (!lock.tryLock(3000)) return false;
-
     try {
-      if (settings.properties.getProperty(visitKey)) return false;
+      const now = new Date();
+      const day = usageStatsDay_(now);
+      const seen = visitKey && settings.properties.getProperty(visitKey);
+      const legacySeen = visitKey && !seen && settings.properties.getProperty(USAGE_STATS_VISIT_PREFIX_ +
+        authHash_(String(email).trim().toLowerCase() + ':' + visitId));
+      const lastVisit = Number(seen || legacySeen);
+      if (lastVisit > 0 && usageStatsDay_(new Date(lastVisit)) === day) return false;
       const book = SpreadsheetApp.openById(settings.spreadsheetId);
       let sheet = book.getSheetByName(settings.sheetName);
       if (!sheet) sheet = book.insertSheet(settings.sheetName);
+      const headers = usageStatsHeadersState_(sheet);
+      if (headers === 'invalid') return false;
+      if (headers === 'empty') sheet.appendRow(USAGE_STATS_HEADERS_.slice());
+      if (headers === 'legacy') sheet.getRange(1, 5, 1, 3).setValues([USAGE_STATS_HEADERS_.slice(4)]);
 
-      if (sheet.getLastRow() === 0) {
-        sheet.appendRow(USAGE_STATS_HEADERS_.slice());
-      } else {
-        const actual = sheet.getRange(1, 1, 1, USAGE_STATS_HEADERS_.length).getValues()[0];
-        if (USAGE_STATS_HEADERS_.some(function(header, index) { return actual[index] !== header; })) {
-          // Bestaande gegevens nooit overschrijven als er een tab met deze naam is.
-          return false;
-        }
+      const count = sheet.getLastRow() - 1;
+      const rows = count > 0 ? sheet.getRange(2, 1, count, 7).getValues() : [];
+      let index = rows.length - 1;
+      while (index >= 0) {
+        const row = rows[index];
+        if (row[1] === user && row[2] === method && row[3] === 'Dagtotalen' && row[4] === day) break;
+        index--;
       }
-
-      const now = new Date();
-      sheet.appendRow([
-        now,
-        usageStatsSafeText_(email),
-        isEmailCode ? 'E-mailcode' : 'Google-account',
-        'Dashboard geopend'
-      ]);
-      settings.properties.setProperty(visitKey, String(now.getTime()));
-      sheet.getRange(sheet.getLastRow(), 1).setNumberFormat('dd-mm-yyyy hh:mm:ss');
+      const visits = visitId ? 1 : 0;
+      const filters = visitId ? 0 : 1;
+      if (index >= 0) {
+        const row = rows[index];
+        sheet.getRange(index + 2, 6, 1, 2).setValues([[
+          (Number(row[5]) || 0) + visits, (Number(row[6]) || 0) + filters
+        ]]);
+      } else {
+        const row = sheet.getLastRow() + 1;
+        // Bewaar de datum als ISO-tekst, ongeacht de spreadsheetlocale.
+        sheet.getRange(row, 5).setNumberFormat('@');
+        sheet.getRange(row, 1, 1, 7).setValues([[now, user, method, 'Dagtotalen', day, visits, filters]]);
+        sheet.getRange(row, 1).setNumberFormat('dd-mm-yyyy hh:mm:ss');
+      }
+      // Commit de spreadsheetwijziging vóór een volgende uitvoering de lock krijgt.
+      SpreadsheetApp.flush();
+      if (visitKey) settings.properties.setProperty(visitKey, String(now.getTime()));
       pruneUsageStats_(sheet, settings);
-
-      // Een verborgen tabblad is geen beveiligingsmaatregel. Verberg alleen als
-      // minstens één ander tabblad zichtbaar blijft.
       if (!sheet.isSheetHidden() && book.getSheets().some(function(other) {
         return other.getSheetId() !== sheet.getSheetId() && !other.isSheetHidden();
       })) sheet.hideSheet();
@@ -77,8 +118,7 @@ function recordDashboardVisit_(email, isEmailCode, visitId) {
       lock.releaseLock();
     }
   } catch (error) {
-    // Statistieken zijn optioneel: brongegevens en inloggen blijven beschikbaar.
-    try { console.warn('Bezoekregistratie kon niet worden opgeslagen.'); } catch (ignored) {}
+    try { console.warn('Gebruiksstatistiek kon niet worden opgeslagen.'); } catch (ignored) {}
     return false;
   }
 }
@@ -142,8 +182,7 @@ function checkUsageStatsSetup() {
       const sheet = book.getSheetByName(settings.sheetName);
       result.sheetFound = Boolean(sheet);
       if (sheet && sheet.getLastRow() > 0) {
-        const actual = sheet.getRange(1, 1, 1, USAGE_STATS_HEADERS_.length).getValues()[0];
-        if (USAGE_STATS_HEADERS_.some(function(header, index) { return actual[index] !== header; })) {
+        if (usageStatsHeadersState_(sheet) === 'invalid') {
           result.code = 'STATS_HEADERS_MISMATCH';
           result.action = 'Controleer de kopregel van __stats; deze wordt bewust niet overschreven.';
         }
@@ -160,7 +199,7 @@ function checkUsageStatsSetup() {
         if (!result.code) {
           result.ok = true;
           result.code = 'STATS_CONFIGURED';
-          result.action = 'Open een nieuwe e-mailcodesessie via de bijgewerkte gastdeployment en controleer __stats.';
+          result.action = 'Open het dashboard via deze deployment, wijzig een filter en controleer de dagtotalen in __stats.';
         }
       }
     } catch (error) {

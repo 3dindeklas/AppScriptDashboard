@@ -7,7 +7,13 @@ const VISIT_A = 'd1442b9b-06e4-44c8-b5da-0aaf72ead570';
 const VISIT_B = 'd1442b9b-06e4-44c8-b5da-0aaf72ead571';
 
 function harness(options = {}) {
-  const rows = options.rows ? options.rows.slice() : [];
+  const rows = options.rows ? options.rows.map(row => row.slice()) : [];
+  let now = new Date('2026-11-12T12:00:00Z');
+  class Clock extends Date {
+    constructor(...args) { super(...(args.length ? args : [now.getTime()])); }
+    static now() { return now.getTime(); }
+    static [Symbol.hasInstance](value) { return value instanceof Date; }
+  }
   const properties = new Map(options.properties || [
     ['WORKSHOPKOMPAS_STATS_SPREADSHEET_ID', 'stats-test-spreadsheet']
   ]);
@@ -21,11 +27,18 @@ function harness(options = {}) {
     getSheetId: () => 99,
     getLastRow: () => rows.length,
     appendRow: values => { rows.push(values); },
+    getLastColumn: () => Math.max(0, ...rows.map(row => row.length)),
     getRange(row, column, count = 1, columns = 1) {
       return {
         getValues: () => Array.from({ length: count }, (unused, index) =>
           Array.from({ length: columns }, (unused2, col) =>
             rows[row - 1 + index] ? rows[row - 1 + index][column - 1 + col] : undefined)),
+        setValues(values) {
+          values.forEach((cells, i) => {
+            const target = rows[row - 1 + i] ||= [];
+            cells.forEach((value, j) => { target[column - 1 + j] = value; });
+          });
+        },
         setNumberFormat(value) { formatCalls.push({ row, column, value }); }
       };
     },
@@ -39,7 +52,8 @@ function harness(options = {}) {
     getSheets: () => [{ getSheetId: () => 1, isSheetHidden: () => false }, sheet]
   };
   const ctx = vm.createContext({
-    Date,
+    Date: Clock,
+    Utilities: { formatDate: date => new Intl.DateTimeFormat('sv-SE', {timeZone: 'Europe/Amsterdam', year: 'numeric', month: '2-digit', day: '2-digit'}).format(date) },
     console: { warn() {}, error() {}, log() {} },
     PropertiesService: { getScriptProperties: () => ({
       getProperty: key => properties.get(key) || null,
@@ -49,7 +63,7 @@ function harness(options = {}) {
     }) },
     authHash_: value => crypto.createHash('sha256').update(String(value)).digest('hex'),
     normalizeEmail_: value => String(value || '').trim().toLowerCase(),
-    SpreadsheetApp: { openById: id => {
+    SpreadsheetApp: { flush() {}, openById: id => {
       opens++;
       if (options.failOpen) throw new Error('Geen schrijfrechten op statsbestand');
       assert.equal(id, 'stats-test-spreadsheet');
@@ -64,7 +78,7 @@ function harness(options = {}) {
   vm.runInContext(fs.readFileSync('src/Stats.gs', 'utf8'), ctx);
   return { ctx, rows, properties, sheet, formatCalls, get opens() { return opens; },
     get insertions() { return insertions; }, get hidden() { return hidden; },
-    get deletions() { return deletions; }, setLockBusy(value) { lockBusy = value; } };
+    get deletions() { return deletions; }, setLockBusy(value) { lockBusy = value; }, setNow(value) { now = new Date(value); } };
 }
 
 test('eerste opening maakt verborgen __stats-tabblad en schrijft uitsluitend minimale informatie', () => {
@@ -73,13 +87,13 @@ test('eerste opening maakt verborgen __stats-tabblad en schrijft uitsluitend min
   assert.equal(app.insertions, 1);
   assert.equal(app.hidden, true);
   assert.deepEqual(Array.from(app.rows[0]), [
-    'Tijdstip', 'Gebruiker (e-mailadres)', 'Toegang', 'Gebeurtenis'
+    'Tijdstip', 'Gebruiker (e-mailadres)', 'Toegang', 'Gebeurtenis', 'Dag', 'Bezoeken', 'Filterwijzigingen'
   ]);
   assert.equal(app.rows[1][0] instanceof Date, true);
   assert.deepEqual(Array.from(app.rows[1].slice(1)), [
-    'docent@voorbeeld.nl', 'Google-account', 'Dashboard geopend'
+    'docent@voorbeeld.nl', 'Google-account', 'Dagtotalen', '2026-11-12', 1, 0
   ]);
-  assert.equal(app.formatCalls[0].value, 'dd-mm-yyyy hh:mm:ss');
+  assert.equal(app.formatCalls[1].value, 'dd-mm-yyyy hh:mm:ss');
   assert.equal(app.ctx.recordDashboardVisit_('gast@voorbeeld.nl', true, VISIT_B), true);
   assert.equal(app.insertions, 1);
   assert.equal(app.rows.length, 3);
@@ -100,8 +114,8 @@ test('een onjuist tabblad, lock of ontbrekende rechten blokkeert dashboard niet'
 });
 
 test('bezoekstatistieken verwijderen na 180 dagen oude rijen en houden recente rijen', () => {
-  const old = new Date(Date.now() - 200 * 86400000);
-  const recent = new Date(Date.now() - 10 * 86400000);
+  const old = new Date('2026-03-01T00:00:00Z');
+  const recent = new Date('2026-11-02T00:00:00Z');
   const app = harness({ rows: [
     ['Tijdstip', 'Gebruiker (e-mailadres)', 'Toegang', 'Gebeurtenis'],
     [old, 'oud@voorbeeld.nl', 'Google-account', 'Dashboard geopend'],
@@ -140,20 +154,23 @@ test('een nieuwe sessie wordt eenmaal geregistreerd, refresh en bronverversing n
 
   // Nieuw tabblad: wel een nieuwe sessie, zonder de andere cijfers te wijzigen.
   app.ctx.getDashboardData('', VISIT_B);
-  assert.equal(app.rows.length, 3);
-  assert.equal(app.rows[2][2], 'Google-account');
+  assert.equal(app.rows.length, 2);
+  assert.equal(app.rows[1][5], 2);
 
   // E-mailcode-sessies zijn gekoppeld aan het echte (gehashte) sessietoken.
   app.ctx.getDashboardData('token', VISIT_A);
   app.ctx.getDashboardData('token', VISIT_B);
-  assert.equal(app.rows.length, 4);
-  assert.equal(app.rows[3][2], 'E-mailcode');
+  assert.equal(app.rows.length, 3);
+  assert.equal(app.rows[2][2], 'E-mailcode');
+  assert.equal(app.rows[2][5], 1);
   app.ctx.getDashboardData('nieuwe-token', VISIT_A);
-  assert.equal(app.rows.length, 5);
+  assert.equal(app.rows.length, 3);
+  assert.equal(app.rows[2][5], 2);
 
   // Zonder tabsessie is Google-verkeer niet als login aan te merken.
   app.ctx.getDashboardData('');
-  assert.equal(app.rows.length, 5);
+  assert.equal(app.rows.length, 3);
+  assert.equal(app.rows[2][5], 2);
 });
 
 test('e-mailcode-dashboardpagina van niet-Gmailgebruiker logt direct en nooit dubbel', () => {
@@ -185,8 +202,8 @@ test('e-mailcode-dashboardpagina van niet-Gmailgebruiker logt direct en nooit du
 
   const secondToken = 'b'.repeat(64);
   app.ctx.getDashboardPage(secondToken); // Nieuwe echte login via e-mailcode.
-  assert.equal(app.rows.length, 3);
-  assert.equal(app.rows[2][1], email);
+  assert.equal(app.rows.length, 2);
+  assert.equal(app.rows[1][5], 2);
 });
 
 test('diagnose in gastproject herkent een ontbrekende of bruikbare stats-koppeling', () => {
@@ -222,8 +239,51 @@ test('idempotentie gebruikt server-side sessiesleutel en schrapt oude markeringe
   assert.equal(keys.length, 1);
   assert.doesNotMatch(keys[0], /docent@voorbeeld|d1442b9b/);
 
-  app.properties.set('WORKSHOPKOMPAS_STATS_VISIT:verlopen', String(Date.now() - 200 * 86400000));
+  app.properties.set('WORKSHOPKOMPAS_STATS_VISIT:verlopen', String(Date.parse('2026-03-01T00:00:00Z')));
   app.properties.delete('WORKSHOPKOMPAS_STATS_LAST_CLEANUP');
   assert.equal(app.ctx.recordDashboardVisit_('docent@voorbeeld.nl', false, VISIT_B), true);
   assert.equal(app.properties.has('WORKSHOPKOMPAS_STATS_VISIT:verlopen'), false);
+});
+
+
+test('Amsterdamse daggrens telt dezelfde sessie pas na lokale middernacht opnieuw', () => {
+  const app = harness();
+  app.setNow('2026-11-12T22:59:00Z');
+  assert.equal(app.ctx.recordDashboardVisit_('gast@voorbeeld.nl', true, VISIT_A), true);
+  assert.equal(app.ctx.recordDashboardVisit_('gast@voorbeeld.nl', true, VISIT_A), false);
+  app.setNow('2026-11-12T23:00:00Z');
+  assert.equal(app.ctx.recordDashboardVisit_('gast@voorbeeld.nl', true, VISIT_A), true);
+  assert.deepEqual(app.rows.slice(1).map(row => Array.from(row.slice(4))), [
+    ['2026-11-12', 1, 0], ['2026-11-13', 1, 0]
+  ]);
+});
+
+test('filteractie is geauthenticeerd en verandert nooit de bezoekenteller', () => {
+  const app = harness();
+  vm.runInContext(fs.readFileSync('src/Code.gs', 'utf8'), app.ctx);
+  app.ctx.requireAccess_ = token => {
+    if (token !== 'valid') throw new Error('ACCESS_REQUIRED');
+    return 'collega@outlook.com';
+  };
+  assert.throws(() => app.ctx.trackDashboardFilterChange('invalid'), /ACCESS_REQUIRED/);
+  assert.equal(app.rows.length, 0);
+  assert.equal(app.ctx.recordDashboardVisit_('collega@outlook.com', true, VISIT_A), true);
+  assert.equal(app.ctx.trackDashboardFilterChange('valid'), true);
+  assert.equal(app.ctx.trackDashboardFilterChange('valid'), true);
+  assert.deepEqual(Array.from(app.rows[1].slice(4)), ['2026-11-12', 1, 2]);
+  app.setNow('2026-11-13T10:00:00Z');
+  assert.equal(app.ctx.trackDashboardFilterChange('valid'), true);
+  assert.deepEqual(Array.from(app.rows[2].slice(4)), ['2026-11-13', 0, 1]);
+});
+
+test('bestaande bezoekregels blijven intact en vreemde uitbreidingen worden niet overschreven', () => {
+  const headers = ['Tijdstip', 'Gebruiker (e-mailadres)', 'Toegang', 'Gebeurtenis'];
+  const old = [new Date('2026-11-11T10:00:00Z'), 'docent@voorbeeld.nl', 'Google-account', 'Dashboard geopend'];
+  const app = harness({rows: [headers, old]});
+  assert.equal(app.ctx.recordFilterChange_('docent@voorbeeld.nl', false), true);
+  assert.deepEqual(app.rows[1], old);
+  assert.deepEqual(Array.from(app.rows[0].slice(4)), ['Dag', 'Bezoeken', 'Filterwijzigingen']);
+  const unrelated = harness({ rows: [headers, [...old, 'eigen data']] });
+  assert.equal(unrelated.ctx.recordFilterChange_('docent@voorbeeld.nl', false), false);
+  assert.equal(unrelated.rows[1][4], 'eigen data');
 });

@@ -67,6 +67,7 @@ function dashboardDataResponse_(forceRefresh, accessToken, visitId) {
 
     const response = {
       mode: 'live',
+      usageStatsEnabled: typeof usageStatsAvailable_ === 'function' && usageStatsAvailable_(),
       generatedAt: snapshot.updatedAt,
       complete: snapshot.complete,
       snapshot: {
@@ -100,6 +101,13 @@ function dashboardDataResponse_(forceRefresh, accessToken, visitId) {
       : 'Dashboardgegevens konden niet worden geladen.';
     throw new Error(message + ' Foutcode: ' + code + '. Referentie: ' + reference + '.');
   }
+}
+
+/** De server bepaalt de gebruiker; er gaan geen filterwaarden naar statistieken. */
+function trackDashboardFilterChange(accessToken) {
+  const email = requireAccess_(accessToken);
+  if (typeof recordFilterChange_ !== 'function') return false;
+  return recordFilterChange_(email, Boolean(accessToken));
 }
 
 function assertDashboardResult_(result) {
