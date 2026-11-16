@@ -208,11 +208,19 @@
     }
     function trackFilterChange() {
       if (state.locked || !usageStatsEnabled || typeof google === 'undefined') return;
-      try {
-        const token = window.WorkshopAccess ? window.WorkshopAccess.token() : '';
-        google.script.run.withSuccessHandler(() => {}).withFailureHandler(() => {})
-          .trackDashboardFilterChange(token);
-      } catch (ignored) { /* Statistieken blokkeren de filters nooit. */ }
+      const token = window.WorkshopAccess ? window.WorkshopAccess.token() : '';
+      function send(attempt) {
+        if (state.locked || (window.WorkshopAccess && window.WorkshopAccess.token() !== token)) return;
+        try {
+          google.script.run.withSuccessHandler(result => {
+            // STATS_BUSY betekent dat er zeker nog niets is geschreven.
+            if (result === 'STATS_BUSY' && attempt < 2) {
+              setTimeout(() => send(attempt + 1), 750 * (attempt + 1));
+            }
+          }).withFailureHandler(() => {}).trackDashboardFilterChange(token);
+        } catch (ignored) { /* Statistieken blokkeren de filters nooit. */ }
+      }
+      send(0);
     }
     function commitDashboardFilters() {
       const next = dashboardFilterSnapshot();

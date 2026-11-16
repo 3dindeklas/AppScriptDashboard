@@ -258,7 +258,10 @@ function clientHarness(records, options = {}) {
     },
     getDashboardData() { requestedMethod = 'getDashboardData'; },
     refreshDashboardData() { requestedMethod = 'refreshDashboardData'; },
-    trackDashboardFilterChange(...args) { filterEvents.push(args); }
+    trackDashboardFilterChange(...args) {
+      filterEvents.push(args);
+      if (options.filterResponses?.length) successHandler(options.filterResponses.shift());
+    }
   };
   let printCount = 0;
   const window = { print: () => { printCount += 1; } };
@@ -2169,4 +2172,20 @@ test('gebruikstellers tellen alleen bevestigde wijzigingen van dashboardfilters'
   disabled.sourceFilter.value = 'Hub A';
   disabled.sourceFilter.trigger('change');
   assert.equal(disabled.__filterEvents.length, 0);
+});
+
+
+test('filterregistratie probeert een bezette lock opnieuw, maar geen onzekere schrijffout', () => {
+  const ui = clientHarness([{ source: 'Hub A' }], {
+    usageStatsEnabled: true, filterResponses: ['STATS_BUSY', true, false]
+  });
+  ui.sourceFilter.value = 'Hub A';
+  ui.sourceFilter.trigger('change');
+  assert.equal(ui.__filterEvents.length, 1);
+  ui.__runTimersThrough(750);
+  assert.equal(ui.__filterEvents.length, 2);
+  ui.sourceFilter.value = '';
+  ui.sourceFilter.trigger('change');
+  ui.__runTimersThrough(3000);
+  assert.equal(ui.__filterEvents.length, 3);
 });

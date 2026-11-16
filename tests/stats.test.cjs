@@ -44,7 +44,7 @@ function harness(options = {}) {
     },
     deleteRows(row, count) { rows.splice(row - 1, count); deletions += count; },
     isSheetHidden: () => hidden,
-    hideSheet: () => { hidden = true; }
+    hideSheet: () => { if (options.failHide) throw new Error('hide failed'); hidden = true; }
   };
   const book = {
     getSheetByName: name => (rows.length || insertions) && name === '__stats' ? sheet : null,
@@ -314,4 +314,31 @@ test('bestaande dagtotalen krijgen een nieuwe kolom zonder verzonnen tijdstippen
   assert.equal(app.ctx.recordFilterChange_('gast@voorbeeld.nl', true), true);
   assert.equal(app.rows[0][7], 'Laatste activiteit');
   assert.deepEqual(app.rows[1], previous);
+});
+
+
+test('een bezette lock geeft een veilige retry-status voordat iets is geschreven', () => {
+  const app = harness();
+  app.setLockBusy(true);
+  assert.equal(app.ctx.recordFilterChange_('gast@voorbeeld.nl', true), 'STATS_BUSY');
+  assert.equal(app.rows.length, 0);
+  app.setLockBusy(false);
+  assert.equal(app.ctx.recordFilterChange_('gast@voorbeeld.nl', true), true);
+  assert.deepEqual(Array.from(app.rows[1].slice(5, 7)), [0, 1]);
+});
+
+test('een fout bij verbergen maakt een opgeslagen bezoek niet ongedaan', () => {
+  const app = harness({ failHide: true });
+  assert.equal(app.ctx.recordDashboardVisit_('gast@voorbeeld.nl', true, VISIT_A), true);
+  assert.equal(app.ctx.recordDashboardVisit_('gast@voorbeeld.nl', true, VISIT_A), false);
+  assert.equal(app.rows[1][5], 1);
+});
+
+test('een als datum opgeslagen dag blijft dezelfde dagregel gebruiken', () => {
+  const app = harness();
+  app.ctx.recordDashboardVisit_('gast@voorbeeld.nl', true, VISIT_A);
+  app.rows[1][4] = new Date('2026-11-11T23:00:00Z');
+  assert.equal(app.ctx.recordFilterChange_('gast@voorbeeld.nl', true), true);
+  assert.equal(app.rows.length, 2);
+  assert.deepEqual(Array.from(app.rows[1].slice(5, 7)), [1, 1]);
 });

@@ -52,7 +52,7 @@ function usageStatsAvailable_() {
 
 function recordDashboardVisit_(email, isEmailCode, visitId) {
   if (typeof visitId !== 'string' || !/^[a-f0-9-]{36,64}$/i.test(visitId)) return false;
-  return recordUsageStats_(email, isEmailCode, visitId);
+  return recordUsageStats_(email, isEmailCode, visitId) === true;
 }
 
 function recordFilterChange_(email, isEmailCode) {
@@ -69,7 +69,11 @@ function recordUsageStats_(email, isEmailCode, visitId) {
     const visitKey = visitId ? USAGE_STATS_VISIT_PREFIX_ +
       authHash_(method + ':' + String(email).trim().toLowerCase() + ':' + visitId) : '';
     const lock = LockService.getScriptLock();
-    if (!lock.tryLock(3000)) return false;
+    if (!lock.tryLock(3000)) {
+      // Alleen vóór een schrijfoperatie is opnieuw proberen veilig.
+      console.warn('[STATS_WRITE] STATS_BUSY');
+      return 'STATS_BUSY';
+    }
     try {
       const now = new Date();
       const day = usageStatsDay_(now);
@@ -82,7 +86,10 @@ function recordUsageStats_(email, isEmailCode, visitId) {
       let sheet = book.getSheetByName(settings.sheetName);
       if (!sheet) sheet = book.insertSheet(settings.sheetName);
       const headers = usageStatsHeadersState_(sheet);
-      if (headers === 'invalid') return false;
+      if (headers === 'invalid') {
+        console.warn('[STATS_WRITE] STATS_HEADERS_MISMATCH');
+        return false;
+      }
       if (headers === 'empty') sheet.appendRow(USAGE_STATS_HEADERS_.slice());
       if (headers === 'legacy') sheet.getRange(1, 5, 1, 4).setValues([USAGE_STATS_HEADERS_.slice(4)]);
       if (headers === 'daily') sheet.getRange(1, 8, 1, 1).setValues([[USAGE_STATS_HEADERS_[7]]]);
@@ -92,7 +99,11 @@ function recordUsageStats_(email, isEmailCode, visitId) {
       let index = rows.length - 1;
       while (index >= 0) {
         const row = rows[index];
-        if (row[1] === user && row[2] === method && row[3] === 'Dagtotalen' && row[4] === day) break;
+        if (row[1] === user && row[2] === method && row[3] === 'Dagtotalen') {
+          // Een bestaande dagkolom kan door Sheets als datum zijn geïnterpreteerd.
+          const rowDay = row[4] instanceof Date ? usageStatsDay_(row[4]) : row[4];
+          if (rowDay === day) break;
+        }
         index--;
       }
       const visits = visitId ? 1 : 0;
@@ -114,16 +125,22 @@ function recordUsageStats_(email, isEmailCode, visitId) {
       // Commit de spreadsheetwijziging vóór een volgende uitvoering de lock krijgt.
       SpreadsheetApp.flush();
       if (visitKey) settings.properties.setProperty(visitKey, String(now.getTime()));
-      pruneUsageStats_(sheet, settings);
-      if (!sheet.isSheetHidden() && book.getSheets().some(function(other) {
-        return other.getSheetId() !== sheet.getSheetId() && !other.isSheetHidden();
-      })) sheet.hideSheet();
+      // Een fout bij het opruimen of verbergen maakt een getelde actie niet ongedaan.
+      try {
+        pruneUsageStats_(sheet, settings);
+        if (!sheet.isSheetHidden() && book.getSheets().some(function(other) {
+          return other.getSheetId() !== sheet.getSheetId() && !other.isSheetHidden();
+        })) sheet.hideSheet();
+        SpreadsheetApp.flush();
+      } catch (error) {
+        console.warn('[STATS_WRITE] STATS_MAINTENANCE_FAILED');
+      }
       return true;
     } finally {
       lock.releaseLock();
     }
   } catch (error) {
-    try { console.warn('Gebruiksstatistiek kon niet worden opgeslagen.'); } catch (ignored) {}
+    try { console.warn('[STATS_WRITE] STATS_WRITE_FAILED'); } catch (ignored) {}
     return false;
   }
 }
