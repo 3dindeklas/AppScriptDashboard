@@ -644,8 +644,10 @@ test('aanvragen per schoolbestuur tellen per bronregel, groeperen schrijfvariant
   ]);
   assert.equal(elements.schoolBoardsSummary.textContent,
     '2 schoolbesturen · 2 aanvragen zonder bestuur (data-inconsistentie) · 2 onder Overige');
-  assert.equal(elements.schoolBoardsChart.children[0].tagName, 'SVG');
-  assert.match(elements.schoolBoardsChart.children[0].getAttribute('aria-label'), /5 aanvragen/);
+  const bar = elements.schoolBoardsChart.children[0];
+  assert.equal(bar.className, 'school-board-share-bar');
+  assert.deepEqual(bar.children.map(segment => segment.style.flexGrow), ['2', '1', '2']);
+  assert.equal(elements.schoolBoardsChart.children[2].textContent, '100% = 5 aanvragen');
   assert.equal(elements.schoolBoardsOtherRows.children.length, 2);
   assert.equal(rows().reduce((total, row) => total + Number(row[1]), 0), 5);
   assert.equal(elements.kpis.children[0].children[1].textContent, '5');
@@ -671,7 +673,7 @@ test('aanvragen per schoolbestuur tellen per bronregel, groeperen schrijfvariant
   assert.equal(elements.schoolBoardsPanel.hidden, false);
 });
 
-test('ook buiten de vroegere top acht behoudt de donut ieder benoemd bestuur', () => {
+test('ook buiten de vroegere top acht behoudt de verdelingsbalk ieder benoemd bestuur', () => {
   const records = Array.from({ length: 10 }, (_, index) => ({
     source: 'A', schoolBoard: 'Bestuur ' + String(index + 1).padStart(2, '0')
   }));
@@ -713,7 +715,7 @@ test('leeg Bestuur en bestaand Overige worden samengevoegd; de kwaliteitsteller 
   assert.deepEqual(rows, [['Stichting Dorp', '1'], ['Overige', '3']]);
   assert.equal(elements.schoolBoardsSummary.textContent,
     '1 schoolbestuur · 2 aanvragen zonder bestuur (data-inconsistentie) · 3 onder Overige');
-  assert.equal(elements.schoolBoardsChart.children.length, 2);
+  assert.equal(elements.schoolBoardsChart.children[0].children.length, 2);
   const otherLegend = elements.schoolBoardsChart.children[1].children[1];
   assert.equal(otherLegend.children[1].textContent, 'Overige');
   assert.equal(otherLegend.children[2].textContent, '3 · 75,0%');

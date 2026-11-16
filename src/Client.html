@@ -972,9 +972,13 @@
       );
     }
 
-    function renderCategoryChart(chart, tableRows, entries, limit, type, color) {
-      if (type === 'donut' || type === 'pie') renderCircularChart(chart, entries, type === 'pie', color);
+    function renderCategoryChart(chart, tableRows, entries, limit, type) {
+      if (type === 'donut' || type === 'pie') renderCircularChart(chart, entries, type === 'pie');
       else renderBars(chart, entries, limit);
+      renderCategoryTable(tableRows, entries);
+    }
+
+    function renderCategoryTable(tableRows, entries) {
       tableRows.replaceChildren();
 
       if (!entries.length) {
@@ -1006,7 +1010,7 @@
       return element;
     }
 
-    function renderCircularChart(container, entries, pie, customColor) {
+    function renderCircularChart(container, entries, pie) {
       container.replaceChildren();
       const total = entries.reduce((sum, entry) => sum + entry[1], 0);
       if (!total) {
@@ -1014,10 +1018,10 @@
         return;
       }
       const unitLabel = pie ? 'gewogen aanvragen' : 'aanvragen';
-      const colorOf = customColor || (label => {
+      const colorOf = label => {
         const grade = /^(?:Groep|Leerjaar) (\d)$/.exec(label);
         return pie && grade ? gradeColors[Number(grade[1]) - 1] : donutColors[label] || '#94a3b8';
-      });
+      };
       const ring = svgElement('svg', {
         viewBox: '0 0 180 180', class: pie ? 'pie-disc' : 'donut-ring', role: 'img',
         'aria-label': formatChartNumber(total) + ' ' + unitLabel + '. ' +
@@ -1046,6 +1050,10 @@
         unit.textContent = 'aanvragen';
         ring.append(value, unit);
       }
+      container.append(ring, renderDistributionLegend(entries, total, colorOf));
+    }
+
+    function renderDistributionLegend(entries, total, colorOf) {
       const legend = document.createElement('ul');
       legend.className = 'donut-legend';
       entries.forEach(entry => {
@@ -1061,7 +1069,7 @@
         item.append(swatch, label, value);
         legend.appendChild(item);
       });
-      container.append(ring, legend);
+      return legend;
     }
 
     function pieSegmentPath(start, angle) {
@@ -1513,8 +1521,30 @@
     function renderSchoolBoardChart(boards) {
       const colors = new Map(boards.entries.map(([label], index) =>
         [label, label === 'Overige' ? '#94a3b8' : gradeColors[index % gradeColors.length]]));
-      renderCategoryChart(elements.schoolBoardsChart, elements.schoolBoardsTableRows,
-        boards.entries, boards.entries.length, 'donut', label => colors.get(label));
+      const chart = elements.schoolBoardsChart;
+      // Gebruik dezelfde volledige tabel en lege toestand als de andere grafieken.
+      renderCategoryTable(elements.schoolBoardsTableRows, boards.entries);
+      chart.replaceChildren();
+      const total = boards.entries.reduce((sum, entry) => sum + entry[1], 0);
+      if (!total) {
+        chart.appendChild(emptyMessage('Geen gegevens binnen deze filters.'));
+      } else {
+        const bar = document.createElement('div');
+        bar.className = 'school-board-share-bar';
+        bar.setAttribute('aria-hidden', 'true');
+        boards.entries.forEach(([label, count]) => {
+          const segment = document.createElement('span');
+          segment.style.flexGrow = String(count);
+          segment.style.backgroundColor = colors.get(label);
+          segment.title = label + ': ' + formatChartNumber(count) + ' van ' +
+            numberFormat.format(total) + ' aanvragen (' + percentFormat.format(count / total) + ')';
+          bar.appendChild(segment);
+        });
+        const caption = document.createElement('p');
+        caption.className = 'school-board-share-caption';
+        caption.textContent = '100% = ' + numberFormat.format(total) + (total === 1 ? ' aanvraag' : ' aanvragen');
+        chart.append(bar, renderDistributionLegend(boards.entries, total, label => colors.get(label)), caption);
+      }
 
       const summary = elements.schoolBoardsOtherSummary;
       const table = elements.schoolBoardsOtherRows;
