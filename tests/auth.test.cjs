@@ -18,7 +18,7 @@ test('niet-ingelogde bezoekers krijgen alleen toegangspagina, nooit Index of dat
   assert.doesNotMatch(html, /id="dashboard"|id="kpis"|id="sourceCards"|id="municipalityData"/);
   assert.throws(() => app.ctx.getDashboardData(), /ACCESS_REQUIRED/);
   assert.throws(() => app.ctx.refreshDashboardData(), /ACCESS_REQUIRED/);
-  assert.throws(() => app.ctx.openGoogleDashboard(), /ACCESS_REQUIRED/);
+  assert.equal(typeof app.ctx.openGoogleDashboard, 'undefined');
   assert.throws(() => app.ctx.include('Client'), /ACCESS_REQUIRED/);
   assert.throws(() => app.ctx.getDashboardPage('gast@microsoft.example'), /ACCESS_REQUIRED/);
 });
@@ -247,4 +247,25 @@ test('toegestane Hotmail-adressen volgen dezelfde e-mailcodeflow', () => {
   assert.equal(app.mails[0].to, 'voorbeeld@hotmail.com');
   const { token } = app.ctx.verifyEmailCode(challenge.challengeId, app.code());
   assert.equal(app.ctx.requireAccess_(token), 'voorbeeld@hotmail.com');
+});
+
+
+test('Gmail-bezoekers krijgen alleen e-mailcode, ook als Google hun adres doorgeeft', () => {
+  for (const googleEmail of ['', 'collega@gmail.com']) {
+    const app = setup({ googleEmail });
+    vm.runInContext("APP_CONFIG.allowedEmails.push('collega@gmail.com')", app.ctx);
+    const html = app.ctx.doGet().getContent();
+    assert.match(html, /id="emailAccessForm"/);
+    assert.doesNotMatch(html, /id="dashboard"|retryGoogleAccess|collega@gmail\.com/);
+    assert.throws(() => app.ctx.getDashboardData(), /ACCESS_REQUIRED/);
+  }
+});
+
+test('een Gmail-gast met ontbrekende Google-identiteit kan via de uitgenodigde e-mailcode naar binnen', () => {
+  const email = 'collega@gmail.com';
+  const app = setup({ guestEmails: [email] });
+  const challenge = app.ctx.requestEmailCode(email);
+  const session = app.ctx.verifyEmailCode(challenge.challengeId, app.code());
+  assert.match(app.ctx.getDashboardPage(session.token).html, /id="dashboard"/);
+  assert.equal(app.ctx.getDashboardData(session.token).permissions.canViewFinancials, false);
 });

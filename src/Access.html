@@ -12,13 +12,13 @@
         <p class="eyebrow">WORKSHOPKOMPAS</p>
         <h1 id="accessTitle" tabindex="-1">Welkom bij Workshopkompas</h1>
         <p>Dit overzicht is alleen beschikbaar voor uitgenodigde gebruikers.</p>
-        <p id="accessMessage" class="access-message" role="status" aria-live="polite">Je bent nog niet aangemeld met een toegestaan account.</p>
+        <p id="accessMessage" class="access-message" role="status" aria-live="polite"><? if (emailLoginEnabled) { ?>Vul je uitgenodigde e-mailadres in om een inlogcode te ontvangen.<? } else { ?>Inloggen met een e-mailcode is niet beschikbaar. Neem contact op met de beheerder.<? } ?></p>
         <? if (emailLoginEnabled) { ?>
         <form id="emailAccessForm" class="access-form">
           <label for="accessEmail">Inloggen met een e-mailcode</label>
           <input id="accessEmail" name="email" type="email" autocomplete="email" maxlength="254" placeholder="jij@organisatie.nl" required>
           <button id="requestCodeButton" class="button" type="submit">Stuur mij een inlogcode</button>
-          <p class="access-help">Ook geschikt voor een Microsoft-adres. Je hebt geen Google-account nodig.</p>
+          <p class="access-help">Geschikt voor uitgenodigde Gmail- en Microsoft-adressen.</p>
         </form>
         <form id="verifyAccessForm" class="access-form" hidden>
           <label for="accessCode">Inlogcode uit je e-mail</label>
@@ -27,10 +27,6 @@
           <button id="changeAccessEmail" class="text-button" type="button">Ander adres of nieuwe code</button>
         </form>
         <? } ?>
-        <div class="access-google">
-          <button id="retryGoogleAccess" class="text-button" type="button">Google-toegang opnieuw controleren</button>
-          <p class="access-help">Geen toegang? Neem contact op met de beheerder van jouw tech-hub.</p>
-        </div>
       </section>
       <p class="access-footer">Workshopkompas · 3Dindeklas</p>
     </main>

@@ -3,8 +3,8 @@
  *
  * Vul Google-bronnen in; zie docs/EXCEL_IMPORT.md voor Excel naar een importtabblad.
  * Bij de standaarddeployment leest de beheerder de Sheets.
- * Vervang het voorbeeldadres in allowedEmails door ieder Google-account dat
- * het dashboard mag openen. Een lege lijst geeft niemand toegang.
+ * Zet alleen het Google-adres van de beheerder in allowedEmails.
+ * Andere uitgenodigde gebruikers horen in emailAccess.allowedEmails.
  * Zet alleen accounts die financiële cijfers mogen zien daarnaast ook in
  * financialAllowedEmails. Een lege financiële lijst verbergt het blok voor iedereen.
  * maxRowsPerSource begrenst de hoeveelheid data per bron; maximaal 10000.

@@ -146,16 +146,14 @@ function errorReference_() {
   }
 }
 
-/** Weigert standaard wanneer Google geen identiteit beschikbaar stelt. */
+/** Alleen de geverifieerde beheerder mag rechtstreeks via Google naar binnen. */
 function requireAccess_(accessToken) {
   if (accessToken) return emailSession_(accessToken).email;
   const email = activeUserEmail_();
-  const allowedEmails = (APP_CONFIG.allowedEmails || []).map(normalizeEmail_);
-
-  if (!email || allowedEmails.indexOf(email) === -1) {
-    throw new Error('Geen toegang of je sessie is verlopen. Foutcode: ACCESS_REQUIRED.');
+  const allowed = (APP_CONFIG.allowedEmails || []).map(normalizeEmail_);
+  if (!email || email !== effectiveUserEmail_() || allowed.indexOf(email) === -1) {
+    throw new Error('Geen toegang. Meld je aan met een e-mailcode. Foutcode: ACCESS_REQUIRED.');
   }
-
   return email;
 }
 
@@ -181,10 +179,6 @@ function getDashboardPage(accessToken) {
   return { html: html, expiresInMs: session.expiresAt - Date.now() };
 }
 
-function openGoogleDashboard() {
-  return { html: dashboardPage_('').getContent() };
-}
-
 /** Alleen de publieke toegangspagina; bevat geen dashboard-HTML of gegevens. */
 function getAccessPage() {
   return accessPage_().getContent();
@@ -197,7 +191,7 @@ function accessPage_() {
     return template.evaluate().setTitle('Toegang · ' + APP_CONFIG.title)
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   } catch (error) {
-    return messagePage_('Geen toegang', 'Open dit dashboard met een toegestaan Google-account of neem contact op met de beheerder.');
+    return messagePage_('Geen toegang', 'De aanmeldpagina is niet beschikbaar. Neem contact op met de beheerder.');
   }
 }
 

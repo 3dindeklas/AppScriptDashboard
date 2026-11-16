@@ -79,9 +79,9 @@
     function openDashboard(accessToken) {
       const requestGeneration = ++generation;
       busy(true);
-      rpc(accessToken ? 'getDashboardPage' : 'openGoogleDashboard', accessToken ? [accessToken] : [], response => {
+      rpc('getDashboardPage', [accessToken], response => {
         if (requestGeneration !== generation) return;
-        if (!response || !response.html || (accessToken && !(response.expiresInMs > 0))) {
+        if (!response || !response.html || !(response.expiresInMs > 0)) {
           fail(new Error('Je sessie is verlopen. Vraag een nieuwe code aan.'));
           return;
         }
@@ -140,8 +140,6 @@
           document.getElementById('accessEmail').focus();
         });
       }
-      const retry = document.getElementById('retryGoogleAccess');
-      if (retry) retry.addEventListener('click', () => openDashboard(''));
     }
 
     function lock(message) {

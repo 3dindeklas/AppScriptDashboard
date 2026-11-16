@@ -2024,7 +2024,7 @@ test('doGet probeert uitsluitend de toegangspagina voor geweigerde accounts en v
 
   assert.equal(templateCalls, 1);
   assert.equal(output.title, 'Geen toegang');
-  assert.match(output.content, /toegestaan Google-account/);
+  assert.match(output.content, /aanmeldpagina is niet beschikbaar/);
   assert.doesNotMatch(output.content, /niet-toegestaan@voorbeeld\.nl/);
 });
 

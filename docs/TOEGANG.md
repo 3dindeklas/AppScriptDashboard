@@ -1,4 +1,4 @@
-# Toegang met Google-account of e-mailcode
+# Toegang: Google voor de beheerder, e-mailcode voor gasten
 
 Een ingevuld e-mailadres is geen bewijs dat iemand dat adres bezit. Daarom gebruikt de optionele toegang zonder Google-account een eenmalige e-mailcode. Dit werkt ook voor Microsoft 365-adressen; er is geen wachtwoord of Microsoft-koppeling nodig.
 
@@ -6,7 +6,7 @@ Een ingevuld e-mailadres is geen bewijs dat iemand dat adres bezit. Daarom gebru
 
 Zonder geldige identiteit bouwt de server alleen **Access.html** op. Index, grafieken, kaartasset en brongegevens worden dan niet verstuurd. Bij een afwijzing tijdens het laden verdwijnt ook een al opgebouwde dashboardpagina. Ontbreekt een nieuw bestand, dan blijft er een eenvoudige foutpagina over, zonder dashboardblokken.
 
-De bestaande Google-toegang gebruikt `allowedEmails` wanneer Google de actieve identiteit beschikbaar stelt. Op een deployment namens de beheerder kan die identiteit ontbreken; gebruik dan de e-mailcode en zet het adres ook in `emailAccess.allowedEmails`.
+De beheerder opent de gepubliceerde link rechtstreeks met het eigen Google-account. De server vereist dat het door Google herkende adres zowel overeenkomt met het uitvoerende beheerdersaccount als in `allowedEmails` staat. Alle andere bezoekers zien uitsluitend de e-mailcoderoute, ook als Google hun adres wél doorgeeft.
 
 Met e-mailtoegang aan vult de bezoeker een vooraf toegestaan adres in en ontvangt een zescijferige code. Die code is standaard **10 minuten** geldig, eenmalig bruikbaar en na **5 foute pogingen** geblokkeerd. Een opnieuw verstuurde code vervangt de vorige. Het antwoord verklapt niet of een ingevuld adres op de lijst staat.
 
@@ -14,7 +14,7 @@ Na verificatie geldt een sessie van maximaal **8 uur** vanaf het inloggen. Dat i
 
 ## Configuratie
 
-Voeg dit blok aan je eigen `APP_CONFIG` in **Config.gs** toe. Behoud je bestaande spreadsheet-ID’s en Google-accounts.
+Voeg dit blok aan je eigen `APP_CONFIG` in **Config.gs** toe. Behoud je bestaande spreadsheet-ID’s. Laat in de bovenste `allowedEmails` alleen het Google-adres van de beheerder staan en plaats alle genodigden in het onderstaande blok.
 
 ```javascript
 emailAccess: Object.freeze({
@@ -30,33 +30,22 @@ emailAccess: Object.freeze({
 
 - `enabled` staat in de repository standaard op `false`. Zonder dit blok blijft de functie uit.
 - `emailAccess.allowedEmails` bevat de exacte adressen die een code mogen aanvragen. Een leeg adres, alleen een domein of een vergelijkbaar adres is onvoldoende.
-- `allowedEmails` blijft de aparte lijst voor rechtstreeks herkende Google-accounts.
+- De bovenste `allowedEmails` is uitsluitend voor het Google-account van de beheerder.
 - `financialAllowedEmails` blijft een expliciete tweede lijst. Ook een met code geverifieerde gast ziet pas financiële cijfers als diens adres daar óók in staat. Laat deze lijst leeg als gasten geen financiële inzage mogen krijgen.
 - Codegeldigheid is instelbaar van 1 tot 30 minuten; sessieduur van 1 tot 24 uur.
 
 Het verwijderen van een gastadres of uitschakelen van e-mailtoegang blokkeert bestaande sessies bij de volgende serveraanvraag. Bestaande deployversies gebruiken hun eigen opgeslagen configuratie: publiceer dus een nieuwe versie op de betreffende URL. Een al geopende pagina kan eerder geladen gegevens niet op afstand laten vergeten; bij de eerstvolgende controle of uiterlijk de sessie-eindtijd verdwijnt de weergave.
 
-## Deployment voor gebruikers zonder Google-account
+## Eén deployment voor beheerder en gasten
 
 Het huidige **src/appsscript.json** gebruikt **USER_DEPLOYING / ANYONE_ANONYMOUS** en bevat `script.send_mail`. De app draait dus namens de beheerder, ook voor bezoekers zonder Google-account. De gastadressen en `emailAccess.enabled` moeten daarnaast in Config.gs worden ingesteld.
 
-De controles ondersteunen ook het eerdere Google-model: **USER_ACCESSING** met toegang voor aangemelde gebruikers, zoals **ANYONE**. Google vereist bij dat model een Google-account vóór de app kan starten. Een HTML-inlogformulier kan die platformcontrole niet omzeilen.
+1. Werk de gewijzigde Apps Script-bestanden bij. Zet je eigen Google-adres in de bovenste `allowedEmails`. Zet `emailAccess.enabled` op `true` en voeg alle uitgenodigde Gmail- en andere adressen toe aan `emailAccess.allowedEmails`.
+2. Voer als beheerder `checkEmailAccessSetup()` uit in de editor en verleen zo nodig de mailrechten.
+3. Publiceer via **Implementeren → Implementaties beheren** een nieuwe versie met **Uitvoeren als: ik** en **Toegang: iedereen**. Houd deze uitvoeringsmodus aan: uitvoeren als bezoeker hoort niet bij dit toegangsmodel. De beheerder moet de bronbladen kunnen lezen; bezoekers kunnen dezelfde link gebruiken zonder gedeelde bronrechten.
+4. Open de gepubliceerde `/exec`-link met je beheerdersaccount. Het dashboard moet direct openen. Open dezelfde link in een privévenster met een tweede Gmail-account (of zonder Google-login). Daar hoort alleen het e-mailcodeformulier te verschijnen. Controleer dat een uitgenodigd adres met een geldige code naar binnen kan en dat een niet-uitgenodigd adres geen code ontvangt. Controleer ook financiële afscherming.
 
-Voor gasten is een deployment nodig die draait als **de beheerder** en bereikbaar is voor **iedereen, ook zonder Google-login**. De app controleert daarna zelf de e-mailcode en sessie bij iedere pagina- en data-aanvraag.
-
-Gebruik bij voorkeur een **apart Apps Script-project voor gastinzage**. Zo blijven de bestaande Google-deployment, autorisaties en configuratie apart te beheren:
-
-1. Kopieer alle actuele `.gs`- en `.html`-bestanden uit `src/` naar het **gastproject**, inclusief `Stats.gs`, `Code.gs`, `Auth.gs`, `Client.html` en `AccessClient.html`. Zie [INSTALLATIE.md](INSTALLATIE.md).
-2. Vul de bronbladen en je eigen Google-account in; zet de gewenste gastadressen in `emailAccess.allowedEmails` en `enabled` op `true`.
-3. Koppel een Google Sheet en controleer of de beheerder het bronblad kan lezen. **Voor het bijhouden van bezoeken:** zet ook in de **Scripteigenschappen van dit gastproject** `WORKSHOPKOMPAS_STATS_SPREADSHEET_ID` op het ID van het statistiekenspreadsheet (deze eigenschap wordt niet gedeeld met andere Apps Script-projecten). De beheerder van deze deployment moet daar bewerkrechten hebben. Zet `usageStats.enabled` op `true`.
-4. Controleer in het Apps Script-manifest de gastinstellingen `USER_DEPLOYING / ANYONE_ANONYMOUS` en `script.send_mail`. Het huidige `src/appsscript.json` bevat deze al; **deploy/email-access/appsscript.json** is een alternatief met uitsluitend leesrechten voor Sheets.
-5. Voer als beheerder **checkEmailAccessSetup** en **checkUsageStatsSetup** vanuit de editor van dit gastproject uit en verleen de gevraagde autorisaties. De statistiekendiagnose meldt bijvoorbeeld `STATS_SPREADSHEET_NOT_CONFIGURED` of `STATS_SPREADSHEET_UNAVAILABLE` zonder spreadsheet-ID's of gastadressen in het log te zetten. De beheerder moet in `allowedEmails` staan. Deze functie verstuurt geen mail; het uitvoeringslog toont of mailtoegang werkt, hoeveel dagquotum over is en of gasttoegang en de adreslijst zijn ingesteld.
-6. Maak een web-appdeployment: **Uitvoeren als: ik** en **Toegang: iedereen**. De beheerder moet de bron-Sheets kunnen lezen. Deel de bronbladen zelf niet met gasten.
-7. Open de gepubliceerde **/exec**-URL in een privévenster zonder Google-login. `/dev` is alleen toegankelijk voor projecteditors en test de gasttoegang dus niet.
-8. Controleer een toegestaan en een onbekend e-mailadres, een verkeerde code, opnieuw versturen, uitloggen, herladen en de financiële afscherming. Na een geslaagde gast-login moet `Bezoeken` in de dagregel met `E-mailcode` in `__stats` met één stijgen. Herladen binnen dezelfde sessie en dag of brongegevens vernieuwen verandert de teller niet. Verander één filter en controleer of alleen `Filterwijzigingen` met één stijgt. Controleer ook daadwerkelijke bezorging bij Microsoft en de map ongewenste e-mail.
-9. Publiceer na acceptatie de gecontroleerde Apps Script-versie.
-
-Je kunt ook het bestaande project voor gasttoegang omzetten met hetzelfde gastmanifest en dezelfde instellingen. Buiten het domein kan Google dan geen actieve accountidentiteit leveren. Die gebruikers loggen met een code in en moeten daarvoor ook in `emailAccess.allowedEmails` staan. Dit verandert bovendien onder wiens rechten de bronbladen worden gelezen. Daarom is een apart gastproject de eenvoudigste manier om de bestaande Google-toegang intact te houden.
+Gebruik je statistieken? Controleer de private scripteigenschap en bewerkrechten in elk project dat je gebruikt. Zie [Gebruiksstatistieken](STATS.md) en test na publicatie een bezoek, een herlaadactie en een filterwijziging.
 
 Als je organisatie geen toegang voor anonieme bezoekers toestaat, kan de Workspace-beheerder dit beperken. Alleen het inschakelen van `emailAccess` verandert de Google-deployment niet.
 
@@ -103,7 +92,11 @@ Een mislukte verzending telt niet meer mee voor de app-verzendlimiet en doet bij
 De lokale tests simuleren Google en de mailbezorging. Een echte gastdeployment en daadwerkelijke e-mailbezorging moeten nog in Apps Script worden getest.
 
 
-### Dagtotalen in __stats
+## Een gast krijgt geen toegang
+
+Controleer of het exacte adres in `emailAccess.allowedEmails` van de gepubliceerde versie staat. Deel de `/exec`-link; een `/dev`-link werkt alleen voor scriptbewerkers. Verschijnt het formulier niet, controleer `emailAccess.enabled`. Stopt Google de bezoeker voordat Workshopkompas verschijnt, controleer dan de toegangsinstelling van de implementatie.
+
+## Dagtotalen in __stats
 
 Nieuwe activiteit gebruikt één regel met `Dagtotalen` per Amsterdamse kalenderdag, e-mailadres en toegangsmethode. De kolommen **Dag**, **Bezoeken**, **Filterwijzigingen** en **Laatste activiteit** worden aan het bestaande vierkolommige schema toegevoegd. Historische regels blijven staan en tellen niet mee in de nieuwe dagtotalen; de ingestelde bewaartermijn blijft gelden. Bij een afwijkend schema schrijft de app niets.
 
