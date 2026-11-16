@@ -18,7 +18,7 @@ test('niet-ingelogde bezoekers krijgen alleen toegangspagina, nooit Index of dat
   assert.doesNotMatch(html, /id="dashboard"|id="kpis"|id="sourceCards"|id="municipalityData"/);
   assert.throws(() => app.ctx.getDashboardData(), /ACCESS_REQUIRED/);
   assert.throws(() => app.ctx.refreshDashboardData(), /ACCESS_REQUIRED/);
-  assert.throws(() => app.ctx.openGoogleDashboard(), /ACCESS_REQUIRED/);
+  assert.equal(typeof app.ctx.openGoogleDashboard, 'undefined');
   assert.throws(() => app.ctx.include('Client'), /ACCESS_REQUIRED/);
   assert.throws(() => app.ctx.getDashboardPage('gast@microsoft.example'), /ACCESS_REQUIRED/);
 });
@@ -250,22 +250,15 @@ test('toegestane Hotmail-adressen volgen dezelfde e-mailcodeflow', () => {
 });
 
 
-test('een toegestane Gmail-gebruiker zonder doorgegeven identiteit krijgt uitleg, geen toegang als eigenaar', () => {
-  const app = setup();
-  vm.runInContext("APP_CONFIG.allowedEmails.push('collega@gmail.com')", app.ctx);
-  const html = app.ctx.doGet().getContent();
-  assert.match(html, /GOOGLE_IDENTITY_UNAVAILABLE/);
-  assert.doesNotMatch(html, /id="dashboard"|collega@gmail\.com|jouw-account@voorbeeld\.nl/);
-  assert.throws(() => app.ctx.openGoogleDashboard(), /GOOGLE_IDENTITY_UNAVAILABLE/);
-  assert.throws(() => app.ctx.getDashboardData(), /ACCESS_REQUIRED/);
-});
-
-test('een tweede Gmail-account krijgt toegang als Google het adres werkelijk doorgeeft', () => {
-  const app = setup({ googleEmail: 'Collega@gmail.com' });
-  assert.match(app.ctx.doGet().getContent(), /GOOGLE_ACCOUNT_NOT_ALLOWED/);
-  vm.runInContext("APP_CONFIG.allowedEmails.push('collega@gmail.com')", app.ctx);
-  assert.match(app.ctx.openGoogleDashboard().html, /id="dashboard"/);
-  assert.equal(app.ctx.getDashboardData().permissions.canViewFinancials, false);
+test('Gmail-bezoekers krijgen alleen e-mailcode, ook als Google hun adres doorgeeft', () => {
+  for (const googleEmail of ['', 'collega@gmail.com']) {
+    const app = setup({ googleEmail });
+    vm.runInContext("APP_CONFIG.allowedEmails.push('collega@gmail.com')", app.ctx);
+    const html = app.ctx.doGet().getContent();
+    assert.match(html, /id="emailAccessForm"/);
+    assert.doesNotMatch(html, /id="dashboard"|retryGoogleAccess|collega@gmail\.com/);
+    assert.throws(() => app.ctx.getDashboardData(), /ACCESS_REQUIRED/);
+  }
 });
 
 test('een Gmail-gast met ontbrekende Google-identiteit kan via de uitgenodigde e-mailcode naar binnen', () => {

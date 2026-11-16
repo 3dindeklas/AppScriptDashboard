@@ -66,8 +66,8 @@ function setup(options = {}) {
           cursor = match.index + match[0].length;
         }
         program += 'html+=' + JSON.stringify(source.slice(cursor)) + ';return html;';
-        const render = vm.runInContext('(function(accessToken,emailLoginEnabled,googleAccessMessage){' + program + '})', ctx);
-        return output(render(template.accessToken, template.emailLoginEnabled, template.googleAccessMessage));
+        const render = vm.runInContext('(function(accessToken,emailLoginEnabled){' + program + '})', ctx);
+        return output(render(template.accessToken, template.emailLoginEnabled));
       };
       return template;
     },

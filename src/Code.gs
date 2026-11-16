@@ -138,28 +138,15 @@ function errorReference_() {
   }
 }
 
-/** Weigert standaard wanneer Google geen identiteit beschikbaar stelt. */
+/** Alleen de geverifieerde beheerder mag rechtstreeks via Google naar binnen. */
 function requireAccess_(accessToken) {
   if (accessToken) return emailSession_(accessToken).email;
   const email = activeUserEmail_();
-  const denial = googleAccessDenial_(email);
-  if (denial) throw new Error('Geen toegang. ' + denial.message + ' Foutcode: ACCESS_REQUIRED (' + denial.code + ').');
-  return email;
-}
-
-/** Alleen vaste teksten: geen accountadres, allowlist of eigenaarsgegevens. */
-function googleAccessDenial_(email) {
-  if (!email) {
-    return {
-      code: 'GOOGLE_IDENTITY_UNAVAILABLE',
-      message: 'Google geeft je accountadres niet door aan deze web-app. Gebruik een uitgenodigde e-mailcode als die beschikbaar is, of vraag de beheerder om de juiste dashboardlink.'
-    };
-  }
   const allowed = (APP_CONFIG.allowedEmails || []).map(normalizeEmail_);
-  return allowed.indexOf(email) === -1 ? {
-    code: 'GOOGLE_ACCOUNT_NOT_ALLOWED',
-    message: 'Het huidige Google-account heeft geen toegang. Controleer met welk account je bent ingelogd en vraag de beheerder of dit adres in de gepubliceerde versie staat.'
-  } : null;
+  if (!email || email !== effectiveUserEmail_() || allowed.indexOf(email) === -1) {
+    throw new Error('Geen toegang. Meld je aan met een e-mailcode. Foutcode: ACCESS_REQUIRED.');
+  }
+  return email;
 }
 
 /** Index wordt pas opgebouwd nadat de server de identiteit heeft gecontroleerd. */
@@ -176,10 +163,6 @@ function getDashboardPage(accessToken) {
   return { html: dashboardPage_(accessToken).getContent(), expiresInMs: session.expiresAt - Date.now() };
 }
 
-function openGoogleDashboard() {
-  return { html: dashboardPage_('').getContent() };
-}
-
 /** Alleen de publieke toegangspagina; bevat geen dashboard-HTML of gegevens. */
 function getAccessPage() {
   return accessPage_().getContent();
@@ -189,14 +172,10 @@ function accessPage_() {
   try {
     const template = HtmlService.createTemplateFromFile('Access');
     template.emailLoginEnabled = emailAccessSettings_().enabled;
-    const denial = googleAccessDenial_(activeUserEmail_());
-    template.googleAccessMessage = denial
-      ? denial.message + ' Foutcode: ' + denial.code + '.'
-      : 'Meld je opnieuw aan om het dashboard te openen.';
     return template.evaluate().setTitle('Toegang · ' + APP_CONFIG.title)
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   } catch (error) {
-    return messagePage_('Geen toegang', 'Open dit dashboard met een toegestaan Google-account of neem contact op met de beheerder.');
+    return messagePage_('Geen toegang', 'De aanmeldpagina is niet beschikbaar. Neem contact op met de beheerder.');
   }
 }
 
