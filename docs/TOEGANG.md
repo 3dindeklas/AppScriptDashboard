@@ -45,6 +45,8 @@ Het huidige **src/appsscript.json** gebruikt **USER_DEPLOYING / ANYONE_ANONYMOUS
 3. Publiceer via **Implementeren → Implementaties beheren** een nieuwe versie met **Uitvoeren als: ik** en **Toegang: iedereen**. Houd deze uitvoeringsmodus aan: uitvoeren als bezoeker hoort niet bij dit toegangsmodel. De beheerder moet de bronbladen kunnen lezen; bezoekers kunnen dezelfde link gebruiken zonder gedeelde bronrechten.
 4. Open de gepubliceerde `/exec`-link met je beheerdersaccount. Het dashboard moet direct openen. Open dezelfde link in een privévenster met een tweede Gmail-account (of zonder Google-login). Daar hoort alleen het e-mailcodeformulier te verschijnen. Controleer dat een uitgenodigd adres met een geldige code naar binnen kan en dat een niet-uitgenodigd adres geen code ontvangt. Controleer ook financiële afscherming.
 
+Gebruik je statistieken? Controleer de private scripteigenschap en bewerkrechten in elk project dat je gebruikt. Zie [Gebruiksstatistieken](STATS.md) en test na publicatie een bezoek, een herlaadactie en een filterwijziging.
+
 Als je organisatie geen toegang voor anonieme bezoekers toestaat, kan de Workspace-beheerder dit beperken. Alleen het inschakelen van `emailAccess` verandert de Google-deployment niet.
 
 ## Een inlogcode kan niet worden verstuurd
@@ -94,3 +96,16 @@ De lokale tests simuleren Google en de mailbezorging. Een echte gastdeployment e
 
 Controleer of het exacte adres in `emailAccess.allowedEmails` van de gepubliceerde versie staat. Deel de `/exec`-link; een `/dev`-link werkt alleen voor scriptbewerkers. Verschijnt het formulier niet, controleer `emailAccess.enabled`. Stopt Google de bezoeker voordat Workshopkompas verschijnt, controleer dan de toegangsinstelling van de implementatie.
 
+## Dagtotalen in __stats
+
+Nieuwe activiteit gebruikt één regel met `Dagtotalen` per Amsterdamse kalenderdag, e-mailadres en toegangsmethode. De kolommen **Dag**, **Bezoeken**, **Filterwijzigingen** en **Laatste activiteit** worden aan het bestaande vierkolommige schema toegevoegd. Historische regels blijven staan en tellen niet mee in de nieuwe dagtotalen; de ingestelde bewaartermijn blijft gelden. Bij een afwijkend schema schrijft de app niets.
+
+Een bezoek telt bij de eerste dashboardopening van die sessie die dag. Een nieuwe gastlogin of Google-tabsessie kan een tweede bezoek opleveren; dezelfde sessie die na lokale middernacht opnieuw opent telt voor de nieuwe dag. Dit is geen telling van unieke personen of een log van Google-inlogacties. Een filterwijziging zonder bezoek die dag kan een dagregel met nul bezoeken opleveren.
+
+Dashboard- en kalenderfilters tellen wanneer de gebruiker de selectie verandert. Schuifregelaars tellen bij het bevestigen, niet per tussenstap. Filters wissen telt eenmaal als er iets verandert. De app bewaart alleen het aantal, geen gekozen filterwaarden. Maandnavigatie, renderen en bronverversing zijn geen filterwijzigingen.
+
+Publiceer bij een apart gastproject ook daar de bijgewerkte bestanden. Voer `checkUsageStatsSetup` per project uit als de tellers niet verschijnen. Een verborgen tabblad beperkt de toegang tot de geregistreerde e-mailadressen niet; geef alleen bevoegde beheerders toegang tot het statistiekenspreadsheet.
+
+**Tijdstip** blijft het moment van de eerste geregistreerde actie op die dag. **Laatste activiteit** wordt bijgewerkt bij een geteld bezoek of een bevestigde filterwijziging. Herladen binnen dezelfde sessie en dag verandert deze tijd niet. Bestaande dagregels zonder bekende laatste activiteit houden een lege cel tot een nieuwe getelde actie.
+
+Bij ontbrekende registratie: voer eerst `checkUsageStatsSetup()` uit in het betreffende project en bekijk daarna de uitvoeringslog van de web-app rond de actie. `STATS_BUSY` betekent dat de actie niet kon schrijven wegens een bezette lock; filteracties proberen dit maximaal tweemaal opnieuw. `STATS_HEADERS_MISMATCH` wijst op een afwijkende kopregel, `STATS_WRITE_FAILED` op een opslagfout en `STATS_MAINTENANCE_FAILED` op een fout bij opruimen of verbergen nadat de actie al geteld is. De codes bevatten geen e-mailadressen of filterwaarden.
