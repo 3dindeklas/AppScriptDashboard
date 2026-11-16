@@ -147,6 +147,8 @@
       schoolBoardsChart: document.getElementById('schoolBoardsChart'),
       schoolBoardsSummary: document.getElementById('schoolBoardsSummary'),
       schoolBoardsTableRows: document.getElementById('schoolBoardsTableRows'),
+      schoolBoardsOtherRows: document.getElementById('schoolBoardsOtherRows'),
+      schoolBoardsOtherSummary: document.getElementById('schoolBoardsOtherSummary'),
       poChart: document.getElementById('poChart'),
       poTableRows: document.getElementById('poTableRows'),
       voChart: document.getElementById('voChart'),
@@ -959,8 +961,9 @@
         (knownBoards === 1 ? ' schoolbestuur' : ' schoolbesturen') + ' · ' +
         numberFormat.format(unassigned) +
         (unassigned === 1 ? ' aanvraag zonder bestuur (data-inconsistentie)'
-          : ' aanvragen zonder bestuur (data-inconsistentie)');
-      renderSchoolBoardChart(boards.entries);
+          : ' aanvragen zonder bestuur (data-inconsistentie)') +
+        ' · ' + numberFormat.format(boards.other.length) + ' onder Overige';
+      renderSchoolBoardChart(boards);
       renderCategoryChart(
         elements.poChart, elements.poTableRows, weightedGrades(records, 'PO'), 9, 'pie'
       );
@@ -969,8 +972,8 @@
       );
     }
 
-    function renderCategoryChart(chart, tableRows, entries, limit, type) {
-      if (type === 'donut' || type === 'pie') renderCircularChart(chart, entries, type === 'pie');
+    function renderCategoryChart(chart, tableRows, entries, limit, type, color) {
+      if (type === 'donut' || type === 'pie') renderCircularChart(chart, entries, type === 'pie', color);
       else renderBars(chart, entries, limit);
       tableRows.replaceChildren();
 
@@ -1003,7 +1006,7 @@
       return element;
     }
 
-    function renderCircularChart(container, entries, pie) {
+    function renderCircularChart(container, entries, pie, customColor) {
       container.replaceChildren();
       const total = entries.reduce((sum, entry) => sum + entry[1], 0);
       if (!total) {
@@ -1011,10 +1014,10 @@
         return;
       }
       const unitLabel = pie ? 'gewogen aanvragen' : 'aanvragen';
-      const colorOf = label => {
+      const colorOf = customColor || (label => {
         const grade = /^(?:Groep|Leerjaar) (\d)$/.exec(label);
         return pie && grade ? gradeColors[Number(grade[1]) - 1] : donutColors[label] || '#94a3b8';
-      };
+      });
       const ring = svgElement('svg', {
         viewBox: '0 0 180 180', class: pie ? 'pie-disc' : 'donut-ring', role: 'img',
         'aria-label': formatChartNumber(total) + ' ' + unitLabel + '. ' +
@@ -1487,55 +1490,57 @@
 
     function countSchoolBoardRequests(records) {
       const counts = new Map();
+      const other = [];
       let missingCount = 0;
       records.forEach(record => {
         const raw = String(record.schoolBoard || '').trim().replace(/\s+/g, ' ');
         const missing = !raw || /^(?:niet ingevuld|onbekend|n\/?a|-)$/i.test(raw);
         if (missing) missingCount += 1;
-        const label = missing || normalizedIdentity(raw) === 'overige' ? 'Overige' : raw;
-        const key = label === 'Overige' ? '__other__' : normalizedIdentity(label);
-        if (!counts.has(key)) counts.set(key, { label, count: 0 });
+        if (missing || normalizedIdentity(raw) === 'overige') {
+          other.push({ record, raw });
+          return;
+        }
+        const key = normalizedIdentity(raw);
+        if (!counts.has(key)) counts.set(key, { label: raw, count: 0 });
         counts.get(key).count += 1;
       });
       const entries = [...counts.values()].map(entry => [entry.label, entry.count])
-        .sort((a, b) => (a[0] === 'Overige' ? 1 : b[0] === 'Overige' ? -1 : 0) ||
-          b[1] - a[1] || a[0].localeCompare(b[0], 'nl'));
-      return { entries, missingCount };
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'nl'));
+      if (other.length) entries.push(['Overige', other.length]);
+      return { entries, other, missingCount };
     }
 
-    // Grafiek: acht benoemde besturen plus één categorie Overige. Die bevat
-    // ontbrekende bronwaarden én besturen buiten de top acht. De tabel
-    // behoudt alle afzonderlijke benamingen en de originele Overige-telling.
-    function renderSchoolBoardChart(entries) {
-      const named = entries.filter(entry => entry[0] !== 'Overige');
-      const other = entries.find(entry => entry[0] === 'Overige');
-      const beyondTopEight = named.slice(8);
-      const chartEntries = named.slice(0, 8);
-      const otherCount = (other ? other[1] : 0) +
-        beyondTopEight.reduce((total, entry) => total + entry[1], 0);
-      if (otherCount) chartEntries.push(['Overige', otherCount]);
-      renderBars(elements.schoolBoardsChart, chartEntries, chartEntries.length);
+    function renderSchoolBoardChart(boards) {
+      const colors = new Map(boards.entries.map(([label], index) =>
+        [label, label === 'Overige' ? '#94a3b8' : gradeColors[index % gradeColors.length]]));
+      renderCategoryChart(elements.schoolBoardsChart, elements.schoolBoardsTableRows,
+        boards.entries, boards.entries.length, 'donut', label => colors.get(label));
 
-      elements.schoolBoardsTableRows.replaceChildren();
-      if (!entries.length) {
+      const summary = elements.schoolBoardsOtherSummary;
+      const table = elements.schoolBoardsOtherRows;
+      summary.textContent = 'Aanvragen onder Overige (' + numberFormat.format(boards.other.length) + ')';
+      table.replaceChildren();
+      if (!boards.other.length) {
         const row = document.createElement('tr');
         const cell = document.createElement('td');
-        cell.colSpan = 2;
+        cell.colSpan = 5;
         cell.className = 'empty';
-        cell.textContent = 'Geen gegevens binnen deze filters.';
+        cell.textContent = 'Geen aanvragen onder Overige binnen deze filters.';
         row.appendChild(cell);
-        elements.schoolBoardsTableRows.appendChild(row);
+        table.appendChild(row);
         return;
       }
-      entries.forEach(entry => {
+      boards.other.forEach(({ record, raw }) => {
         const row = document.createElement('tr');
-        const name = document.createElement('th');
-        name.setAttribute('scope', 'row');
-        name.textContent = entry[0];
-        const count = document.createElement('td');
-        count.textContent = formatChartNumber(entry[1]);
-        row.append(name, count);
-        elements.schoolBoardsTableRows.appendChild(row);
+        [record.school || 'Onbekende school', record.workshop || 'Onbekende workshop',
+          record.source || 'Onbekende tech-hub', record.schoolYear || 'Onbekend', raw || 'Niet ingevuld']
+          .forEach((value, index) => {
+            const cell = document.createElement(index === 0 ? 'th' : 'td');
+            if (index === 0) cell.setAttribute('scope', 'row');
+            cell.textContent = value;
+            row.appendChild(cell);
+          });
+        table.appendChild(row);
       });
     }
 

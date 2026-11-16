@@ -301,9 +301,10 @@
           <article id="schoolBoardsPanel" class="panel chart-card school-board-panel" aria-labelledby="schoolBoardsTitle">
             <div class="panel-heading"><div><p class="eyebrow">SCHOOLBESTUREN</p><h3 id="schoolBoardsTitle">Aanvragen per schoolbestuur</h3></div></div>
             <p id="schoolBoardsSummary" class="chart-subtitle" aria-live="polite"></p>
-            <div id="schoolBoardsChart" class="bar-chart" aria-label="Aanvragen per schoolbestuur"></div>
+            <div id="schoolBoardsChart" class="donut-chart" aria-label="Aanvragen per schoolbestuur"></div>
             <details class="chart-data"><summary>Bekijk alle schoolbesturen als tabel</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Aantal aanvragen per schoolbestuur in de actieve selectie</caption><thead><tr><th scope="col">Schoolbestuur</th><th scope="col">Aanvragen</th></tr></thead><tbody id="schoolBoardsTableRows"></tbody></table></div></details>
-            <p class="chart-note">Elke aanvraag telt één keer. Lege waarden uit de bronkolom Bestuur vallen onder Overige en worden als data-inconsistentie getoond. In de grafiek bevat Overige ook besturen buiten de top acht; de tabel toont alle besturen apart.</p>
+            <details class="chart-data"><summary id="schoolBoardsOtherSummary">Aanvragen onder Overige</summary><div class="table-wrap"><table class="chart-table"><caption class="visually-hidden">Afzonderlijke aanvragen onder Overige in de actieve selectie</caption><thead><tr><th scope="col">School</th><th scope="col">Workshop</th><th scope="col">Tech-hub</th><th scope="col">Schooljaar</th><th scope="col">Waarde in Bestuur</th></tr></thead><tbody id="schoolBoardsOtherRows"></tbody></table></div></details>
+            <p class="chart-note">Elke aanvraag telt één keer. Overige bevat alleen aanvragen met een leeg, onbekend of als Overige ingevuld bestuur. Elk benoemd bestuur staat apart.</p>
           </article>
 <article id="gradesPanel" class="panel grades-panel">
  <div class="panel-heading"><div><p class="eyebrow">LEERJAREN</p><h2>Bereik in PO en VO</h2></div></div>

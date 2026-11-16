@@ -167,7 +167,7 @@ function clientHarness(records, options = {}) {
     'sectorChart', 'sectorTableRows', 'regionChart',
     'statusChart', 'statusTableRows', 'workshopChart', 'workshopTableRows',
     'providerChart', 'providerTableRows', 'schoolBoardsChart', 'schoolBoardsSummary',
-    'schoolBoardsTableRows', 'poChart', 'poTableRows',
+    'schoolBoardsTableRows', 'schoolBoardsOtherRows', 'schoolBoardsOtherSummary', 'poChart', 'poTableRows',
     'voChart', 'voTableRows', 'recentRows', 'recentDateHeading',
     'municipalityData', 'municipalityMap', 'mapScope', 'mapMunicipality', 'mapDetail',
     'mapCoverage', 'mapUnmatched', 'mapLegend', 'mapTableRows',
@@ -643,16 +643,20 @@ test('aanvragen per schoolbestuur tellen per bronregel, groeperen schrijfvariant
     ['Stichting Horizon', '2'], ['Bestuur Rivierenland', '1'], ['Overige', '2']
   ]);
   assert.equal(elements.schoolBoardsSummary.textContent,
-    '2 schoolbesturen · 2 aanvragen zonder bestuur (data-inconsistentie)');
-  assert.equal(elements.schoolBoardsChart.children.length, 3);
+    '2 schoolbesturen · 2 aanvragen zonder bestuur (data-inconsistentie) · 2 onder Overige');
+  assert.equal(elements.schoolBoardsChart.children[0].tagName, 'SVG');
+  assert.match(elements.schoolBoardsChart.children[0].getAttribute('aria-label'), /5 aanvragen/);
+  assert.equal(elements.schoolBoardsOtherRows.children.length, 2);
   assert.equal(rows().reduce((total, row) => total + Number(row[1]), 0), 5);
   assert.equal(elements.kpis.children[0].children[1].textContent, '5');
 
   elements.sourceFilter.value = 'Hub B';
   elements.sourceFilter.trigger('change');
   assert.deepEqual(rows(), [['stichting hórizon', '1'], ['Overige', '1']]);
+  assert.equal(elements.schoolBoardsOtherRows.children.length, 1);
+  assert.equal(elements.schoolBoardsOtherRows.children[0].children[4].textContent, 'Onbekend');
   assert.equal(elements.schoolBoardsSummary.textContent,
-    '1 schoolbestuur · 1 aanvraag zonder bestuur (data-inconsistentie)');
+    '1 schoolbestuur · 1 aanvraag zonder bestuur (data-inconsistentie) · 1 onder Overige');
   elements.schoolYearFilter.value = '2025–2026';
   elements.schoolYearFilter.trigger('change');
   assert.equal(elements.schoolBoardsChart.children[0].textContent, 'Geen gegevens binnen deze filters.');
@@ -667,14 +671,15 @@ test('aanvragen per schoolbestuur tellen per bronregel, groeperen schrijfvariant
   assert.equal(elements.schoolBoardsPanel.hidden, false);
 });
 
-test('bij veel schoolbesturen toont de grafiek de top 8 en de tabel het volledige overzicht', () => {
+test('ook buiten de vroegere top acht behoudt de donut ieder benoemd bestuur', () => {
   const records = Array.from({ length: 10 }, (_, index) => ({
     source: 'A', schoolBoard: 'Bestuur ' + String(index + 1).padStart(2, '0')
   }));
   const elements = clientHarness(records);
-  assert.equal(elements.schoolBoardsChart.children.length, 9);
-  assert.equal(elements.schoolBoardsChart.children[8].children[0].children[0].textContent,
-    'Overige');
+  const legend = elements.schoolBoardsChart.children[1].children;
+  assert.equal(legend.length, 10);
+  assert.equal(legend[9].children[1].textContent, 'Bestuur 10');
+  assert.equal(elements.schoolBoardsOtherSummary.textContent, 'Aanvragen onder Overige (0)');
   assert.equal(elements.schoolBoardsTableRows.children.length, 10);
   assert.equal(elements.schoolBoardsTableRows.children.reduce((sum, row) =>
     sum + Number(row.children[1].textContent), 0), 10);
@@ -698,8 +703,8 @@ test('de bronkolom Bestuur wordt veilig gelezen; lege waarden blijven herkenbaar
 
 test('leeg Bestuur en bestaand Overige worden samengevoegd; de kwaliteitsteller blijft correct', () => {
   const elements = clientHarness([
-    { source: 'A', schoolBoard: '' },
-    { source: 'A', schoolBoard: 'Overige' },
+    { source: 'A', school: 'De Bron', workshop: 'Solderen', schoolYear: '2026–2027', schoolBoard: '' },
+    { source: 'A', school: 'De Bron', workshop: 'Robotica', schoolYear: '2026–2027', schoolBoard: 'Overige' },
     { source: 'A', schoolBoard: 'Stichting Dorp' },
     { source: 'A', schoolBoard: 'ONBEKEND' }
   ]);
@@ -707,10 +712,18 @@ test('leeg Bestuur en bestaand Overige worden samengevoegd; de kwaliteitsteller 
     row.children.map(cell => cell.textContent));
   assert.deepEqual(rows, [['Stichting Dorp', '1'], ['Overige', '3']]);
   assert.equal(elements.schoolBoardsSummary.textContent,
-    '1 schoolbestuur · 2 aanvragen zonder bestuur (data-inconsistentie)');
+    '1 schoolbestuur · 2 aanvragen zonder bestuur (data-inconsistentie) · 3 onder Overige');
   assert.equal(elements.schoolBoardsChart.children.length, 2);
-  assert.equal(elements.schoolBoardsChart.children[1].children[0].children[0].textContent, 'Overige');
-  assert.equal(elements.schoolBoardsChart.children[1].children[0].children[1].textContent, '3');
+  const otherLegend = elements.schoolBoardsChart.children[1].children[1];
+  assert.equal(otherLegend.children[1].textContent, 'Overige');
+  assert.equal(otherLegend.children[2].textContent, '3 · 75,0%');
+  assert.equal(elements.schoolBoardsOtherSummary.textContent, 'Aanvragen onder Overige (3)');
+  const detail = elements.schoolBoardsOtherRows.children.map(row => row.children.map(cell => cell.textContent));
+  assert.deepEqual(detail.slice(0, 2), [
+    ['De Bron', 'Solderen', 'A', '2026–2027', 'Niet ingevuld'],
+    ['De Bron', 'Robotica', 'A', '2026–2027', 'Overige']
+  ]);
+  assert.equal(detail[2][4], 'ONBEKEND');
 });
 
 test('donuts tonen aantallen, percentages en vaste kleuren na filteren', () => {
