@@ -443,11 +443,11 @@ test('iedere stap-7-grafiek heeft een leesbare tabelweergave zonder externe graf
 
   for (const id of [
     'sectorTableRows', 'mapTableRows', 'statusTableRows', 'workshopTableRows',
-    'providerTableRows', 'schoolBoardsTableRows', 'poTableRows', 'voTableRows'
+    'providerTableRows', 'schoolBoardsTableRows', 'schoolBoardsOtherRows', 'poTableRows', 'voTableRows'
   ]) {
     assert.match(index, new RegExp('<tbody id="' + id + '">'));
   }
-  assert.equal((index.match(/<details class="chart-data">/g) || []).length, 6);
+  assert.match(index, /<details class="chart-data"><summary id="schoolBoardsOtherSummary">/);
   assert.doesNotMatch(index, /<script[^>]+src=/i);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
 });
