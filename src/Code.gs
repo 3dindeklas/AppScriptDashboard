@@ -142,13 +142,24 @@ function errorReference_() {
 function requireAccess_(accessToken) {
   if (accessToken) return emailSession_(accessToken).email;
   const email = activeUserEmail_();
-  const allowedEmails = (APP_CONFIG.allowedEmails || []).map(normalizeEmail_);
-
-  if (!email || allowedEmails.indexOf(email) === -1) {
-    throw new Error('Geen toegang of je sessie is verlopen. Foutcode: ACCESS_REQUIRED.');
-  }
-
+  const denial = googleAccessDenial_(email);
+  if (denial) throw new Error('Geen toegang. ' + denial.message + ' Foutcode: ACCESS_REQUIRED (' + denial.code + ').');
   return email;
+}
+
+/** Alleen vaste teksten: geen accountadres, allowlist of eigenaarsgegevens. */
+function googleAccessDenial_(email) {
+  if (!email) {
+    return {
+      code: 'GOOGLE_IDENTITY_UNAVAILABLE',
+      message: 'Google geeft je accountadres niet door aan deze web-app. Gebruik een uitgenodigde e-mailcode als die beschikbaar is, of vraag de beheerder om de juiste dashboardlink.'
+    };
+  }
+  const allowed = (APP_CONFIG.allowedEmails || []).map(normalizeEmail_);
+  return allowed.indexOf(email) === -1 ? {
+    code: 'GOOGLE_ACCOUNT_NOT_ALLOWED',
+    message: 'Het huidige Google-account heeft geen toegang. Controleer met welk account je bent ingelogd en vraag de beheerder of dit adres in de gepubliceerde versie staat.'
+  } : null;
 }
 
 /** Index wordt pas opgebouwd nadat de server de identiteit heeft gecontroleerd. */
@@ -178,6 +189,10 @@ function accessPage_() {
   try {
     const template = HtmlService.createTemplateFromFile('Access');
     template.emailLoginEnabled = emailAccessSettings_().enabled;
+    const denial = googleAccessDenial_(activeUserEmail_());
+    template.googleAccessMessage = denial
+      ? denial.message + ' Foutcode: ' + denial.code + '.'
+      : 'Meld je opnieuw aan om het dashboard te openen.';
     return template.evaluate().setTitle('Toegang · ' + APP_CONFIG.title)
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   } catch (error) {

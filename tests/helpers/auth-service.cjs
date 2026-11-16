@@ -66,8 +66,8 @@ function setup(options = {}) {
           cursor = match.index + match[0].length;
         }
         program += 'html+=' + JSON.stringify(source.slice(cursor)) + ';return html;';
-        const render = vm.runInContext('(function(accessToken,emailLoginEnabled){' + program + '})', ctx);
-        return output(render(template.accessToken, template.emailLoginEnabled));
+        const render = vm.runInContext('(function(accessToken,emailLoginEnabled,googleAccessMessage){' + program + '})', ctx);
+        return output(render(template.accessToken, template.emailLoginEnabled, template.googleAccessMessage));
       };
       return template;
     },
@@ -78,7 +78,7 @@ function setup(options = {}) {
     let source = fs.readFileSync('src/' + file, 'utf8');
     if (file === 'Config.gs') source = source.replace(/emailAccess: Object.freeze\(\{[\s\S]*?\}\),/,
       'emailAccess: Object.freeze(' + JSON.stringify({ enabled: options.enabled !== false,
-        allowedEmails: ['gast@microsoft.example'], codeMinutes: 10, sessionHours: 8 }) + '),');
+        allowedEmails: options.guestEmails || ['gast@microsoft.example'], codeMinutes: 10, sessionHours: 8 }) + '),');
     vm.runInContext(source, ctx);
   }
   vm.runInContext(fs.readFileSync('tests/helpers/workshop-fixture.gs', 'utf8'), ctx);

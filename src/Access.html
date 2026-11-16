@@ -12,13 +12,13 @@
         <p class="eyebrow">WORKSHOPKOMPAS</p>
         <h1 id="accessTitle" tabindex="-1">Welkom bij Workshopkompas</h1>
         <p>Dit overzicht is alleen beschikbaar voor uitgenodigde gebruikers.</p>
-        <p id="accessMessage" class="access-message" role="status" aria-live="polite">Je bent nog niet aangemeld met een toegestaan account.</p>
+        <p id="accessMessage" class="access-message" role="status" aria-live="polite"><?= googleAccessMessage ?></p>
         <? if (emailLoginEnabled) { ?>
         <form id="emailAccessForm" class="access-form">
           <label for="accessEmail">Inloggen met een e-mailcode</label>
           <input id="accessEmail" name="email" type="email" autocomplete="email" maxlength="254" placeholder="jij@organisatie.nl" required>
           <button id="requestCodeButton" class="button" type="submit">Stuur mij een inlogcode</button>
-          <p class="access-help">Ook geschikt voor een Microsoft-adres. Je hebt geen Google-account nodig.</p>
+          <p class="access-help">Geschikt voor uitgenodigde Gmail- en Microsoft-adressen.</p>
         </form>
         <form id="verifyAccessForm" class="access-form" hidden>
           <label for="accessCode">Inlogcode uit je e-mail</label>

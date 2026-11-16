@@ -248,3 +248,31 @@ test('toegestane Hotmail-adressen volgen dezelfde e-mailcodeflow', () => {
   const { token } = app.ctx.verifyEmailCode(challenge.challengeId, app.code());
   assert.equal(app.ctx.requireAccess_(token), 'voorbeeld@hotmail.com');
 });
+
+
+test('een toegestane Gmail-gebruiker zonder doorgegeven identiteit krijgt uitleg, geen toegang als eigenaar', () => {
+  const app = setup();
+  vm.runInContext("APP_CONFIG.allowedEmails.push('collega@gmail.com')", app.ctx);
+  const html = app.ctx.doGet().getContent();
+  assert.match(html, /GOOGLE_IDENTITY_UNAVAILABLE/);
+  assert.doesNotMatch(html, /id="dashboard"|collega@gmail\.com|jouw-account@voorbeeld\.nl/);
+  assert.throws(() => app.ctx.openGoogleDashboard(), /GOOGLE_IDENTITY_UNAVAILABLE/);
+  assert.throws(() => app.ctx.getDashboardData(), /ACCESS_REQUIRED/);
+});
+
+test('een tweede Gmail-account krijgt toegang als Google het adres werkelijk doorgeeft', () => {
+  const app = setup({ googleEmail: 'Collega@gmail.com' });
+  assert.match(app.ctx.doGet().getContent(), /GOOGLE_ACCOUNT_NOT_ALLOWED/);
+  vm.runInContext("APP_CONFIG.allowedEmails.push('collega@gmail.com')", app.ctx);
+  assert.match(app.ctx.openGoogleDashboard().html, /id="dashboard"/);
+  assert.equal(app.ctx.getDashboardData().permissions.canViewFinancials, false);
+});
+
+test('een Gmail-gast met ontbrekende Google-identiteit kan via de uitgenodigde e-mailcode naar binnen', () => {
+  const email = 'collega@gmail.com';
+  const app = setup({ guestEmails: [email] });
+  const challenge = app.ctx.requestEmailCode(email);
+  const session = app.ctx.verifyEmailCode(challenge.challengeId, app.code());
+  assert.match(app.ctx.getDashboardPage(session.token).html, /id="dashboard"/);
+  assert.equal(app.ctx.getDashboardData(session.token).permissions.canViewFinancials, false);
+});

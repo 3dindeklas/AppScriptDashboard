@@ -101,3 +101,17 @@ Een mislukte verzending telt niet meer mee voor de app-verzendlimiet en doet bij
 - [Servercommunicatie en private helpers](https://developers.google.com/apps-script/guides/html/communication)
 
 De lokale tests simuleren Google en de mailbezorging. Een echte gastdeployment en daadwerkelijke e-mailbezorging moeten nog in Apps Script worden getest.
+
+
+## Een toegestaan Gmail-account krijgt geen toegang
+
+Open **Implementeren → Implementaties beheren** en controleer de versie en het uitvoeringsaccount van de gedeelde web-app. De repository gebruikt standaard `USER_DEPLOYING` (uitvoeren als beheerder). Google geeft externe bezoekers in die modus niet altijd door aan `Session.getActiveUser().getEmail()`, terwijl de eigenaar zijn adres wel kan zien. Een adres in `allowedEmails` verandert dat niet. De app gebruikt nooit het uitvoerende eigenaarsaccount als vervanging voor de bezoeker.
+
+- **GOOGLE_IDENTITY_UNAVAILABLE:** Google geeft geen adres door. Wil je de bronbladen onder beheerdersrechten blijven lezen, zet het Gmail-adres ook in `emailAccess.allowedEmails`, schakel `emailAccess.enabled` in en gebruik **Inloggen met een e-mailcode**. Gmail werkt ook via deze route. Controleer de bestaande MailApp-autorisatie.
+- **GOOGLE_ACCOUNT_NOT_ALLOWED:** Google geeft wél een adres door. Controleer het actieve account, het exacte adres in `allowedEmails` en of een nieuwe versie met de gewijzigde Config.gs aan dezelfde implementatie is gekoppeld.
+- **Google weigert de link voordat Workshopkompas verschijnt:** controleer wie de implementatie kan openen en deel de gepubliceerde `/exec`-link. De `/dev`-link is alleen voor scriptbewerkers.
+- **Rechtstreeks Google zonder e-mailcode:** gebruik een afzonderlijke implementatie met `USER_ACCESSING / ANYONE` (uitvoeren als de bezoeker, toegang voor aangemelde Google-gebruikers). De bezoeker autoriseert de app en moet de rechten hebben voor de bronnen die de app onder zijn account leest. Deel geen vertrouwelijke bronnen enkel om directe login mogelijk te maken; gebruik daarvoor de e-mailcode onder beheerdersrechten.
+
+Test met een tweede Google-account in een apart browserprofiel of privévenster met maar één aangemeld Google-account. Gebruik de echte `/exec`-link. Test eerst een niet-uitgenodigd account, daarna het toegestane adres via de gekozen route, en controleer ook dat het account zonder financiële rechten geen financiële data ontvangt.
+
+Zie [Google Session](https://developers.google.com/apps-script/reference/base/session#getActiveUser()) en [Apps Script-webapps](https://developers.google.com/apps-script/guides/web#permissions).
