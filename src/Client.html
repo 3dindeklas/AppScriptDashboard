@@ -216,9 +216,15 @@
             // STATS_BUSY betekent dat er zeker nog niets is geschreven.
             if (result === 'STATS_BUSY' && attempt < 2) {
               setTimeout(() => send(attempt + 1), 750 * (attempt + 1));
+            } else if (result !== true) {
+              console.warn('[STATS_FILTER] Niet opgeslagen; controleer de Apps Script-uitvoeringen.');
             }
-          }).withFailureHandler(() => {}).trackDashboardFilterChange(token);
-        } catch (ignored) { /* Statistieken blokkeren de filters nooit. */ }
+          }).withFailureHandler(() => {
+            console.warn('[STATS_FILTER] Aanroep mislukt; controleer de gepubliceerde Apps Script-versie en sessie.');
+          }).trackDashboardFilterChange(token);
+        } catch (ignored) {
+          console.warn('[STATS_FILTER] Aanroep niet beschikbaar; controleer Client.html en Code.gs.');
+        }
       }
       send(0);
     }

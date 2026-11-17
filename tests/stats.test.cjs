@@ -295,13 +295,14 @@ test('laatste activiteit beweegt mee met getelde acties, eerste tijdstip blijft 
   assert.equal(app.ctx.recordDashboardVisit_(email, true, VISIT_A), true);
   const first = app.rows[1][0].toISOString();
   assert.equal(app.rows[1][7].toISOString(), first);
-  app.setNow('2026-11-12T13:00:00Z');
+  app.setNow('2026-11-12T12:04:59Z');
   assert.equal(app.ctx.recordDashboardVisit_(email, true, VISIT_A), false);
+  app.setNow('2026-11-12T13:00:00Z');
   assert.equal(app.rows[1][7].toISOString(), first);
   assert.equal(app.ctx.recordFilterChange_(email, true), true);
   assert.equal(app.rows[1][7].toISOString(), '2026-11-12T13:00:00.000Z');
   app.setNow('2026-11-12T14:00:00Z');
-  assert.equal(app.ctx.recordDashboardVisit_(email, true, VISIT_B), true);
+  assert.equal(app.ctx.recordDashboardVisit_(email, true, VISIT_A), true);
   assert.equal(app.rows[1][0].toISOString(), first);
   assert.equal(app.rows[1][7].toISOString(), '2026-11-12T14:00:00.000Z');
   assert.deepEqual(Array.from(app.rows[1].slice(5, 7)), [2, 1]);
@@ -341,4 +342,21 @@ test('een als datum opgeslagen dag blijft dezelfde dagregel gebruiken', () => {
   assert.equal(app.ctx.recordFilterChange_('gast@voorbeeld.nl', true), true);
   assert.equal(app.rows.length, 2);
   assert.deepEqual(Array.from(app.rows[1].slice(5, 7)), [1, 1]);
+});
+
+
+test('herladen na vijf minuten telt in dezelfde sessie, ook bij een recente filterwijziging', () => {
+  const app = harness();
+  const email = 'gast@voorbeeld.nl';
+  assert.equal(app.ctx.recordDashboardVisit_(email, true, VISIT_A), true);
+  app.setNow('2026-11-12T12:04:58Z');
+  assert.equal(app.ctx.recordFilterChange_(email, true), true);
+  app.setNow('2026-11-12T12:04:59Z');
+  assert.equal(app.ctx.recordDashboardVisit_(email, true, VISIT_A), false);
+  app.setNow('2026-11-12T12:05:00Z');
+  assert.equal(app.ctx.recordDashboardVisit_(email, true, VISIT_A), true);
+  assert.equal(app.ctx.recordDashboardVisit_(email, true, VISIT_A), false);
+  assert.equal(app.rows.length, 2);
+  assert.deepEqual(Array.from(app.rows[1].slice(5, 7)), [2, 1]);
+  assert.equal(app.rows[1][7].toISOString(), '2026-11-12T12:05:00.000Z');
 });

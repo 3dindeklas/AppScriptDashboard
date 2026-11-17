@@ -9,6 +9,7 @@ const USAGE_STATS_HEADERS_ = Object.freeze([
 ]);
 const USAGE_STATS_ID_PROPERTY_ = 'WORKSHOPKOMPAS_STATS_SPREADSHEET_ID';
 const USAGE_STATS_CLEANUP_PROPERTY_ = 'WORKSHOPKOMPAS_STATS_LAST_CLEANUP';
+const USAGE_STATS_VISIT_COOLDOWN_MS_ = 5 * 60 * 1000;
 const USAGE_STATS_VISIT_PREFIX_ = 'WORKSHOPKOMPAS_STATS_VISIT:';
 
 function usageStatsSettings_() {
@@ -81,7 +82,8 @@ function recordUsageStats_(email, isEmailCode, visitId) {
       const legacySeen = visitKey && !seen && settings.properties.getProperty(USAGE_STATS_VISIT_PREFIX_ +
         authHash_(String(email).trim().toLowerCase() + ':' + visitId));
       const lastVisit = Number(seen || legacySeen);
-      if (lastVisit > 0 && usageStatsDay_(new Date(lastVisit)) === day) return false;
+      if (lastVisit > 0 && usageStatsDay_(new Date(lastVisit)) === day &&
+          now.getTime() - lastVisit < USAGE_STATS_VISIT_COOLDOWN_MS_) return false;
       const book = SpreadsheetApp.openById(settings.spreadsheetId);
       let sheet = book.getSheetByName(settings.sheetName);
       if (!sheet) sheet = book.insertSheet(settings.sheetName);
