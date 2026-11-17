@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const zlib = require('node:zlib');
-const silentConsole = { log() {}, error() {} };
+const silentConsole = { log() {}, error() {}, warn() {} };
 
 function testBlob(value, contentType, name) {
   const bytes = Buffer.isBuffer(value)
