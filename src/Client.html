@@ -209,6 +209,7 @@
     function trackFilterChange() {
       if (state.locked || !usageStatsEnabled || typeof google === 'undefined') return;
       const token = window.WorkshopAccess ? window.WorkshopAccess.token() : '';
+      const visitId = token ? '' : dashboardVisitId();
       function send(attempt) {
         if (state.locked || (window.WorkshopAccess && window.WorkshopAccess.token() !== token)) return;
         try {
@@ -221,7 +222,7 @@
             }
           }).withFailureHandler(() => {
             console.warn('[STATS_FILTER] Aanroep mislukt; controleer de gepubliceerde Apps Script-versie en sessie.');
-          }).trackDashboardFilterChange(token);
+          }).trackDashboardFilterChange(token, visitId);
         } catch (ignored) {
           console.warn('[STATS_FILTER] Aanroep niet beschikbaar; controleer Client.html en Code.gs.');
         }

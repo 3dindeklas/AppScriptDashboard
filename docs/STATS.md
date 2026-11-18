@@ -1,6 +1,6 @@
 # Bezoekstatistieken voor Workshopkompas
 
-In `__stats` staat één dagregel per Amsterdamse kalenderdag, e-mailadres en toegangsmethode. Per sessie telt de eerste geslaagde opening, daarna telt herladen pas opnieuw als er minstens vijf minuten zijn verstreken sinds de laatst getelde opening. Een nieuw tabblad (Google) of een nieuwe e-mailcodesessie kan direct meetellen. Bronverversing via de knop telt niet als bezoek.
+In `__stats` staat één dagregel per Amsterdamse kalenderdag, e-mailadres en toegangsmethode. Per sessie telt de eerste geslaagde opening. Daarna telt openen of herladen opnieuw na minstens 30 minuten zonder geregistreerde activiteit in die sessie. Een bevestigde filterwijziging en een tussentijdse herlaadactie houden dit venster actief. Middernacht wijzigt de dag waarop een actie wordt geboekt, maar begint geen nieuw bezoekvenster. Een nieuw tabblad (Google) of een nieuwe e-mailcodesessie kan direct meetellen. Bronverversing via de knop telt niet als bezoek.
 
 Een bevestigde wijziging van een dashboard- of kalenderfilter telt meteen, onafhankelijk van het bezoekvenster. De tellers staan in **Bezoeken** en **Filterwijzigingen**: een actie voegt doorgaans geen losse rij toe. **Laatste activiteit** verandert bij iedere getelde actie. Filterwaarden worden niet bewaard. Het sessietoken of de browser-ID staat niet in het spreadsheet.
 

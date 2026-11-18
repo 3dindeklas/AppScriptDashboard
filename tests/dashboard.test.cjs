@@ -2166,7 +2166,7 @@ test('gebruikstellers tellen alleen bevestigde wijzigingen van dashboardfilters'
   assert.equal(ui.__filterEvents.length, 3);
   ui.refreshButton.trigger('click');
   assert.equal(ui.__filterEvents.length, 3);
-  assert.deepEqual(ui.__filterEvents, [[''], [''], ['']]);
+  assert.deepEqual(ui.__filterEvents, [['', ''], ['', ''], ['', '']]);
 
   const disabled = clientHarness(records);
   disabled.sourceFilter.value = 'Hub A';
