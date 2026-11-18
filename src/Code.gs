@@ -104,10 +104,10 @@ function dashboardDataResponse_(forceRefresh, accessToken, visitId) {
 }
 
 /** De server bepaalt de gebruiker; er gaan geen filterwaarden naar statistieken. */
-function trackDashboardFilterChange(accessToken) {
+function trackDashboardFilterChange(accessToken, visitId) {
   const email = requireAccess_(accessToken);
   if (typeof recordFilterChange_ !== 'function') return false;
-  return recordFilterChange_(email, Boolean(accessToken));
+  return recordFilterChange_(email, Boolean(accessToken), accessToken ? authHash_(accessToken) : visitId);
 }
 
 function assertDashboardResult_(result) {

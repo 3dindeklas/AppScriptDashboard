@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const zlib = require('node:zlib');
-const silentConsole = { log() {}, error() {} };
+const silentConsole = { log() {}, error() {}, warn() {} };
 
 function testBlob(value, contentType, name) {
   const bytes = Buffer.isBuffer(value)
@@ -2268,7 +2268,7 @@ test('gebruikstellers tellen alleen bevestigde wijzigingen van dashboardfilters'
   assert.equal(ui.__filterEvents.length, 3);
   ui.refreshButton.trigger('click');
   assert.equal(ui.__filterEvents.length, 3);
-  assert.deepEqual(ui.__filterEvents, [[''], [''], ['']]);
+  assert.deepEqual(ui.__filterEvents, [['', ''], ['', ''], ['', '']]);
 
   const disabled = clientHarness(records);
   disabled.sourceFilter.value = 'Hub A';

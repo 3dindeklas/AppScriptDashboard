@@ -246,12 +246,14 @@ test('idempotentie gebruikt server-side sessiesleutel en schrapt oude markeringe
 });
 
 
-test('Amsterdamse daggrens telt dezelfde sessie pas na lokale middernacht opnieuw', () => {
+test('middernacht reset het bezoekvenster niet; nieuwe bezoeken volgen de Amsterdamse dag', () => {
   const app = harness();
   app.setNow('2026-11-12T22:59:00Z');
   assert.equal(app.ctx.recordDashboardVisit_('gast@voorbeeld.nl', true, VISIT_A), true);
   assert.equal(app.ctx.recordDashboardVisit_('gast@voorbeeld.nl', true, VISIT_A), false);
   app.setNow('2026-11-12T23:00:00Z');
+  assert.equal(app.ctx.recordDashboardVisit_('gast@voorbeeld.nl', true, VISIT_A), false);
+  app.setNow('2026-11-12T23:30:00Z');
   assert.equal(app.ctx.recordDashboardVisit_('gast@voorbeeld.nl', true, VISIT_A), true);
   assert.deepEqual(app.rows.slice(1).map(row => Array.from(row.slice(4, 7))), [
     ['2026-11-12', 1, 0], ['2026-11-13', 1, 0]
@@ -295,13 +297,14 @@ test('laatste activiteit beweegt mee met getelde acties, eerste tijdstip blijft 
   assert.equal(app.ctx.recordDashboardVisit_(email, true, VISIT_A), true);
   const first = app.rows[1][0].toISOString();
   assert.equal(app.rows[1][7].toISOString(), first);
-  app.setNow('2026-11-12T13:00:00Z');
+  app.setNow('2026-11-12T12:04:59Z');
   assert.equal(app.ctx.recordDashboardVisit_(email, true, VISIT_A), false);
+  app.setNow('2026-11-12T13:00:00Z');
   assert.equal(app.rows[1][7].toISOString(), first);
   assert.equal(app.ctx.recordFilterChange_(email, true), true);
   assert.equal(app.rows[1][7].toISOString(), '2026-11-12T13:00:00.000Z');
   app.setNow('2026-11-12T14:00:00Z');
-  assert.equal(app.ctx.recordDashboardVisit_(email, true, VISIT_B), true);
+  assert.equal(app.ctx.recordDashboardVisit_(email, true, VISIT_A), true);
   assert.equal(app.rows[1][0].toISOString(), first);
   assert.equal(app.rows[1][7].toISOString(), '2026-11-12T14:00:00.000Z');
   assert.deepEqual(Array.from(app.rows[1].slice(5, 7)), [2, 1]);
@@ -341,4 +344,25 @@ test('een als datum opgeslagen dag blijft dezelfde dagregel gebruiken', () => {
   assert.equal(app.ctx.recordFilterChange_('gast@voorbeeld.nl', true), true);
   assert.equal(app.rows.length, 2);
   assert.deepEqual(Array.from(app.rows[1].slice(5, 7)), [1, 1]);
+});
+
+
+test('filteracties houden alleen de geverifieerde gastsessie actief; herladen telt vanaf 30 minuten', () => {
+  const app = harness();
+  vm.runInContext(fs.readFileSync('src/Code.gs', 'utf8'), app.ctx);
+  const email = 'gast@voorbeeld.nl';
+  const token = 'valid';
+  const visit = app.ctx.authHash_(token);
+  app.ctx.requireAccess_ = () => email;
+  assert.equal(app.ctx.recordDashboardVisit_(email, true, visit), true);
+  app.setNow('2026-11-12T12:29:00Z');
+  assert.equal(app.ctx.trackDashboardFilterChange(token, VISIT_B), true);
+  app.setNow('2026-11-12T12:58:59Z');
+  assert.equal(app.ctx.recordDashboardVisit_(email, true, visit), false);
+  assert.equal(app.rows[1][7].toISOString(), '2026-11-12T12:29:00.000Z');
+  app.setNow('2026-11-12T13:28:59Z');
+  assert.equal(app.ctx.recordDashboardVisit_(email, true, visit), true);
+  assert.equal(app.rows.length, 2);
+  assert.deepEqual(Array.from(app.rows[1].slice(5, 7)), [2, 1]);
+  assert.equal(app.rows[1][7].toISOString(), '2026-11-12T13:28:59.000Z');
 });

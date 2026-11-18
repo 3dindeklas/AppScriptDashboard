@@ -1,6 +1,8 @@
 # Bezoekstatistieken voor Workshopkompas
 
-Workshopkompas kan iedere **geslaagde dashboardopening** in een verborgen tabblad `__stats` opslaan. De registratie vindt server-side plaats zodra `getDashboardData` succesvol is, **maximaal één keer per toegangssessie**. Bij Google-toegang gebruikt Workshopkompas een willekeurige browser-tab-sessie-ID in `sessionStorage` (die behouden blijft bij een browser-refresh); bij e-mailcodetoegang identificeert een gehashte vorm van het gevalideerde sessietoken de login. Het token of de browser-ID wordt nooit in het spreadsheet opgeslagen. Een nieuw Google-tabblad of een nieuwe e-mailcode-login telt als nieuwe sessie. Voor gasten wordt de registratie al aangemaakt zodra de server na een geldige e-mailcode de dashboardpagina levert, zonder eerst de mogelijk vertraagde gegevensaanvraag af te wachten. De latere gegevensaanvraag kan de registratie niet verdubbelen. Een browser-refresh, bronverversing (`refreshDashboardData`), filterwijziging, kalendernavigatie, mislukte aanmelding of alleen het aanvragen van een e-mailcode telt **niet** mee. Zonder beschikbare sessieopslag registreren we geen Google-bezoek om dubbeltellingen te voorkomen. Het betreft sessie-openingen, niet hoeveel minuten iemand actief was.
+In `__stats` staat één dagregel per Amsterdamse kalenderdag, e-mailadres en toegangsmethode. Per sessie telt de eerste geslaagde opening. Daarna telt openen of herladen opnieuw na minstens 30 minuten zonder geregistreerde activiteit in die sessie. Een bevestigde filterwijziging en een tussentijdse herlaadactie houden dit venster actief. Middernacht wijzigt de dag waarop een actie wordt geboekt, maar begint geen nieuw bezoekvenster. Een nieuw tabblad (Google) of een nieuwe e-mailcodesessie kan direct meetellen. Bronverversing via de knop telt niet als bezoek.
+
+Een bevestigde wijziging van een dashboard- of kalenderfilter telt meteen, onafhankelijk van het bezoekvenster. De tellers staan in **Bezoeken** en **Filterwijzigingen**: een actie voegt doorgaans geen losse rij toe. **Laatste activiteit** verandert bij iedere getelde actie. Filterwaarden worden niet bewaard. Het sessietoken of de browser-ID staat niet in het spreadsheet.
 
 ## Inrichten
 
@@ -22,7 +24,11 @@ Het spreadsheet-ID staat bewust **niet** in de publieke GitHub-repository. Alter
 | Tijdstip | Werkelijk tijdstip als Google Sheets-datum/tijd, weergegeven als `dd-mm-jjjj uu:mm:ss`. De weergave volgt de tijdzone van het spreadsheet. |
 | Gebruiker (e-mailadres) | Geverifieerd e-mailadres uit de Google-allowlist of e-mailcodesessie. |
 | Toegang | `Google-account` of `E-mailcode`. |
-| Gebeurtenis | `Dashboard geopend`. |
+| Gebeurtenis | `Dagtotalen` (historische regels kunnen `Dashboard geopend` bevatten). |
+| Dag | Amsterdamse kalenderdag. |
+| Bezoeken | Aantal getelde dashboardopeningen. |
+| Filterwijzigingen | Aantal bevestigde wijzigingen. |
+| Laatste activiteit | Tijdstip van de laatst getelde actie. |
 
 Apps Script geeft niet voor elke toegestane gebruiker een betrouwbare voor- en achternaam terug. Daarom is e-mailadres het identificerende veld; je kunt desgewenst voor interne rapportages een apart, beveiligd namenoverzicht gebruiken. Wachtwoorden, IP-adressen, browserinformatie, tokens, contactpersonen en andere workshopgegevens worden niet opgeslagen.
 
@@ -36,6 +42,10 @@ Registratie is niet kritisch: wanneer het werkblad niet beschikbaar is, de kopre
 
 ## Statistieken analyseren
 
-Gebruik in een apart, afgeschermd overzicht een draaitabel op `__stats`: tel het aantal regels per dag, gebruiker of maand. Deze aantallen zijn **toegangssessies**, geen pagina-refreshes en geen minuten dat het dashboard actief was. Voor unieke gebruikers per maand kun je e-mailadressen per maand ontdubbelen in een draaitabel of een aparte analyse.
+Gebruik in een apart, afgeschermd overzicht een draaitabel op `__stats`: som de kolommen **Bezoeken** en **Filterwijzigingen** per dag, gebruiker of maand. De waarden meten getelde acties, geen minuten dat het dashboard actief was. Voor unieke gebruikers per maand kun je e-mailadressen per maand ontdubbelen in een draaitabel of een aparte analyse.
 
 De huidige opzet schrijft geen bezoekgegevens naar de dashboardbrowser en voegt geen statistieken toe aan de normale live-snapshot. Alleen een willekeurige niet-geheime sessie-ID staat tijdelijk in de browseropslag.
+
+## Als een filterwijziging ontbreekt
+
+Publiceer Code.gs, Stats.gs, Client.html en Planning.html samen. Open de actuele `/exec`-link, wijzig een dropdown naar een andere waarde en kijk of **Filterwijzigingen** en **Laatste activiteit** wijzigen. Staat er een `[STATS_FILTER]`-melding in de browserconsole, vergelijk het tijdstip dan met `trackDashboardFilterChange` en `[STATS_WRITE]` in Apps Script → Uitvoeringen. Controleer bij ontbrekende registratie ook `checkUsageStatsSetup()` in het gebruikte project. Een vernieuwde publicatie vereist dat al geopende tabbladen opnieuw worden geladen.

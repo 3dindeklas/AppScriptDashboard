@@ -9,6 +9,7 @@ const USAGE_STATS_HEADERS_ = Object.freeze([
 ]);
 const USAGE_STATS_ID_PROPERTY_ = 'WORKSHOPKOMPAS_STATS_SPREADSHEET_ID';
 const USAGE_STATS_CLEANUP_PROPERTY_ = 'WORKSHOPKOMPAS_STATS_LAST_CLEANUP';
+const USAGE_STATS_VISIT_IDLE_MS_ = 30 * 60 * 1000;
 const USAGE_STATS_VISIT_PREFIX_ = 'WORKSHOPKOMPAS_STATS_VISIT:';
 
 function usageStatsSettings_() {
@@ -51,16 +52,20 @@ function usageStatsAvailable_() {
 }
 
 function recordDashboardVisit_(email, isEmailCode, visitId) {
-  if (typeof visitId !== 'string' || !/^[a-f0-9-]{36,64}$/i.test(visitId)) return false;
-  return recordUsageStats_(email, isEmailCode, visitId) === true;
+  if (!validUsageStatsVisitId_(visitId)) return false;
+  return recordUsageStats_(email, isEmailCode, visitId, true) === true;
 }
 
-function recordFilterChange_(email, isEmailCode) {
-  return recordUsageStats_(email, isEmailCode, '');
+function recordFilterChange_(email, isEmailCode, visitId) {
+  return recordUsageStats_(email, isEmailCode, validUsageStatsVisitId_(visitId) ? visitId : '', false);
+}
+
+function validUsageStatsVisitId_(value) {
+  return typeof value === 'string' && /^[a-f0-9-]{36,64}$/i.test(value);
 }
 
 /** Bij storing blijven de normale dashboard- en toegangsfuncties beschikbaar. */
-function recordUsageStats_(email, isEmailCode, visitId) {
+function recordUsageStats_(email, isEmailCode, visitId, isVisit) {
   try {
     const settings = usageStatsSettings_();
     if (!settings.enabled || !settings.spreadsheetId || !email || !settings.properties) return false;
@@ -77,11 +82,17 @@ function recordUsageStats_(email, isEmailCode, visitId) {
     try {
       const now = new Date();
       const day = usageStatsDay_(now);
-      const seen = visitKey && settings.properties.getProperty(visitKey);
-      const legacySeen = visitKey && !seen && settings.properties.getProperty(USAGE_STATS_VISIT_PREFIX_ +
-        authHash_(String(email).trim().toLowerCase() + ':' + visitId));
-      const lastVisit = Number(seen || legacySeen);
-      if (lastVisit > 0 && usageStatsDay_(new Date(lastVisit)) === day) return false;
+      if (isVisit) {
+        const seen = settings.properties.getProperty(visitKey);
+        const legacySeen = !seen && settings.properties.getProperty(USAGE_STATS_VISIT_PREFIX_ +
+          authHash_(String(email).trim().toLowerCase() + ':' + visitId));
+        const lastActivity = Number(seen || legacySeen);
+        if (lastActivity > 0 && now.getTime() - lastActivity < USAGE_STATS_VISIT_IDLE_MS_) {
+          // Herladen houdt de sessie actief, zonder de dagregel te wijzigen.
+          settings.properties.setProperty(visitKey, String(now.getTime()));
+          return false;
+        }
+      }
       const book = SpreadsheetApp.openById(settings.spreadsheetId);
       let sheet = book.getSheetByName(settings.sheetName);
       if (!sheet) sheet = book.insertSheet(settings.sheetName);
@@ -106,8 +117,8 @@ function recordUsageStats_(email, isEmailCode, visitId) {
         }
         index--;
       }
-      const visits = visitId ? 1 : 0;
-      const filters = visitId ? 0 : 1;
+      const visits = isVisit ? 1 : 0;
+      const filters = isVisit ? 0 : 1;
       if (index >= 0) {
         const row = rows[index];
         sheet.getRange(index + 2, 8).setNumberFormat('dd-mm-yyyy hh:mm:ss');
