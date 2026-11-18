@@ -1020,10 +1020,10 @@
     function renderCategoryChart(chart, tableRows, entries, limit, type) {
       if (type === 'donut' || type === 'pie') renderCircularChart(chart, entries, type === 'pie');
       else renderBars(chart, entries, limit);
-      renderCategoryTable(tableRows, entries);
+      renderCategoryTable(tableRows, entries, type === 'pie');
     }
 
-    function renderCategoryTable(tableRows, entries) {
+    function renderCategoryTable(tableRows, entries, percentOnly) {
       tableRows.replaceChildren();
 
       if (!entries.length) {
@@ -1037,13 +1037,14 @@
         return;
       }
 
+      const total = percentOnly ? entries.reduce((sum, entry) => sum + entry[1], 0) : 0;
       entries.forEach(entry => {
         const row = document.createElement('tr');
         const label = document.createElement('th');
         label.setAttribute('scope', 'row');
         label.textContent = entry[0];
         const value = document.createElement('td');
-        value.textContent = formatChartNumber(entry[1]);
+        value.textContent = percentOnly ? percentFormat.format(total ? entry[1] / total : 0) : formatChartNumber(entry[1]);
         row.append(label, value);
         tableRows.appendChild(row);
       });
@@ -1062,15 +1063,15 @@
         container.appendChild(emptyMessage('Geen gegevens binnen deze filters.'));
         return;
       }
-      const unitLabel = pie ? 'gewogen aanvragen' : 'aanvragen';
+      const describeValue = value => pie ? percentFormat.format(value / total) : formatChartNumber(value);
       const colorOf = label => {
         const grade = /^(?:Groep|Leerjaar) (\d)$/.exec(label);
         return pie && grade ? gradeColors[Number(grade[1]) - 1] : donutColors[label] || '#94a3b8';
       };
       const ring = svgElement('svg', {
         viewBox: '0 0 180 180', class: pie ? 'pie-disc' : 'donut-ring', role: 'img',
-        'aria-label': formatChartNumber(total) + ' ' + unitLabel + '. ' +
-          entries.map(entry => entry[0] + ': ' + formatChartNumber(entry[1])).join(', ')
+        'aria-label': (pie ? 'Verdeling per leerjaar. ' : formatChartNumber(total) + ' aanvragen. ') +
+          entries.map(entry => entry[0] + ': ' + describeValue(entry[1])).join(', ')
       });
       let offset = 0;
       entries.forEach(entry => {
@@ -1082,8 +1083,8 @@
           'aria-hidden': 'true'
         });
         const title = svgElement('title');
-        title.textContent = entry[0] + ': ' + formatChartNumber(entry[1]) + ' ' + unitLabel +
-          ' (' + percentFormat.format(entry[1] / total) + ')';
+        const percent = percentFormat.format(entry[1] / total);
+        title.textContent = entry[0] + ': ' + (pie ? percent : describeValue(entry[1]) + ' aanvragen (' + percent + ')');
         segment.appendChild(title);
         offset += share;
         ring.appendChild(segment);
@@ -1095,10 +1096,10 @@
         unit.textContent = 'aanvragen';
         ring.append(value, unit);
       }
-      container.append(ring, renderDistributionLegend(entries, total, colorOf));
+      container.append(ring, renderDistributionLegend(entries, total, colorOf, pie));
     }
 
-    function renderDistributionLegend(entries, total, colorOf) {
+    function renderDistributionLegend(entries, total, colorOf, percentOnly) {
       const legend = document.createElement('ul');
       legend.className = 'donut-legend';
       entries.forEach(entry => {
@@ -1110,7 +1111,8 @@
         const label = document.createElement('span');
         label.textContent = entry[0];
         const value = document.createElement('strong');
-        value.textContent = formatChartNumber(entry[1]) + ' · ' + percentFormat.format(entry[1] / total);
+        const percent = percentFormat.format(entry[1] / total);
+        value.textContent = percentOnly ? percent : formatChartNumber(entry[1]) + ' · ' + percent;
         item.append(swatch, label, value);
         legend.appendChild(item);
       });

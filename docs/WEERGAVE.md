@@ -47,7 +47,7 @@ De keuze blijft behouden tijdens filteren en handmatig vernieuwen. Ze geldt alle
 
 **Aanvragen per schoolbestuur** toont één horizontale balk van 100%, met een segment en een legenda met aantal en percentage per bestuur. **Overige** bevat alleen aanvragen met een ontbrekende, onbekende of expliciet als Overige ingevulde waarde. Klap **Aanvragen onder Overige** uit om al deze aanvragen regel voor regel te bekijken. Beide tabellen volgen de actieve filters. Dit is een telling van aanvragen, geen telling van unieke scholen.
 
-**Bereik in PO en VO** combineert twee taartdiagrammen: PO-groepen en VO-leerjaren, met vaste heldere kleuren per leerjaar, gewogen aanvragen en percentages. De uitleg over combinatiegroepen staat onderaan datzelfde blok. De PO/VO-sectorverdeling blijft een afzonderlijke donut.
+**Bereik in PO en VO** combineert twee taartdiagrammen: PO-groepen en VO-leerjaren, met vaste heldere kleuren per leerjaar. Legenda, tooltips en tabellen tonen alleen percentages binnen de eigen onderwijssector. Combinatiegroepen blijven gewogen in de berekening. De uitleg over combinatiegroepen staat onderaan datzelfde blok. De PO/VO-sectorverdeling blijft een afzonderlijke donut.
 
 De twee leerjaargrafieken hebben op desktop dezelfde hoogte en delen één **Bekijk cijfers als tabel**-knop voor beide tabellen. Het gemeentevak heeft één tabelknop voor alle gemeenteaantallen. Laad- en foutmeldingen staan boven het introductieblok.
 
