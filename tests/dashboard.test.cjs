@@ -166,7 +166,8 @@ function clientHarness(records, options = {}) {
     'timelineChart', 'timelineCaption', 'timelineTableHead', 'timelineTableRows',
     'sectorChart', 'sectorTableRows', 'regionChart',
     'statusChart', 'statusTableRows', 'workshopChart', 'workshopTableRows',
-    'providerChart', 'providerTableRows', 'poChart', 'poTableRows',
+    'providerChart', 'providerTableRows', 'schoolBoardsChart', 'schoolBoardsSummary',
+    'schoolBoardsTableRows', 'schoolBoardsOtherRows', 'schoolBoardsOtherSummary', 'poChart', 'poTableRows',
     'voChart', 'voTableRows', 'recentRows', 'recentDateHeading',
     'municipalityData', 'municipalityMap', 'mapScope', 'mapMunicipality', 'mapDetail',
     'mapCoverage', 'mapUnmatched', 'mapLegend', 'mapTableRows',
@@ -175,9 +176,9 @@ function clientHarness(records, options = {}) {
     'dataMenu', 'dataMenuButton', 'displayMenu', 'displayMenuButton', 'emptyView',
     'financialVisibilityOption', 'analyticsSection', 'showAllPanels', 'closeDataMenu', 'closeDisplayMenu',
     'viewKpis', 'viewTimeline', 'viewGeography', 'viewSector', 'viewStatus', 'viewWorkshops',
-    'viewProviders', 'viewGrades', 'viewRecent', 'viewComparison', 'viewFinancial',
+    'viewProviders', 'viewSchoolBoards', 'viewGrades', 'viewRecent', 'viewComparison', 'viewFinancial',
     'metricsPanel', 'timelinePanel', 'geographyPanel', 'sectorPanel', 'statusPanel',
-    'workshopsPanel', 'providersPanel', 'gradesPanel', 'recentPanel', 'comparisonPanel'
+    'workshopsPanel', 'providersPanel', 'schoolBoardsPanel', 'gradesPanel', 'recentPanel', 'comparisonPanel'
   ];
   const selectIds = new Set([
     'sourceFilter', 'schoolYearFilter', 'regionFilter', 'sectorFilter',
@@ -449,11 +450,11 @@ test('iedere stap-7-grafiek heeft een leesbare tabelweergave zonder externe graf
 
   for (const id of [
     'sectorTableRows', 'mapTableRows', 'statusTableRows', 'workshopTableRows',
-    'providerTableRows', 'poTableRows', 'voTableRows'
+    'providerTableRows', 'schoolBoardsTableRows', 'schoolBoardsOtherRows', 'poTableRows', 'voTableRows'
   ]) {
     assert.match(index, new RegExp('<tbody id="' + id + '">'));
   }
-  assert.equal((index.match(/<details class="chart-data">/g) || []).length, 5);
+  assert.match(index, /<details class="chart-data"><summary id="schoolBoardsOtherSummary">/);
   assert.doesNotMatch(index, /<script[^>]+src=/i);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
 });
@@ -527,7 +528,8 @@ test('weergavekeuze bewaart verborgen grafieken na filteren en vernieuwen', () =
 test('alles tonen verleent geen financiële toegang en een lege weergave is herstelbaar', () => {
   const elements = clientHarness([{ source: 'A' }], { canViewFinancials: false });
   const controlIds = ['viewKpis', 'viewTimeline', 'viewGeography', 'viewSector', 'viewStatus',
-    'viewWorkshops', 'viewProviders', 'viewGrades', 'viewRecent', 'viewComparison', 'viewFinancial'];
+    'viewWorkshops', 'viewProviders', 'viewSchoolBoards', 'viewGrades',
+    'viewRecent', 'viewComparison', 'viewFinancial'];
   controlIds.forEach(id => { elements[id].checked = false; elements[id].trigger('change'); });
   assert.equal(elements.analyticsSection.hidden, true);
   assert.equal(elements.emptyView.hidden, false);
@@ -626,12 +628,111 @@ test('browser ontvangt alleen de toegestane dashboardvelden', () => {
   ).length, 8);
   assert.deepEqual(Object.keys(payload.records[0]).sort(), [
     'grades', 'invoiceAmount', 'provider', 'providerTotalCosts', 'region', 'requestedDate',
-    'scheduledDate', 'scheduledDates', 'school', 'schoolYear', 'sector', 'sessions',
+    'scheduledDate', 'scheduledDates', 'school', 'schoolBoard', 'schoolYear', 'sector', 'sessions',
     'source', 'sourceSubtitle', 'status', 'statusGroup', 'students', 'type', 'workshop'
   ]);
   assert.deepEqual(Array.from(payload.records[0].grades), [7, 8]);
   assert.equal(payload.records[0].providerTotalCosts, 450);
   assert.equal(payload.records[0].invoiceAmount, 600);
+});
+
+test('aanvragen per schoolbestuur tellen per bronregel, groeperen schrijfvarianten en volgen filters', () => {
+  const elements = clientHarness([
+    { source: 'Hub A', schoolBoard: 'Stichting Horizon', schoolYear: '2025–2026' },
+    { source: 'Hub B', schoolBoard: ' stichting hórizon ', schoolYear: '2026–2027' },
+    { source: 'Hub A', schoolBoard: 'Bestuur Rivierenland', schoolYear: '2026–2027' },
+    { source: 'Hub A', schoolBoard: '', schoolYear: '2026–2027' },
+    { source: 'Hub B', schoolBoard: 'Onbekend', schoolYear: '2026–2027' }
+  ]);
+  const rows = () => elements.schoolBoardsTableRows.children.map(row =>
+    row.children.map(cell => cell.textContent));
+  assert.deepEqual(rows(), [
+    ['Stichting Horizon', '2'], ['Bestuur Rivierenland', '1'], ['Overige', '2']
+  ]);
+  assert.equal(elements.schoolBoardsSummary.textContent,
+    '2 schoolbesturen · 2 aanvragen zonder bestuur (data-inconsistentie) · 2 onder Overige');
+  const bar = elements.schoolBoardsChart.children[0];
+  assert.equal(bar.className, 'school-board-share-bar');
+  assert.deepEqual(bar.children.map(segment => segment.style.flexGrow), ['2', '1', '2']);
+  assert.equal(elements.schoolBoardsChart.children[2].textContent, '100% = 5 aanvragen');
+  assert.equal(elements.schoolBoardsOtherRows.children.length, 2);
+  assert.equal(rows().reduce((total, row) => total + Number(row[1]), 0), 5);
+  assert.equal(elements.kpis.children[0].children[1].textContent, '5');
+
+  elements.sourceFilter.value = 'Hub B';
+  elements.sourceFilter.trigger('change');
+  assert.deepEqual(rows(), [['stichting hórizon', '1'], ['Overige', '1']]);
+  assert.equal(elements.schoolBoardsOtherRows.children.length, 1);
+  assert.equal(elements.schoolBoardsOtherRows.children[0].children[4].textContent, 'Onbekend');
+  assert.equal(elements.schoolBoardsSummary.textContent,
+    '1 schoolbestuur · 1 aanvraag zonder bestuur (data-inconsistentie) · 1 onder Overige');
+  elements.schoolYearFilter.value = '2025–2026';
+  elements.schoolYearFilter.trigger('change');
+  assert.equal(elements.schoolBoardsChart.children[0].textContent, 'Geen gegevens binnen deze filters.');
+  assert.equal(elements.schoolBoardsTableRows.children[0].children[0].textContent,
+    'Geen gegevens binnen deze filters.');
+
+  elements.viewSchoolBoards.checked = false;
+  elements.viewSchoolBoards.trigger('change');
+  assert.equal(elements.schoolBoardsPanel.hidden, true);
+  elements.viewSchoolBoards.checked = true;
+  elements.viewSchoolBoards.trigger('change');
+  assert.equal(elements.schoolBoardsPanel.hidden, false);
+});
+
+test('ook buiten de vroegere top acht behoudt de verdelingsbalk ieder benoemd bestuur', () => {
+  const records = Array.from({ length: 10 }, (_, index) => ({
+    source: 'A', schoolBoard: 'Bestuur ' + String(index + 1).padStart(2, '0')
+  }));
+  const elements = clientHarness(records);
+  const legend = elements.schoolBoardsChart.children[1].children;
+  assert.equal(legend.length, 10);
+  assert.equal(legend[9].children[1].textContent, 'Bestuur 10');
+  assert.equal(elements.schoolBoardsOtherSummary.textContent, 'Aanvragen onder Overige (0)');
+  assert.equal(elements.schoolBoardsTableRows.children.length, 10);
+  assert.equal(elements.schoolBoardsTableRows.children.reduce((sum, row) =>
+    sum + Number(row.children[1].textContent), 0), 10);
+});
+
+test('de bronkolom Bestuur wordt veilig gelezen; lege waarden blijven herkenbaar als inconsistentie', () => {
+  const internal = normalize([headers.concat('Bestuur'),
+    row().concat('Stichting De Toekomst')]).records[0];
+  assert.equal(internal.schoolBoard, 'Stichting De Toekomst');
+  const visible = context().publicRecord_(internal, false);
+  assert.equal(visible.schoolBoard, 'Stichting De Toekomst');
+  assert.equal(visible.providerTotalCosts, undefined);
+  assert.equal(visible.requestId, undefined);
+
+  const blank = context().publicRecord_(normalize().records[0], false);
+  assert.equal(blank.schoolBoard, '');
+  const extra = normalize([headers.concat('Schoolbestuur'),
+    row().concat('Andere kolom')]).records[0];
+  assert.equal(extra.schoolBoard, '');
+});
+
+test('leeg Bestuur en bestaand Overige worden samengevoegd; de kwaliteitsteller blijft correct', () => {
+  const elements = clientHarness([
+    { source: 'A', school: 'De Bron', workshop: 'Solderen', schoolYear: '2026–2027', schoolBoard: '' },
+    { source: 'A', school: 'De Bron', workshop: 'Robotica', schoolYear: '2026–2027', schoolBoard: 'Overige' },
+    { source: 'A', schoolBoard: 'Stichting Dorp' },
+    { source: 'A', schoolBoard: 'ONBEKEND' }
+  ]);
+  const rows = elements.schoolBoardsTableRows.children.map(row =>
+    row.children.map(cell => cell.textContent));
+  assert.deepEqual(rows, [['Stichting Dorp', '1'], ['Overige', '3']]);
+  assert.equal(elements.schoolBoardsSummary.textContent,
+    '1 schoolbestuur · 2 aanvragen zonder bestuur (data-inconsistentie) · 3 onder Overige');
+  assert.equal(elements.schoolBoardsChart.children[0].children.length, 2);
+  const otherLegend = elements.schoolBoardsChart.children[1].children[1];
+  assert.equal(otherLegend.children[1].textContent, 'Overige');
+  assert.equal(otherLegend.children[2].textContent, '3 · 75,0%');
+  assert.equal(elements.schoolBoardsOtherSummary.textContent, 'Aanvragen onder Overige (3)');
+  const detail = elements.schoolBoardsOtherRows.children.map(row => row.children.map(cell => cell.textContent));
+  assert.deepEqual(detail.slice(0, 2), [
+    ['De Bron', 'Solderen', 'A', '2026–2027', 'Niet ingevuld'],
+    ['De Bron', 'Robotica', 'A', '2026–2027', 'Overige']
+  ]);
+  assert.equal(detail[2][4], 'ONBEKEND');
 });
 
 test('donuts tonen aantallen, percentages en vaste kleuren na filteren', () => {
@@ -1214,7 +1315,7 @@ test('dashboardvelden verlaten gecontroleerd de server maar privacy- en detailve
 
   assert.deepEqual(Object.keys(publicRecord), [
     'source', 'sourceSubtitle', 'requestedDate', 'scheduledDate', 'scheduledDates', 'schoolYear',
-    'school', 'workshop', 'provider', 'region', 'sector', 'grades', 'status',
+    'school', 'schoolBoard', 'workshop', 'provider', 'region', 'sector', 'grades', 'status',
     'statusGroup', 'type', 'sessions', 'students', 'providerTotalCosts',
     'invoiceAmount'
   ]);
@@ -1223,6 +1324,7 @@ test('dashboardvelden verlaten gecontroleerd de server maar privacy- en detailve
   assert.deepEqual(Array.from(publicRecord.scheduledDates), ['2026-11-20']);
   assert.equal(publicRecord.schoolYear, '2026–2027');
   assert.equal(publicRecord.school, 'School A');
+  assert.equal(publicRecord.schoolBoard, '');
   assert.deepEqual(Array.from(publicRecord.grades), [6, 7, 8]);
   assert.equal(publicRecord.statusGroup, 'Ingepland');
   assert.equal(publicRecord.type, 'Workshop');

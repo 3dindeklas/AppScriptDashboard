@@ -144,6 +144,11 @@
       workshopTableRows: document.getElementById('workshopTableRows'),
       providerChart: document.getElementById('providerChart'),
       providerTableRows: document.getElementById('providerTableRows'),
+      schoolBoardsChart: document.getElementById('schoolBoardsChart'),
+      schoolBoardsSummary: document.getElementById('schoolBoardsSummary'),
+      schoolBoardsTableRows: document.getElementById('schoolBoardsTableRows'),
+      schoolBoardsOtherRows: document.getElementById('schoolBoardsOtherRows'),
+      schoolBoardsOtherSummary: document.getElementById('schoolBoardsOtherSummary'),
       poChart: document.getElementById('poChart'),
       poTableRows: document.getElementById('poTableRows'),
       voChart: document.getElementById('voChart'),
@@ -166,7 +171,8 @@
       ['viewKpis', 'metricsPanel'], ['viewTimeline', 'timelinePanel'],
       ['viewGeography', 'geographyPanel'], ['viewSector', 'sectorPanel'],
       ['viewStatus', 'statusPanel'], ['viewWorkshops', 'workshopsPanel'],
-      ['viewProviders', 'providersPanel'], ['viewGrades', 'gradesPanel'],
+      ['viewProviders', 'providersPanel'], ['viewSchoolBoards', 'schoolBoardsPanel'],
+      ['viewGrades', 'gradesPanel'],
       ['viewRecent', 'recentPanel'], ['viewComparison', 'comparisonPanel'],
       ['viewFinancial', 'financialOverview']
     ].map(pair => ({ control: document.getElementById(pair[0]), panel: document.getElementById(pair[1]),
@@ -483,7 +489,7 @@
         item.panel.hidden = !item.control.checked || (item.financial && !state.canViewFinancials);
       });
       const chartIds = ['timelinePanel', 'geographyPanel', 'sectorPanel', 'statusPanel',
-        'workshopsPanel', 'providersPanel', 'gradesPanel'];
+        'workshopsPanel', 'providersPanel', 'schoolBoardsPanel', 'gradesPanel'];
       elements.analyticsSection.hidden = chartIds.every(id => document.getElementById(id).hidden);
       elements.emptyView.hidden = viewPanels.some(item => !item.panel.hidden);
     }
@@ -986,6 +992,16 @@
       renderCategoryChart(
         elements.providerChart, elements.providerTableRows, countBy(records, 'provider'), 8
       );
+      const boards = countSchoolBoardRequests(records);
+      const knownBoards = boards.entries.filter(entry => entry[0] !== 'Overige').length;
+      const unassigned = boards.missingCount;
+      elements.schoolBoardsSummary.textContent = numberFormat.format(knownBoards) +
+        (knownBoards === 1 ? ' schoolbestuur' : ' schoolbesturen') + ' · ' +
+        numberFormat.format(unassigned) +
+        (unassigned === 1 ? ' aanvraag zonder bestuur (data-inconsistentie)'
+          : ' aanvragen zonder bestuur (data-inconsistentie)') +
+        ' · ' + numberFormat.format(boards.other.length) + ' onder Overige';
+      renderSchoolBoardChart(boards);
       renderCategoryChart(
         elements.poChart, elements.poTableRows, weightedGrades(records, 'PO'), 9, 'pie'
       );
@@ -997,6 +1013,10 @@
     function renderCategoryChart(chart, tableRows, entries, limit, type) {
       if (type === 'donut' || type === 'pie') renderCircularChart(chart, entries, type === 'pie');
       else renderBars(chart, entries, limit);
+      renderCategoryTable(tableRows, entries);
+    }
+
+    function renderCategoryTable(tableRows, entries) {
       tableRows.replaceChildren();
 
       if (!entries.length) {
@@ -1068,6 +1088,10 @@
         unit.textContent = 'aanvragen';
         ring.append(value, unit);
       }
+      container.append(ring, renderDistributionLegend(entries, total, colorOf));
+    }
+
+    function renderDistributionLegend(entries, total, colorOf) {
       const legend = document.createElement('ul');
       legend.className = 'donut-legend';
       entries.forEach(entry => {
@@ -1083,7 +1107,7 @@
         item.append(swatch, label, value);
         legend.appendChild(item);
       });
-      container.append(ring, legend);
+      return legend;
     }
 
     function pieSegmentPath(start, angle) {
@@ -1508,6 +1532,84 @@
 
     function formatChartNumber(value) {
       return chartNumberFormat.format(Math.abs(value) < 0.0000001 ? 0 : value);
+    }
+
+    function countSchoolBoardRequests(records) {
+      const counts = new Map();
+      const other = [];
+      let missingCount = 0;
+      records.forEach(record => {
+        const raw = String(record.schoolBoard || '').trim().replace(/\s+/g, ' ');
+        const missing = !raw || /^(?:niet ingevuld|onbekend|n\/?a|-)$/i.test(raw);
+        if (missing) missingCount += 1;
+        if (missing || normalizedIdentity(raw) === 'overige') {
+          other.push({ record, raw });
+          return;
+        }
+        const key = normalizedIdentity(raw);
+        if (!counts.has(key)) counts.set(key, { label: raw, count: 0 });
+        counts.get(key).count += 1;
+      });
+      const entries = [...counts.values()].map(entry => [entry.label, entry.count])
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'nl'));
+      if (other.length) entries.push(['Overige', other.length]);
+      return { entries, other, missingCount };
+    }
+
+    function renderSchoolBoardChart(boards) {
+      const colors = new Map(boards.entries.map(([label], index) =>
+        [label, label === 'Overige' ? '#94a3b8' : gradeColors[index % gradeColors.length]]));
+      const chart = elements.schoolBoardsChart;
+      // Gebruik dezelfde volledige tabel en lege toestand als de andere grafieken.
+      renderCategoryTable(elements.schoolBoardsTableRows, boards.entries);
+      chart.replaceChildren();
+      const total = boards.entries.reduce((sum, entry) => sum + entry[1], 0);
+      if (!total) {
+        chart.appendChild(emptyMessage('Geen gegevens binnen deze filters.'));
+      } else {
+        const bar = document.createElement('div');
+        bar.className = 'school-board-share-bar';
+        bar.setAttribute('aria-hidden', 'true');
+        boards.entries.forEach(([label, count]) => {
+          const segment = document.createElement('span');
+          segment.style.flexGrow = String(count);
+          segment.style.backgroundColor = colors.get(label);
+          segment.title = label + ': ' + formatChartNumber(count) + ' van ' +
+            numberFormat.format(total) + ' aanvragen (' + percentFormat.format(count / total) + ')';
+          bar.appendChild(segment);
+        });
+        const caption = document.createElement('p');
+        caption.className = 'school-board-share-caption';
+        caption.textContent = '100% = ' + numberFormat.format(total) + (total === 1 ? ' aanvraag' : ' aanvragen');
+        chart.append(bar, renderDistributionLegend(boards.entries, total, label => colors.get(label)), caption);
+      }
+
+      const summary = elements.schoolBoardsOtherSummary;
+      const table = elements.schoolBoardsOtherRows;
+      summary.textContent = 'Aanvragen onder Overige (' + numberFormat.format(boards.other.length) + ')';
+      table.replaceChildren();
+      if (!boards.other.length) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 5;
+        cell.className = 'empty';
+        cell.textContent = 'Geen aanvragen onder Overige binnen deze filters.';
+        row.appendChild(cell);
+        table.appendChild(row);
+        return;
+      }
+      boards.other.forEach(({ record, raw }) => {
+        const row = document.createElement('tr');
+        [record.school || 'Onbekende school', record.workshop || 'Onbekende workshop',
+          record.source || 'Onbekende tech-hub', record.schoolYear || 'Onbekend', raw || 'Niet ingevuld']
+          .forEach((value, index) => {
+            const cell = document.createElement(index === 0 ? 'th' : 'td');
+            if (index === 0) cell.setAttribute('scope', 'row');
+            cell.textContent = value;
+            row.appendChild(cell);
+          });
+        table.appendChild(row);
+      });
     }
 
     function countBy(records, field) {

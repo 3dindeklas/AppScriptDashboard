@@ -22,6 +22,7 @@ const PUBLIC_RECORD_FIELDS_ = Object.freeze([
   'scheduledDates',
   'schoolYear',
   'school',
+  'schoolBoard',
   'workshop',
   'provider',
   'region',
@@ -282,6 +283,8 @@ function normalizeSheet_(values, sourceName, formulas, includedRowOffsets) {
 
 function normalizeRow_(row, header, sourceName, parsed) {
   const school = textValue_(cell_(row, header, 'schoolnaam'));
+  // Exacte bronkolom 'Bestuur'; een leeg veld blijft leeg voor de datakwaliteitscontrole.
+  const schoolBoard = textValue_(cell_(row, header, 'bestuur'));
   const region = textValue_(cell_(row, header, 'gemeente / regio'));
   const gradeLabel = textValue_(cell_(row, header, 'groep / leerjaar'));
   const status = textValue_(cell_(row, header, 'status')) || 'Onbekend';
@@ -297,6 +300,7 @@ function normalizeRow_(row, header, sourceName, parsed) {
     scheduledDates: parsed.scheduledDates,
     schoolYear: schoolYear_(primaryDate),
     school: school,
+    schoolBoard: schoolBoard,
     schoolKey: schoolKey_(school, region),
     region: region || 'Onbekend',
     workshop: textValue_(cell_(row, header, 'workshopnaam')) || 'Onbekende workshop',
@@ -339,6 +343,7 @@ function publicRecord_(record, includeFinancials) {
       : record.scheduledDate ? [record.scheduledDate] : [],
     schoolYear: record.schoolYear || 'Onbekend',
     school: record.school || 'Onbekende school',
+    schoolBoard: textValue_(record.schoolBoard),
     workshop: record.workshop,
     provider: record.provider,
     region: record.region,

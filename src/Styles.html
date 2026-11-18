@@ -247,6 +247,14 @@
   .chart-grid > .panel { margin-bottom: 0; }
   .chart-card { display: flex; min-width: 0; flex-direction: column; }
   .chart-card .panel-heading { margin-bottom: 1rem; }
+  .school-board-panel { grid-column: 1 / -1; }
+  .school-board-share { display: grid; gap: 0.75rem; }
+  .school-board-share-bar { display: flex; height: 1.75rem; overflow: hidden; border-radius: 0.35rem; print-color-adjust: exact; }
+  .school-board-share-bar > span { flex-basis: 0; min-width: 0; }
+  .school-board-share .donut-legend { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); column-gap: 1.1rem; }
+  .school-board-share .donut-legend li > span { overflow-wrap: anywhere; }
+  .school-board-share-caption { margin: 0; color: var(--muted); font-size: 0.8rem; }
+  .school-board-panel .chart-subtitle { margin: -0.35rem 0 1rem; }
   .chart-subtitle { margin-top: 0.45rem; color: var(--muted); font-size: 0.76rem; line-height: 1.45; }
   .metric-select { display: block; flex: 0 1 14rem; min-width: 0; width: min(14rem, 100%); }
   .metric-select select { min-width: 0; max-width: 100%; }
