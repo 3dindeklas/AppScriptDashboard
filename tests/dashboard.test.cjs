@@ -1012,10 +1012,10 @@ test('testgegevens leveren alle stap-7-verdelingen en gewogen leerjaren op', () 
     ['Ingepland', '4'], ['Uitgevoerd', '4'], ['Open', '2']
   ]);
   assert.deepEqual(rows('poTableRows'), [
-    ['Groep 3', '0,5'], ['Groep 4', '0,5'], ['Groep 5', '1'],
-    ['Groep 6', '3,5'], ['Groep 7', '1,5'], ['Groep 8', '1']
+    ['Groep 3', '6,3%'], ['Groep 4', '6,3%'], ['Groep 5', '12,5%'],
+    ['Groep 6', '43,8%'], ['Groep 7', '18,8%'], ['Groep 8', '12,5%']
   ]);
-  assert.deepEqual(rows('voTableRows'), [['Leerjaar 1', '1'], ['Leerjaar 2', '1']]);
+  assert.deepEqual(rows('voTableRows'), [['Leerjaar 1', '50,0%'], ['Leerjaar 2', '50,0%']]);
   assert.equal(elements.timelineCaption.textContent, 'Aanvragen / workshops per maand en tech-hub');
   assert.deepEqual(rows('timelineTableRows'), [
     ['september 2026', '2,5', '3', '5,5'],
@@ -1079,18 +1079,19 @@ test('onbekende leerjaren blijven apart en combinatiegroepen behouden samen éé
   const rows = id => elements[id].children.map(row => row.children.map(cell => cell.textContent));
 
   assert.deepEqual(rows('poTableRows'), [
-    ['Groep 3', '0,33'], ['Groep 4', '0,33'], ['Groep 5', '0,33'], ['Onbekend', '2']
+    ['Groep 3', '11,1%'], ['Groep 4', '11,1%'], ['Groep 5', '11,1%'], ['Onbekend', '66,7%']
   ]);
   assert.deepEqual(rows('voTableRows'), [
-    ['Leerjaar 1', '0,5'], ['Leerjaar 2', '0,5']
+    ['Leerjaar 1', '50,0%'], ['Leerjaar 2', '50,0%']
   ]);
   const pie = elements.poChart.children[0];
   assert.equal(pie.tagName, 'SVG');
-  assert.match(pie.getAttribute('aria-label'), /3 gewogen aanvragen/);
+  assert.match(pie.getAttribute('aria-label'), /Groep 3: 11,1%/);
+  assert.equal(pie.children[0].children[0].textContent, 'Groep 3: 11,1%');
   assert.equal(pie.children.length, 4);
   assert.match(pie.children[0].getAttribute('d'), /^M90,90L.*A77,77/);
   assert.deepEqual(elements.poChart.children[1].children.map(item => item.children[2].textContent),
-    ['0,33 · 11,1%', '0,33 · 11,1%', '0,33 · 11,1%', '2 · 66,7%']);
+    ['11,1%', '11,1%', '11,1%', '66,7%']);
   assert.equal(pie.children[3].getAttribute('fill'), '#94a3b8');
   const color = pie.children[0].getAttribute('fill');
   elements.workshopFilter.value = 'A';
@@ -1099,7 +1100,7 @@ test('onbekende leerjaren blijven apart en combinatiegroepen behouden samen éé
   elements.workshopFilter.value = 'B';
   elements.workshopFilter.trigger('change');
   assert.match(elements.poChart.children[0].children[0].getAttribute('d'), /A77,77.*A77,77/);
-  assert.equal(elements.poChart.children[1].children[0].children[2].textContent, '1 · 100,0%');
+  assert.equal(elements.poChart.children[1].children[0].children[2].textContent, '100,0%');
   assert.equal(elements.voChart.children[0].textContent, 'Geen gegevens binnen deze filters.');
 });
 
